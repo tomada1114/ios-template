@@ -33,6 +33,12 @@ fix:
 lint:
     mise exec -- scripts/lint.sh
 
+# Run the plain-bash tests for the scripts under scripts/ (through mise: the
+# lint_test.sh number-separator case calls the pinned swiftformat and swiftlint)
+[doc("Run the plain-bash tests for scripts/ and the skills' Python suites")]
+test-scripts:
+    mise exec -- scripts/tests/run.sh
+
 # Run the MyAppKit tests on the host Mac with the 80% line / 75% function coverage floors on MyAppCore
 test:
     scripts/coverage.sh
@@ -69,9 +75,9 @@ uitest:
     rm -rf build/LaunchUITests.xcresult
     set -o pipefail && xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult | mise exec -- xcbeautify
 
-# Run all checks: format, lint, test, build (CI's app job adds uitest)
-[doc("Run all checks: fmt, lint, test, build")]
-check: fmt lint test build
+# Run all checks: format, lint, script tests, test, build (CI's app job adds uitest)
+[doc("Run all checks: fmt, lint, test-scripts, test, build")]
+check: fmt lint test-scripts test build
 
 # Regenerate the .claude/skills/ mirror from .agents/skills/ (run after any skill edit)
 agents-sync:

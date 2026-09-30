@@ -20,3 +20,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Agent harness: `AGENTS.md`, `docs/architecture.md`, `.claude/settings.json`, three
   sub-agent tiers, and the `shipping-issues`, `triaging-issues`, `tdd`, `create-pr`,
   and `smart-commit` skills, mirrored from `.agents/skills/` into `.claude/skills/`.
+- Plain-bash tests for every script under `scripts/`, run with the skills' Python suites
+  by `just test-scripts`
