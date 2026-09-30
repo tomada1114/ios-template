@@ -37,3 +37,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Bootstrap Smoke job
 - `just test-ios` (package tests on the iOS Simulator) and `just smoke` (Release launch on
   a simulator), both in CI
+- iOS skills for running the app on the Simulator, integrating system APIs, and building
+  SwiftUI screens; `just reset-permissions`

@@ -52,6 +52,7 @@ just check-harness # Re-assert the harness's claims about itself (scripts/checks
 just build         # Build the app (Debug) for the iOS Simulator
 just run           # Build, then install and launch it on an iOS Simulator (SIMULATOR_DEVICE picks one)
 just logs          # Stream this app's log output from the booted simulator (Ctrl-C to stop)
+just reset-permissions  # Make the booted simulator forget this app's privacy grants
 just uitest        # Run the XCUITest launch test on an iOS Simulator
 just test-ios      # Run the package tests on an iOS Simulator (no coverage floor)
 just smoke         # Build Release and assert the app launches and stays alive on a simulator
@@ -84,7 +85,8 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | A test under `LaunchUITests/`, or launch behavior | `just uitest` |
 | Code behind `#if os(iOS)` in `MyAppKit`, or behavior that differs on the iOS runtime | `just test-ios` |
 | The Release configuration, or anything only a Release launch shows | `just smoke` |
-| Behavior only the running app shows | `just run`, then `just logs` — no gate asserts it, so the PR carries the evidence (a screenshot: `xcrun simctl io booted screenshot shot.png`) |
+| Behavior only the running app shows | `just run`, then `just logs` — no gate asserts it, so the PR carries the evidence (a screenshot: `xcrun simctl io booted screenshot shot.png`) (the `running-the-app` skill) |
+| A permission prompt, or behavior after a grant is revoked | `just reset-permissions`, then `just run` |
 | A shell script under `scripts/` (including the sourced `scripts/guard/*.sh`), or `.githooks/pre-commit` | `just lint`, then `just test-scripts` |
 | `scripts/verify-hooks.sh` | `just lint`, then `just test-scripts`; `just verify-hooks` for the check itself |
 | A harness check under `scripts/checks/` (including the sourced `scripts/checks/lib.sh`) | `just lint`, then `just test-scripts`; `just check-harness` for the checks themselves |
@@ -194,6 +196,9 @@ into `.claude/skills/`, the only path Claude Code reads:
 | `recording-architecture-decisions` | the ADRs under `docs/architecture/`: whether a change owes an ADR (a target or port, the device family and scene model, a capability or entitlement, persistence, a dependency, distribution, `deploymentTarget`, a privacy-gated permission, a shipped language), an ADR's statuses, amending versus superseding, and fact discipline — every external claim with a URL and a checked date |
 | `steering-the-roadmap` | the app's direction in `docs/architecture/roadmap.md`: its Now / Next / Later horizons, who changes it and when, how the backlog and parked `on hold` issues feed it, and answering "what is next?" before `shipping-issues` |
 | `starting-an-app` | turning this template into a new app: `scripts/bootstrap.sh`'s rename, the template-only passages it removes, what the new repository keeps, its `just labels` and `just ruleset` setup, choosing the device family (iPhone only or iPhone and iPad), and deciding which capabilities and entitlements it takes |
+| `running-the-app` | seeing a change work on the iOS Simulator: `just run` and confirming the installed app is the fresh build, reading `just logs`, `simctl` screenshots in dark mode and at large Dynamic Type sizes, deep links, simulated pushes, launch arguments, a throwaway XCUITest, `just reset-permissions`, and the evidence a PR then carries |
+| `integrating-system-apis` | reaching an iOS system API through a Core port: the adapter in `MyAppPlatform`, a permission as a Core enum, usage descriptions and `Info.plist` keys in `project.yml`, `PrivacyInfo.xcprivacy`, notifications, PhotosPicker, background tasks, `simctl privacy`, `#if os(iOS)`, and what `just test`, `just test-ios`, and a device each prove |
+| `building-swiftui-screens` | a view in `MyAppUI`: a thin renderer over a `MyAppCore` `@Observable` view model, navigation, sheets and alerts, size classes, Dynamic Type, safe areas and the keyboard, touch targets, `#Preview` per state, accessibility identifiers and labels, and verifying a screen |
 | `updating-docs` | deciding whether a change owes a documentation update and which surface it lands on: `README.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/architecture.md`, `docs/architecture/`, a skill, or a `///` comment |
 
 More skills are ported from the macOS template by open issues (see
