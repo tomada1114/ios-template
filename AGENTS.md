@@ -348,18 +348,19 @@ libraries are sourced, so they carry no shebang or `set` line of their own):
   `bootstrap-smoke` job, which renames a clone of the template with it; and
   `coverage.sh`, whose test file `scripts/tests/coverage_test.sh` is partial — it stubs
   `swift` to cover its rejection of the removed environment override and its line- and
-  function-floor comparisons, but not a real coverage run, which is CI's `test` job. `coverage.sh`'s
-  below-the-line-floor failure also predates the failure contract and does not follow
-  it yet (its function-floor failure, `ERR_COVERAGE_FUNCTIONS_BELOW_FLOOR`, does).
+  function-floor comparisons, but not a real coverage run, which is CI's `test` job.
+  `coverage.sh`'s below-the-line-floor failure also predates the failure contract and
+  does not follow it yet (its function-floor failure,
+  `ERR_COVERAGE_FUNCTIONS_BELOW_FLOOR`, does).
 
 ## Harness status
 
 This repository is being brought up to the macOS template's harness
 (`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
 in order. What exists today is what the tables above describe. Not yet ported, each owned
-by an open issue: the remaining skills, dependency bots, the localization harness, the iOS design system, distribution, and the fuller documentation.
-When an issue lands one of these, it updates this section and the tables above in the
-same pull request.
+by an open issue: the remaining skills, dependency bots, the localization harness, the
+iOS design system, distribution, and the fuller documentation. When an issue lands one
+of these, it updates this section and the tables above in the same pull request.
 
 ## Enforcement layers
 
