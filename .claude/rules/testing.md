@@ -22,8 +22,8 @@ Four kinds of test, split by what is under test (`docs/architecture.md` › Test
    is a gated test.
 3. **Translation through an iOS-only API → a test inside `#if os(iOS)` in
    `Tests/MyAppPlatformTests`.** `swift test` builds the package for macOS, where that
-   test compiles away, so no gate runs it yet (#11 adds `just test-ios`). Say so in the
-   pull request rather than implying it ran. What only a real permission prompt, a
+   test compiles away; `just test-ios` runs it on the iOS Simulator (CI's
+   `Package Tests (iOS Simulator)` job). What only a real permission prompt, a
    device, or push delivery shows is not a test at all: the pull request carries the
    evidence (a screenshot, the log lines from `just logs`).
 4. **What only the assembled app shows → `LaunchUITests`.** The one XCTest target holds
@@ -36,9 +36,10 @@ Four kinds of test, split by what is under test (`docs/architecture.md` › Test
    through its Core view model, and an adapter's translation is a Platform test. It
    waits on a predicate with a timeout (`waitForExistence(timeout:)`), never `sleep`.
 
-A test of kind 3 never becomes the only test of a decision: no gate runs it, so it
-proves nothing about the pull request nobody ran it for. Adapters stay translation-only,
-and outside the coverage floor, precisely so that stays true.
+A test of kind 3 never becomes the only test of a decision: only `just test-ios` runs
+it — `just check` leaves that recipe out, and the coverage floor never measures it — so
+a decision it alone covers is untested on every local run. Adapters stay
+translation-only, and outside the coverage floor, precisely so that stays true.
 
 ## Framework and Structure
 
