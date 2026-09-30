@@ -160,8 +160,12 @@ AppLog.persistence.error(
 )
 ```
 
-- **`URLError`.** The mapping belongs to the first networking adapter (`HTTPClient`,
-  #17), written with that port; there is none to copy yet.
+- **`URLError`.** `URLSessionHTTPClient.clientError(for:)` maps by `code` into
+  `HTTPClientError`: `.cancelled` to `cancelled`; no usable connection
+  (`.notConnectedToInternet`, `.cannotFindHost`, …) to `notConnected`; `.timedOut` to
+  `timedOut`; every other code to `transport(code:)`. A `CancellationError` also maps to
+  `cancelled` — the port throws typed, so cancellation is a case the caller treats as a
+  no-op — and it is the one failure the adapter does not log.
 
 A Platform test checks the mapping under plain `swift test` (`just test`) when the
 framework runs on the host — SwiftData with an in-memory store does
