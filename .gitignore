@@ -27,8 +27,9 @@ build/
 # Claude Code
 .claude/settings.local.json
 
-# Local, machine-specific build settings — an optional Debug signing identity
-# (see Config/Debug.xcconfig); the commit-time guard refuses it too
+# Local, machine-specific build settings — the DEVELOPMENT_TEAM for `just run-device`,
+# included by Config/Debug.xcconfig (docs/running-on-device.md); the commit-time guard
+# refuses it too
 Config/Local.xcconfig
 
 # Environment variables

@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Typed navigation (`AppRoute`, `NavigationModel`), a to-do detail screen, and
   `my-app://todo/<id>` deep links
 - An Edit button on the to-do list, so an item can be deleted without the swipe
+- `just run-device` installs and launches the app on a connected iPhone, with the
+  development team kept in a gitignored `Config/Local.xcconfig` (`docs/running-on-device.md`)
 
 ### Fixed
 
