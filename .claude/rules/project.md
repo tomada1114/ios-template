@@ -7,6 +7,7 @@ paths:
   - ".swiftlint.yml"
   - ".swiftformat"
   - "scripts/coverage.sh"
+  - "Config/*.xcconfig"
 ---
 
 ## Dependency Policy
@@ -53,6 +54,20 @@ paths:
 - `project.yml` is the source of truth; `MyApp.xcodeproj` is generated and gitignored —
   never hand-edit or commit it
 - After changing `project.yml`, run `just generate` and build to verify
+
+## Local Signing Identity
+
+- `DEVELOPMENT_TEAM` for device runs (`just run-device`) lives only in the gitignored
+  `Config/Local.xcconfig`, which `Config/Debug.xcconfig` includes with `#include?`
+- A tracked file never holds a team ID or a provisioning profile name — not
+  `project.yml`, not `Config/Debug.xcconfig`, not a workflow. Setting
+  `DEVELOPMENT_TEAM` in `project.yml`, even empty, overrides the xcconfig and silently
+  breaks `Local.xcconfig`
+- Never read `Config/Local.xcconfig`; `scripts/run-device.sh` checks the resolved team
+  through `xcodebuild -showBuildSettings`, for emptiness only, and never prints it
+- Editing `Config/Debug.xcconfig` or `project.yml`'s `configFiles` touches signing and
+  needs the owner's sign-off (AGENTS.md › Security and human approval)
+- See `docs/running-on-device.md`
 
 ## Toolchain Pinning
 

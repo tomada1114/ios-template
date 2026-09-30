@@ -1,0 +1,17 @@
+// Debug build settings for the MyApp target, wired in by project.yml's configFiles.
+//
+// A build for your own iPhone (`just run-device`) needs a development team. It lives
+// only in Config/Local.xcconfig, which you create yourself, holding one line:
+//
+//   DEVELOPMENT_TEAM = <your team ID>
+//
+// The team ID is the one Xcode › Settings › Accounts shows for your Apple account.
+// Local.xcconfig is gitignored and the commit-time guard refuses it: a team ID belongs
+// to one person's account, and this repository may be public. Simulator builds sign
+// ad hoc and need no team, so the file is optional (hence `#include?`).
+//
+// Only Debug includes it: `just run-device` builds Debug and no Release route to a
+// device exists. An app that adds distribution revisits this.
+// See docs/running-on-device.md.
+
+#include? "Local.xcconfig"

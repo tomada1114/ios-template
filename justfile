@@ -72,6 +72,13 @@ build:
 run: build
     scripts/run-simulator.sh
 
+# Build (Debug) for a connected iPhone, then install and launch it there — needs
+# Config/Local.xcconfig (docs/running-on-device.md); IOS_DEVICE picks the device
+[doc("Build (Debug), then install and launch it on a connected iPhone")]
+run-device:
+    mise exec -- xcodegen generate
+    scripts/run-device.sh
+
 # Stream this app's unified-log output from the booted simulator (subsystem == the
 # bundle identifier project.yml declares), until you stop it with Ctrl-C
 [doc("Stream this app's log output from the booted simulator (Ctrl-C to stop)")]

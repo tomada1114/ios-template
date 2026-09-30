@@ -19,6 +19,11 @@ targets:
     type: application
     platform: iOS
     sources: [App]
+    # Debug reads Config/Debug.xcconfig, which optionally includes the gitignored
+    # Config/Local.xcconfig holding DEVELOPMENT_TEAM for `just run-device`. Never set
+    # DEVELOPMENT_TEAM below, even empty: a target's own setting overrides its xcconfig.
+    configFiles:
+      Debug: Config/Debug.xcconfig
     dependencies:
       - package: MyAppKit
         product: MyAppUI
@@ -52,8 +57,9 @@ targets:
           UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        # Simulator builds sign ad hoc and need no team. A device build needs a
-        # DEVELOPMENT_TEAM, which belongs to each developer's machine, not this file.
+        # Simulator builds sign ad hoc and need no team. A device build takes its
+        # DEVELOPMENT_TEAM from Config/Debug.xcconfig's optional Local.xcconfig
+        # (docs/running-on-device.md), never from this file.
         CODE_SIGN_STYLE: Automatic
   MyAppLaunchUITests:
     type: bundle.ui-testing
