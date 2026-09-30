@@ -123,7 +123,11 @@ paths:
 - Swift 6 language mode is on: data-race safety errors are non-negotiable
 - UI-facing state is `@MainActor` (`TodoListViewModel`); keep Core types `Sendable` where
   they cross actors
-- Ports are `Sendable` and `async`; adapters and fakes are actors
-  (`SwiftDataTodoRepository`, `InMemoryTodoRepository`) —
-  `docs/architecture.md` › Concurrency
+- Ports are `Sendable`. The repository and HTTP ports are `async`; `PreferencesStoring` is
+  deliberately synchronous (`docs/architecture.md` › Preferences)
+- Adapters and fakes are actors (`SwiftDataTodoRepository`, `InMemoryTodoRepository`), or
+  `Sendable` structs holding only `Sendable` values (`URLSessionHTTPClient`,
+  `UserDefaultsPreferences`) and final classes guarding their state with a `Mutex`
+  (`InMemoryPreferences`) — never `@unchecked Sendable` (`docs/architecture.md` ›
+  Concurrency)
 - No `@unchecked Sendable` without a comment proving the invariant it papers over

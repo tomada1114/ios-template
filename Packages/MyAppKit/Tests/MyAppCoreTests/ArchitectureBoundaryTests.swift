@@ -8,8 +8,9 @@ import Testing
 /// second; the lint rule runs in the `lint` job and the pre-commit hook, this suite in the
 /// `test` job, so removing either one still leaves the other catching a regression.
 ///
-/// Core also never names a Foundation type an adapter owns (`URLSession`): Core imports
-/// Foundation, so no import ban can see one, and this suite is the only enforcement.
+/// Core also never names a Foundation type an adapter owns (`URLSession`, `UserDefaults`):
+/// Core imports Foundation, so no import ban can see one, and this suite is the only
+/// enforcement.
 ///
 /// `MyAppUI` and `MyAppPlatform` are siblings over Core and never import each other.
 /// SwiftPM's target graph already withholds the modules, but only until someone adds a
@@ -39,9 +40,11 @@ struct ArchitectureBoundaryTests {
 
     /// Foundation types `MyAppCore` must not name: Core imports Foundation, so no import
     /// ban can see them, yet each belongs to an adapter — `URLSession` to
-    /// `URLSessionHTTPClient`, behind the ``MyAppCore/HTTPClient`` port. `.swiftlint.yml`
-    /// has no twin rule, so this list and the test that reads it are the only enforcement.
-    static let forbiddenFoundationTypes = ["URLSession"]
+    /// `URLSessionHTTPClient`, behind the ``MyAppCore/HTTPClient`` port, and `UserDefaults`
+    /// to `UserDefaultsPreferences`, behind ``MyAppCore/PreferencesStoring``.
+    /// `.swiftlint.yml` has no twin rule, so this list and the test that reads it are the
+    /// only enforcement.
+    static let forbiddenFoundationTypes = ["URLSession", "UserDefaults"]
 
     /// `Sources/MyAppCore`, the directory the Core ban list applies to.
     static let coreSourcesDirectory = sourcesDirectory(of: "MyAppCore")
@@ -231,6 +234,9 @@ struct ArchitectureBoundaryTests {
         ("// URLSession is the adapter's", false),
         ("    /// Wraps `URLSession` in MyAppPlatform.", false),
         ("let client: URLSessionHTTPClient", false),
+        ("let defaults = UserDefaults.standard", true),
+        ("/// `UserDefaults` stores it natively.", false),
+        ("let preferences: UserDefaultsPreferences", false),
     ])
     func `the Foundation type scan catches code and skips comments`(
         line: String,

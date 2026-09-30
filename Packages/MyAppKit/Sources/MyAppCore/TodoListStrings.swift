@@ -56,6 +56,36 @@ public enum TodoListStrings {
         )
     }
 
+    /// The toolbar toggle that hides done items (``TodoListViewModel/hideCompleted``).
+    public static var hideCompleted: LocalizedStringResource {
+        LocalizedStringResource(
+            "todoList.hideCompleted",
+            defaultValue: "Hide Completed",
+            bundle: .module,
+            comment: "Toolbar toggle that hides or shows to-do items that are done.",
+        )
+    }
+
+    /// The all-done state's headline (``TodoListViewModel/showsAllDoneState``).
+    public static var allDoneTitle: LocalizedStringResource {
+        LocalizedStringResource(
+            "todoList.allDone.title",
+            defaultValue: "All Done",
+            bundle: .module,
+            comment: "Headline shown when every to-do item is done and done items are hidden.",
+        )
+    }
+
+    /// The all-done state's explanation: the items exist, they are only hidden.
+    public static var allDoneDescription: LocalizedStringResource {
+        LocalizedStringResource(
+            "todoList.allDone.description",
+            defaultValue: "Completed items are hidden.",
+            bundle: .module,
+            comment: "Explanation under the all-done headline: done items exist but are hidden.",
+        )
+    }
+
     /// The failure alert's title.
     public static var failureTitle: LocalizedStringResource {
         LocalizedStringResource(

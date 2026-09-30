@@ -61,7 +61,7 @@ between builds. A log line the change adds is the other proof — see it in the 
 
 Shipped code logs through `AppLog` (`os.Logger`), never `print`
 (`docs/architecture.md` › Logging): one subsystem, the bundle identifier, and one
-category per concern (`todos`, `persistence`).
+category per concern (`todos`, `persistence`, `network`, `preferences`).
 
 ```bash
 just logs     # simctl spawn booted log stream --level debug, this app's subsystem

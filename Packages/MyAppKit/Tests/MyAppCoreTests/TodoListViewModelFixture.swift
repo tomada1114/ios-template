@@ -32,10 +32,28 @@ enum TodoListViewModelFixture {
         )
     }
 
-    /// A view model over `repository` whose clock and identifier source are pinned.
+    /// A view model over `repository` and a fresh, empty preferences fake, whose clock
+    /// and identifier source are pinned.
+    ///
+    /// An overload rather than a default argument, which `discouraged_default_parameter`
+    /// rejects on an internal function.
     static func model(over repository: some TodoRepository) -> TodoListViewModel {
+        model(over: repository, preferences: InMemoryPreferences())
+    }
+
+    /// A view model over `repository` and `preferences` whose clock and identifier source
+    /// are pinned.
+    static func model(
+        over repository: some TodoRepository,
+        preferences: some PreferencesStoring,
+    ) -> TodoListViewModel {
         let pinnedNow = now
         let pinnedID = fixedID
-        return TodoListViewModel(repository: repository, now: { pinnedNow }, makeID: { pinnedID })
+        return TodoListViewModel(
+            repository: repository,
+            preferences: preferences,
+            now: { pinnedNow },
+            makeID: { pinnedID },
+        )
     }
 }
