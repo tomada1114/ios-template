@@ -1,0 +1,83 @@
+# Strict from day one — warnings are errors, every opt-in rule enabled,
+# each disable below carries a one-line reason.
+strict: true
+
+opt_in_rules:
+  - all
+
+# No analyzer_rules: they only run under `swiftlint analyze` with a compiler
+# log, which no gate here invokes — listing them would advertise checks that
+# never fire. Revisit if a build-log-producing CI step is ever added.
+
+disabled_rules:
+  - todo                        # TODOs are allowed during development
+  - file_header                 # no license-header requirement
+  - explicit_type_interface     # type inference is idiomatic Swift
+  - explicit_acl                # explicit-top-level-acl via other rules; full ACL noise
+  - explicit_top_level_acl      # same ACL-noise family: internal-by-default is idiomatic
+  - required_deinit             # value-type-first design
+  - prefixed_toplevel_constant  # k-prefix is not modern style
+  - no_grouping_extension       # extensions-for-conformance is idiomatic
+  - explicit_enum_raw_value     # implicit raw values fine
+  - one_declaration_per_file    # small helper types may colocate
+  - contrasted_opening_brace    # Allman braces conflict with SwiftFormat's K&R style
+  - prefer_nimble               # zero-dependency template; Nimble is a third-party package
+  - incompatible_concurrency_annotation  # Swift 6-only package; no Swift 5 clients to appease
+
+# SwiftFormat inserts trailing commas in multiline literals (Swift 6.1+ style) — align with it.
+trailing_comma:
+  mandatory_comma: true
+
+excluded:
+  - .build
+  - "**/.build"
+  - build
+  - MyApp.xcodeproj
+
+custom_rules:
+  # MyAppCore stays free of UI, persistence, and OS-integration frameworks (AGENTS.md ›
+  # Architecture): an adapter that needs one belongs in MyAppPlatform, behind a
+  # Core-declared port.
+  # `os`/`OSLog` are NOT on this list — logging is neither, and Core logs through
+  # AppLog (docs/architecture.md › Logging). Enforced twice: here, and by
+  # ArchitectureBoundaryTests in MyAppCoreTests — change both module lists together.
+  # No match_kinds: the ^\s* anchor already skips `// import …` comments, and a kind
+  # filter would drop the attributed-import case.
+  no_ui_import_in_core:
+    included: 'Packages/MyAppKit/Sources/MyAppCore/.+\.swift$'
+    regex: '^\s*(@[\w()]+\s+)*import\s+((typealias|struct|class|enum|protocol|let|var|func)\s+)?(SwiftUI|UIKit|AppKit|Cocoa|SwiftData|CoreData|CloudKit|UserNotifications|CoreLocation|Photos|PhotosUI|StoreKit|WidgetKit)\b'
+    message: "MyAppCore must not import a UI, persistence, or OS-integration framework (SwiftUI, UIKit, AppKit, Cocoa, SwiftData, CoreData, CloudKit, UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, WidgetKit); put the adapter in MyAppPlatform behind a Core port (AGENTS.md › Architecture)."
+    severity: error
+
+  # Shipped code logs through AppLog (os.Logger), never stdout: an app launched from the
+  # Home Screen has nowhere to send stdout, so a print() is invisible exactly when it
+  # would matter (docs/architecture.md › Logging).
+  #
+  # `included`/`excluded` are substring matches against the whole file path, not
+  # repository-relative globs, so they are written to survive any ancestor directory —
+  # including one literally named `App` or `DemoApp`, which is what scripts/bootstrap.sh
+  # produces. Matching a path *suffix* is also what keeps the rule firing over the temp
+  # tree the pre-commit hook exports with `git checkout-index --prefix=`.
+  #   - `App/[^/]+\.swift$` — the app shell is flat (App/MyAppApp.swift), so exactly one
+  #     component may follow. A checkout under `~/App/` therefore cannot drag anything
+  #     deeper into the rule.
+  #   - `Packages/[^/]+/Sources/[^/]+/.+\.swift$` — a package's module directory and
+  #     everything under it, so `Packages/*/Tests/` cannot match this alternative.
+  #   - `excluded` then spares any `*Tests/` directory outright (MyAppCoreTests,
+  #     LaunchUITests), so even a pathological ancestor path cannot make the rule fire
+  #     in a test target. Test code prints freely.
+  #
+  # `match_kinds: [identifier]` is what keeps a `print(` inside a comment, a doc
+  # comment, or a string literal from counting: only a real call site is an identifier.
+  # `[^\w.]` before the name spares `blueprint(` and member calls like `.print()`
+  # (Combine's debugging operator) — at the price of not catching `Swift.print(`,
+  # which is a deliberate bypass rather than a slip, and PR review's to catch.
+  # `(?<!func )` spares a declaration of a method that happens to be named `print`.
+  no_print_in_sources:
+    included: '(^|/)(App/[^/]+|Packages/[^/]+/Sources/[^/]+/.+)\.swift$'
+    excluded: '(^|/)[A-Za-z0-9]*Tests/'
+    regex: '(^|[^\w.])(?<!func )(print|debugPrint|NSLog)\s*\('
+    match_kinds:
+      - identifier
+    message: "Shipped code must not print to stdout — an app launched from the Home Screen discards it. Log through AppLog (os.Logger) instead, with a privacy annotation on anything user-derived (docs/architecture.md › Logging)."
+    severity: error

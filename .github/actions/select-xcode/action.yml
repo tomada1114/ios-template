@@ -1,0 +1,10 @@
+name: Select the pinned Xcode
+description: >-
+  Point DEVELOPER_DIR at the Xcode version pinned in .xcode-version, the
+  single source of truth for every macOS job's toolchain.
+runs:
+  using: composite
+  steps:
+    - name: Select the pinned Xcode
+      shell: bash
+      run: echo "DEVELOPER_DIR=/Applications/Xcode_$(cat .xcode-version).app" >> "$GITHUB_ENV" # zizmor: ignore[github-env] value is read from .xcode-version, a repo-tracked file, not attacker input

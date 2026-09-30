@@ -1,0 +1,11 @@
+# Pinned CLI tool versions — the dev-tool analog of a lockfile.
+# Never use "latest" or bump by hand: Renovate opens the bump PRs (policy: .claude/rules/project.md, Toolchain Pinning).
+[tools]
+xcodegen = "2.46.0"
+swiftlint = "0.65.1"
+swiftformat = "0.63.0"
+xcbeautify = "3.2.1"
+just = "1.58.0"
+actionlint = "1.7.12"
+shellcheck = "0.11.0"
+typos = "1.50.2"

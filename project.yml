@@ -1,0 +1,64 @@
+# XcodeGen manifest — the SOURCE OF TRUTH for the app target.
+# MyApp.xcodeproj is generated (`just generate`) and gitignored; never hand-edit it.
+name: MyApp
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+packages:
+  MyAppKit:
+    path: Packages/MyAppKit
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  MyApp:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - package: MyAppKit
+        product: MyAppUI
+      # The app shell is the composition root: it is the only target that links the
+      # adapters (MyAppPlatform) and hands them to Core view models as ports.
+      - package: MyAppKit
+        product: MyAppPlatform
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.MyApp
+        GENERATE_INFOPLIST_FILE: YES
+        # iPhone and iPad. Dropping iPad is an app's decision (TARGETED_DEVICE_FAMILY: "1").
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: >-
+          UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft
+          UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: >-
+          UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+          UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # Simulator builds sign ad hoc and need no team. A device build needs a
+        # DEVELOPMENT_TEAM, which belongs to each developer's machine, not this file.
+        CODE_SIGN_STYLE: Automatic
+  MyAppLaunchUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [LaunchUITests]
+    dependencies:
+      - target: MyApp
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+schemes:
+  MyApp:
+    build:
+      targets: { MyApp: all }
+    test:
+      targets: [MyAppLaunchUITests]

@@ -1,0 +1,68 @@
+# The single declarative source for this repository's labels: name, color, and
+# description. `just labels` (scripts/sync-labels.sh) creates or updates each
+# one on the live repository; it never deletes a label this file does not
+# mention, so a repository-local label (e.g. `duplicate`, `github_actions`)
+# survives running it.
+#
+# Colors are six lowercase hex digits, no leading `#` — GitHub's label color
+# convention (see e.g. `gh label create --color`).
+
+# Type labels: what kind of change or work an issue is. Also used by
+# .github/ISSUE_TEMPLATE/*.yml's `labels:` field.
+- name: bug
+  color: d73a4a
+  description: "Reproducible incorrect behavior."
+- name: enhancement
+  color: a2eeef
+  description: "A consumer-visible improvement."
+- name: documentation
+  color: 0075ca
+  description: "A documentation-only change."
+- name: chore
+  color: fef2c0
+  description: "Repository work: tooling, automation, refactor, hardening, or docs."
+
+# PR-only labels. `dependencies` is applied by Dependabot itself and by
+# scripts/label-pr.sh from a `deps:` PR title; `ci` by scripts/label-pr.sh from a
+# `ci:` title. Never used for issue triage.
+- name: dependencies
+  color: 0366d6
+  description: "A dependency version bump."
+- name: ci
+  color: 006b75
+  description: "A CI or workflow-only change."
+
+# Priority labels: added at triage, ranking impact on the rest of the backlog
+# rather than how interesting the work is.
+- name: "priority: P0"
+  color: b60205
+  description: "Ship now: other issues are blocked on it, or damage is being taken."
+- name: "priority: P1"
+  color: d93f0b
+  description: "Do next: leverage work later issues stand on (CI, schema, shared types, config)."
+- name: "priority: P2"
+  color: fbca04
+  description: "Normal: a real, self-contained change; nothing waits on it."
+- name: "priority: P3"
+  color: c5def5
+  description: "Defer: nice-to-have, docs polish, or cosmetics."
+
+# Blocked labels: why an issue is not implementable yet.
+- name: "blocked: design"
+  color: e99695
+  description: "The approach is not settled; needs a human decision first."
+- name: "blocked: dependency"
+  color: f9d0c4
+  description: "Waits on a specific open issue named by a Depends on #N line."
+- name: "blocked: external"
+  color: d4c5f9
+  description: "Needs a step only a person can take (signing identity, Apple account, TCC grant); agents skip it."
+- name: "on hold"
+  color: ededed
+  description: "Parked on purpose; the reason is in a comment. Agents skip it."
+
+# Tracking label: an issue that is a checklist of sub-issues, never work itself.
+# shipping-issues drops it from ranking, selection, and priority backfill.
+- name: tracking
+  color: bfdadc
+  description: "A tracking issue: its sub-issues carry the work; never implemented itself."

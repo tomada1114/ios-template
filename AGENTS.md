@@ -1,0 +1,266 @@
+# Project Guide
+
+This file holds what every agent needs before it knows which task it is on: what the
+app is, how to check a change, where code goes, and which decisions need a human. It is
+the one guide Claude Code and Codex CLI share. The reasoning behind the architecture is
+in [`docs/architecture.md`](docs/architecture.md); the conventions of one kind of change
+belong to a skill under `.agents/skills/` ([Skills](#skills)); a value a gate enforces
+belongs to its config (`.swiftlint.yml`, `.swiftformat`, `Package.swift`,
+`scripts/coverage.sh`, `mise.toml`), and running the gate is how you learn it.
+
+## Overview
+
+This is an iOS SwiftUI app built from a strict template: XcodeGen generates the Xcode
+project from `project.yml`, all real code lives in a local Swift package
+(`Packages/MyAppKit`), and quality gates (SwiftLint strict, SwiftFormat, Swift 6
+language mode, an 80% line-coverage and a 75% function-coverage floor on the Core
+module) are enforced from day one. It ships a small worked example — a to-do list —
+that exercises every seam an app needs: MVVM with `@Observable` view models, a
+repository port with a SwiftData adapter, a fake and a contract test, and an XCUITest.
+
+## Product
+
+**TODO: in the template this section is a placeholder.** It is the one part of this
+file about the application rather than the harness, so every repository cut from the
+template writes its own: without it an agent implementing an issue here has no in-repo
+answer to "is this in scope?".
+
+- **What it is, and who it is for** — TODO: one paragraph. The problem it solves, and
+  whose problem that is.
+- **The core interaction** — TODO: the one thing a user does most. If the app does not
+  do this well, nothing else about it matters.
+- **Non-goals** — TODO: what this app deliberately does not do, even where it would be
+  easy. Moving anything from here to a goal is a human's decision, not an implementer's.
+- **Where these decisions are recorded** — TODO: where the reasoning behind the three
+  entries above lives.
+
+## Quick Reference
+
+```bash
+just install       # Install pinned tools (mise), git hooks, and generate the Xcode project
+just generate      # Regenerate MyApp.xcodeproj from project.yml
+just fmt           # Format code (swiftformat)
+just fix           # Format, auto-fix SwiftLint violations, then run just lint
+just lint          # Lint (scripts/lint.sh: swiftformat --lint + swiftlint --strict + shellcheck + actionlint + typos + skills mirror)
+just test          # Run the package tests on the host Mac with the 80% line / 75% function floors on MyAppCore
+just test-fast TodoItemTests  # Run only the matching tests, no coverage floor (iteration only)
+just build         # Build the app (Debug) for the iOS Simulator
+just run           # Build, then install and launch it on an iOS Simulator (SIMULATOR_DEVICE picks one)
+just logs          # Stream this app's log output from the booted simulator (Ctrl-C to stop)
+just uitest        # Run the XCUITest launch test on an iOS Simulator
+just check         # Run all checks: fmt → lint → test → build
+just agents-sync   # Regenerate the .claude/skills/ mirror from .agents/skills/
+just agents-check  # Fail if .claude/skills/ differs from .agents/skills/
+just clean         # Remove build artifacts and the generated project
+```
+
+Building the app needs Xcode (`.xcode-version`) **with its iOS platform installed**
+(Xcode › Settings › Components); `just test` needs only the Swift toolchain.
+
+## Validating a change
+
+Run the narrowest check that can fail, then `just check` before you open a PR.
+
+| What you changed | The narrowest check that can fail |
+|---|---|
+| A Swift file under `Packages/MyAppKit/Sources/MyAppCore/` | `just test` |
+| A test under `Packages/MyAppKit/Tests/` | `just test` |
+| An adapter under `Packages/MyAppKit/Sources/MyAppPlatform/` | `just test` (its contract runs against the real framework on the host); `just build` if `App/` wires it |
+| A fake or a port contract under `Packages/MyAppKit/Tests/MyAppTestSupport/` | `just test` (the contract runs against both the fake and the adapter) |
+| A view under `Packages/MyAppKit/Sources/MyAppUI/`, or anything under `App/` | `just build`; `just uitest` if it changes what the launch test touches |
+| Formatting or style of any Swift file | `just lint` (`just fix` for what is auto-fixable) |
+| One Core suite, while iterating | `just test-fast <filter>` — no coverage floor, so finish with `just test` |
+| `Localizable.xcstrings`, or a `LocalizedStringResource` in Core | `just test`; `just build` to compile the catalog into the app |
+| `project.yml` | `just generate && just build` |
+| A test under `LaunchUITests/`, or launch behavior | `just uitest` |
+| Behavior only the running app shows | `just run`, then `just logs` — no gate asserts it, so the PR carries the evidence (a screenshot: `xcrun simctl io booted screenshot shot.png`) |
+| A shell script under `scripts/`, or `.githooks/pre-commit` | `just lint` (shellcheck) |
+| A skill under `.agents/skills/` | `just agents-sync`, then `just agents-check`; for `shipping-issues` scripts, `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .agents/skills/shipping-issues/scripts/tests` (a stray `__pycache__/` would fail the mirror check) |
+| A workflow under `.github/workflows/` | `just lint` (actionlint) |
+| Markdown | `just lint` (its `typos` spell-check) |
+| `mise.toml` | `mise install`, then `just check` |
+
+## Architecture
+
+```
+App/                        # Thin shell: @main entry point + resources, NO logic.
+                            #   The composition root: opens the SwiftData adapter and
+                            #   hands it to Core view models
+Packages/MyAppKit/
+├── Sources/MyAppCore/      # Domain values, view models, ports (protocols), wording,
+│                           #   logging — no UI, persistence, or OS-integration import
+│                           #   (enforced by lint and test); coverage-gated
+├── Sources/MyAppUI/        # SwiftUI views — thin, render Core view models
+├── Sources/MyAppPlatform/  # Adapters behind Core ports (SwiftData today) — translation
+│                           #   only, no domain logic, outside the coverage floor
+├── Tests/MyAppTestSupport/ # Each port's fake and contract function — test code no
+│                           #   shipped module imports (enforced by test)
+├── Tests/MyAppCoreTests/   # Swift Testing suites — coverage-gated
+└── Tests/MyAppPlatformTests/  # Adapters against the real framework, on the host
+LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity)
+```
+
+- New logic goes in `MyAppCore` with tests; views only render Core state.
+- The dependency direction is one-way: Core ← UI and Core ← Platform, both ← App.
+  `MyAppUI` and `MyAppPlatform` are siblings and never import each other.
+- Storage and OS services go in `MyAppPlatform` as an adapter behind a `Sendable` port
+  Core declares, with one fake and one contract function in `Tests/MyAppTestSupport`.
+  The worked example is `TodoRepository` / `SwiftDataTodoRepository`.
+- `MyAppCore` never imports SwiftUI, UIKit, AppKit, Cocoa, SwiftData, CoreData, CloudKit,
+  UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, or WidgetKit — in any
+  spelling. Enforced twice: `.swiftlint.yml`'s `no_ui_import_in_core` and
+  `ArchitectureBoundaryTests`; their module lists change together.
+- The package also builds for macOS so `swift test` runs on the host; an iOS-only API in
+  `MyAppUI` or `MyAppPlatform` goes behind `#if os(iOS)`.
+- Shipped code logs through `AppLog` (`os.Logger`); `print`, `debugPrint`, and `NSLog`
+  are rejected under `Packages/*/Sources/` and `App/` by `no_print_in_sources`.
+- `MyApp.xcodeproj` is generated — edit `project.yml` instead.
+- Four things are contract — Core's public API, the bundle identifier, the stored
+  SwiftData schema, and `UserDefaults` keys/file formats — and each changes only as
+  `docs/architecture.md` › What is contract says.
+
+## Before changing the architecture
+
+A change to any of these is a decision a human makes, recorded as an ADR once the ADR
+tree (`docs/architecture/`) is ported — until then, in the pull request description:
+
+- a new target (`project.yml`, `Package.swift`) or a new Core port;
+- persistence — a new store, a schema version, CloudKit sync;
+- a new dependency;
+- a capability or entitlement (push, iCloud, App Groups, HealthKit, …) or a permission
+  prompt (notifications, location, photos, camera, tracking);
+- distribution — TestFlight, the App Store, signing;
+- `deploymentTarget` in `project.yml`, with `platforms:` in `Package.swift`;
+- a shipped language beyond English.
+
+## Skills
+
+Each skill owns one kind of change. Load the one whose subject you are working on.
+
+Skills are authored under `.agents/skills/` — the path Codex CLI reads — and mirrored
+into `.claude/skills/`, the only path Claude Code reads:
+
+- Edit a skill only under `.agents/skills/`, then run `just agents-sync` and commit both
+  trees together. Never hand-edit `.claude/skills/`; `just agents-check` (also part of
+  `just lint` and the pre-commit hook) reports any drift.
+- The mirror is a real, byte-identical copy, never a symlink: Codex follows a linked
+  directory and registers a nested `references/SKILL.md` as a skill of its own.
+
+| Skill | Load it when you are working on |
+|---|---|
+| `shipping-issues` | shipping the open issue backlog: ranking issues by `priority: P0`-`P3`, implementing the top one, reviewing it with `/code-review`, and taking its PR through CI to merge |
+| `triaging-issues` | filing or triaging an issue: the labels in `.github/labels.yml`, priority tiers, the `Depends on #N` convention, and what an issue body must contain |
+| `tdd` | a behavior change in `MyAppCore`: writing a failing Swift Testing test before the implementation |
+| `create-pr` | opening or updating a pull request: the `just check` pre-check, title, template, and checklist |
+| `smart-commit` | committing and pushing changes: grouping them into Conventional Commits, excluding sensitive files |
+
+More skills are ported from the macOS template by open issues (see
+[Harness status](#harness-status)).
+
+### Sub-agents
+
+`.claude/agents/` defines three named sub-agent tiers a skill or session hands a step to
+by name (`subagent_type: executor`), each pinned to a model alias and an effort level:
+`executor` (settled spec, clear pass/fail), `architect` (design judgment, review,
+complex multi-file work), `worker` (single-shot, tool-free writing or checking). Codex
+CLI reads nothing under `.claude/agents/`; there, a delegated step runs inline.
+
+## Security and human approval
+
+Never read a secret-shaped file, even to check it: `.env`, `.env.*`, or `.envrc.*`
+(the `.example`/`.sample`/`.template` samples excepted), anything under a `secrets/`
+directory, `*.p12`, `*.pfx`, `*.p8`, `*.provisionprofile`,
+`*.mobileprovision`, `*.keychain`/`*.keychain-db`, `*key*.pem`, `private-key.*`,
+`.netrc`, `credentials.json`, `secrets.json`, `GoogleService-Info.plist`, and
+`Config/Local.xcconfig`. If a task seems to need one, ask the human for the non-secret
+fact instead. No commit-time guard enforces this yet (see
+[Harness status](#harness-status)), so check every staged path against this list.
+
+Get a human's sign-off before acting on any of these:
+
+- Touching an entitlements file, a signing identity or team, a provisioning profile, or
+  any App Store Connect, signing, or release secret.
+- Creating or pushing a release tag, or uploading a build to TestFlight or the App Store.
+- Editing `.claude/settings.local.json` or a user-level settings file: an agent adding an
+  `allow` rule there widens its own permissions unreviewed. The committed
+  `.claude/settings.json` is reviewed in its pull request like any other file.
+- Adding a new package dependency.
+- Weakening any gate: lowering the coverage floor, disabling or relaxing a SwiftLint
+  rule, widening a workflow's `permissions:`. That includes, when used to make a failing
+  check pass: `// swiftlint:disable` (any form) or `// swiftformat:disable`, an added
+  exclude path, `@unchecked Sendable` or `nonisolated(unsafe)` to silence a concurrency
+  diagnostic, `.disabled(…)` or `withKnownIssue` on a failing test, excluding code from
+  coverage, deleting or loosening an assertion, `continue-on-error`, or
+  `git commit --no-verify`.
+- Working around a denied command. Re-spelling it (`git -C . …`, `bash -c '…'`, bundled
+  short flags, an alias or wrapper) is forbidden. Stop and ask.
+- Any write to a remote: `git push`, `gh pr create`, `gh issue create`, a label change,
+  a merge.
+
+Standing exceptions: invoking one of these skills is the sign-off for the remote writes
+that skill exists to make, for that invocation only.
+
+- `smart-commit`, when asked to push: pushing the commits it made to the current branch.
+- `create-pr`: pushing the current branch and creating or updating its pull request.
+- `shipping-issues`: the writes its `SKILL.md` lists — priority and `blocked:` labels on
+  open issues, branches and pushes, the pull request, merging it once CI passes, the
+  follow-up issues and comments it files, and removing the branches and worktrees it
+  created.
+
+None of them covers anything else in the list above. A skill that reaches one of those
+stops and asks.
+
+## Harness status
+
+This repository is being brought up to the macOS template's harness
+(`tomada1114/macos-app-template`) one issue at a time; the tracking issue lists them in
+order. What exists today is what the tables above describe. Not yet ported, each owned by
+an open issue: the script test harness (`scripts/tests/`, `just test-scripts`), the
+commit-time secret guard and hook verification, the harness self-checks
+(`scripts/checks/`, `just check-harness`), `.claude/rules/` and the format-on-edit hook,
+the remaining skills and the ADR tree, labels and the branch ruleset as code, PR hygiene
+and security workflows, dependency bots, `scripts/bootstrap.sh`, the localization
+harness, the iOS design system, distribution, and the fuller documentation. When an issue
+lands one of these, it updates this section and the tables above in the same pull
+request.
+
+## Enforcement layers
+
+| Layer | Fires on | Holds |
+|---|---|---|
+| `.githooks/pre-commit` (installed by `just install`) | `git commit` | `scripts/lint.sh --staged-tree` on the staged Swift files; the skills-mirror check when a staged path is under `.agents/skills/` or `.claude/skills/` |
+| `.swiftlint.yml`'s `no_ui_import_in_core` + `ArchitectureBoundaryTests` | the hook, `just lint`, CI `lint`; `just test`, CI `test` | Core's import ban; UI and Platform never import each other; no shipped module imports `MyAppTestSupport` |
+| `.swiftlint.yml`'s `no_print_in_sources` | the hook, `just lint`, CI `lint` | no `print`/`debugPrint`/`NSLog` in shipped code |
+| `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
+| `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
+| `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary |
+| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror, the shipping-issues script tests), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest) |
+
+`git commit --no-verify` bypasses the hook, and a clone where `just install` never ran
+has no hook at all; CI is the backstop for everything except secrets, which nothing here
+catches yet.
+
+## Review Checklist
+
+Before submitting a PR:
+
+1. `just check` passes, and `just uitest` when the change is visible in the running app
+2. New public APIs have `///` doc comments explaining *why*
+3. Tests cover the new functionality (happy path AND error path)
+4. No new dependencies without a human's sign-off
+5. User-facing changes have a `CHANGELOG.md` entry under `[Unreleased]`
+6. Commits and the PR title follow Conventional Commits (English)
+
+## Important Reminders
+
+- All code, docs, commits, issues, and PRs are written in English. The one exception
+  is a translated value in a `*.xcstrings` String Catalog.
+- Do what has been asked; nothing more, nothing less.
+- Prefer editing an existing file to creating a new one; never create documentation
+  files unless asked.
+- Never lower the coverage floor or disable safety lint rules to make a check pass.
+- A comment carries only what the code cannot: a non-obvious why, a trap the next edit
+  would spring, an external constraint. A `///` on public API is its contract and stays.
+- A problem you find outside the task is recorded, not fixed: file it as an issue
+  (`triaging-issues`) or, where filing is not yours to do, list it in the pull request
+  description. Never widen the pull request to fix it.

@@ -1,0 +1,149 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "todoList.add" : {
+      "comment" : "Button that adds the typed text as a new to-do item.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        }
+      }
+    },
+    "todoList.draftPlaceholder" : {
+      "comment" : "Placeholder in the text field where a new to-do item is typed.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Item"
+          }
+        }
+      }
+    },
+    "todoList.empty.description" : {
+      "comment" : "Explanation under the empty-list headline.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Items you add appear here."
+          }
+        }
+      }
+    },
+    "todoList.empty.title" : {
+      "comment" : "Headline shown when the to-do list has no items.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Items"
+          }
+        }
+      }
+    },
+    "todoList.failure.delete" : {
+      "comment" : "Alert message when deleting a to-do item failed.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The item could not be deleted."
+          }
+        }
+      }
+    },
+    "todoList.failure.dismiss" : {
+      "comment" : "Button that dismisses the failure alert.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
+      }
+    },
+    "todoList.failure.load" : {
+      "comment" : "Alert message when the saved to-do items could not be read.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your items could not be loaded."
+          }
+        }
+      }
+    },
+    "todoList.failure.save" : {
+      "comment" : "Alert message when adding or checking off a to-do item could not be saved.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your change could not be saved."
+          }
+        }
+      }
+    },
+    "todoList.failure.title" : {
+      "comment" : "Title of the alert shown when loading or saving to-do items fails.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something Went Wrong"
+          }
+        }
+      }
+    },
+    "todoList.markDone" : {
+      "comment" : "Accessibility label for the circle that checks off a to-do item.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark as Done"
+          }
+        }
+      }
+    },
+    "todoList.markNotDone" : {
+      "comment" : "Accessibility label for the checkmark that un-checks a to-do item.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark as Not Done"
+          }
+        }
+      }
+    },
+    "todoList.retry" : {
+      "comment" : "Button that retries loading the to-do items after a failure.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
+          }
+        }
+      }
+    },
+    "todoList.title" : {
+      "comment" : "Navigation title of the to-do list screen.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To-Do"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

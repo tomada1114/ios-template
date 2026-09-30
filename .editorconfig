@@ -1,0 +1,24 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.swift]
+indent_size = 4
+
+# The format Xcode writes a String Catalog in, so an editor's save and Xcode's next
+# rewrite (an export, or its catalog editor) agree byte for byte.
+[*.xcstrings]
+indent_size = 2
+insert_final_newline = false

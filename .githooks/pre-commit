@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Fast pre-commit gate. Installed by `just install` (git config core.hooksPath .githooks).
+#
+# This file defines no rule of its own: each section calls a shared script
+# (scripts/lint.sh, the same one `just lint` and CI run) and only narrows *what*
+# it looks at, so a check cannot pass here and fail elsewhere.
+set -euo pipefail
+
+# The staged paths, collected once; each section derives the subset it cares about.
+# --diff-filter includes R so renamed files stay covered.
+STAGED_FILES=()
+while IFS= read -r -d '' file; do
+    STAGED_FILES+=("${file}")
+done < <(git diff --cached --name-only -z --diff-filter=ACMR)
+
+# Sections that export staged content to a scratch directory register it here, so
+# one trap removes every scratch directory a run created — a second section's own
+# `trap ... EXIT` would silently replace the first's and leak its temp dir.
+CLEANUP_DIRS=()
+trap 'rm -rf ${CLEANUP_DIRS[@]+"${CLEANUP_DIRS[@]}"}' EXIT
+
+# new_temp_dir: makes a scratch directory, registers it for cleanup, and prints its path.
+new_temp_dir() {
+    local dir
+    dir=$(mktemp -d)
+    CLEANUP_DIRS+=("${dir}")
+    echo "${dir}"
+}
+
+# --- Swift lint -------------------------------------------------------------
+# The staged blobs are exported with checkout-index and linted from there, so a
+# partially staged file is checked as it will be committed — not as it sits in
+# the worktree. Conditional because swiftlint fails on a tree with no Swift file.
+STAGED_SWIFT_FILES=()
+for file in ${STAGED_FILES[@]+"${STAGED_FILES[@]}"}; do
+    case "${file}" in
+        *.swift) STAGED_SWIFT_FILES+=("${file}") ;;
+    esac
+done
+
+if [ ${#STAGED_SWIFT_FILES[@]} -gt 0 ]; then
+    echo "pre-commit: Swift lint — checking the staged content of ${#STAGED_SWIFT_FILES[@]} Swift file(s)"
+    STAGED_TREE=$(new_temp_dir)
+    git checkout-index --prefix="${STAGED_TREE}/" -- "${STAGED_SWIFT_FILES[@]}"
+    mise exec -- scripts/lint.sh --staged-tree "${STAGED_TREE}"
+fi
+
+# Layout rule: each check is its own section, scoped by the staged paths it cares
+# about, and no section may exit early — a commit that skips one section must
+# still reach every other. Append later sections below this comment.
+
+# --- Skills mirror -----------------------------------------------------------
+# Only fires when a staged path is under .agents/skills/ or .claude/skills/. Exports
+# the *staged* (index) versions of both trees and compares those, not the working
+# tree: `.agents/skills/x/SKILL.md` edited, `just agents-sync` run, but only the
+# `.agents` side staged, looks in sync on disk yet is still a drifted commit — the
+# same rule the Swift section above applies to `git diff --cached`. diff and git are
+# ordinary tools already on PATH, so this needs no `mise exec --`.
+# Its own query rather than STAGED_FILES: a deletion (or a rename out of the tree)
+# drifts the mirror too, and STAGED_FILES leaves out D because the Swift section
+# cannot export a deleted blob.
+STAGED_SKILLS_FILES=()
+while IFS= read -r -d '' file; do
+    STAGED_SKILLS_FILES+=("${file}")
+done < <(git diff --cached --name-only -z --no-renames -- .agents/skills .claude/skills)
+
+if [ ${#STAGED_SKILLS_FILES[@]} -gt 0 ]; then
+    echo "pre-commit: Skills mirror — checking the staged content of .agents/skills/ and .claude/skills/"
+    STAGED_SKILLS_TREE=$(new_temp_dir)
+    git ls-files -z -- .agents/skills .claude/skills |
+        xargs -0 git checkout-index --prefix="${STAGED_SKILLS_TREE}/" --
+    scripts/sync-agents.sh --check --root "${STAGED_SKILLS_TREE}"
+fi
