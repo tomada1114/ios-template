@@ -91,6 +91,9 @@ reset-permissions:
 uitest:
     mise exec -- xcodegen generate
     rm -rf build/LaunchUITests.xcresult
+    # Boot the simulator and wait for it to finish first: a cold boot inside
+    # xcodebuild's launch window is what timed out on CI (#32).
+    xcrun simctl bootstatus "$(scripts/simulator-destination.sh --udid)" -b
     set -o pipefail && xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult | mise exec -- xcbeautify
 
 # Run every MyAppKit test suite on an iOS Simulator, with no coverage floor (`just test`
