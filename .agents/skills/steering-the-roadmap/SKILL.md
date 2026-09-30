@@ -36,8 +36,9 @@ a decision first says so, and the decision is made where it belongs.
 The template ships `roadmap.md` as a `TODO:` skeleton, like `## Product`, and its own
 direction lives in its issues. In the template, leave the page a skeleton. In an app,
 fill it in right after `## Product` is written: the first Now outcome is usually the core
-interaction that section names. No harness check reads the page's `TODO:` markers, so
-a leftover marker is noticed only by the next person who reads the page.
+interaction that section names. No harness check reads the page's `TODO:` markers —
+`scripts/checks/product-section-filled.sh` reads only `AGENTS.md` — so a leftover marker
+is noticed only by the next person who reads the page.
 
 ## Horizons, not milestones
 

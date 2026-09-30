@@ -182,7 +182,10 @@ exception added to `scripts/checks/just-check-matches-ci.sh` carries its reason.
 `scripts/checks/run-all.sh`), `test` (macos-26: `scripts/coverage.sh`), `app`
 (macos-26: `just build`, then `just uitest` on an iPhone simulator that
 `scripts/simulator-destination.sh` chooses, with the `.xcresult` bundles uploaded on
-failure), and `zizmor` (ubuntu: the required `Workflow Security Lint`, zizmor's audit of
+failure), `bootstrap-smoke` (macos-26, the required `Template Bootstrap Smoke`:
+`scripts/bootstrap.sh` renames a clone of the template, then the renamed tree is linted,
+tested, and built for the simulator — template-only, so the rename removes it from every
+app), and `zizmor` (ubuntu: the required `Workflow Security Lint`, zizmor's audit of
 every workflow, configured by `.github/zizmor.yml`). Beside it run `check-pr-title.yml`
 (the required `Validate PR title`) and `pr-label.yml`, which labels a pull request from
 its title type with `scripts/label-pr.sh` checked out at the base SHA, and the security
