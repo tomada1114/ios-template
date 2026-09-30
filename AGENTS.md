@@ -46,11 +46,12 @@ just verify-hooks  # Verify the git hooks are installed and executable (scripts/
 just test          # Run the package tests on the host Mac with the 80% line / 75% function floors on MyAppCore
 just test-fast TodoItemTests  # Run only the matching tests, no coverage floor (iteration only)
 just test-scripts  # Run the plain-bash tests for scripts/ and the skills' Python suites (scripts/tests/run.sh)
+just check-harness # Re-assert the harness's claims about itself (scripts/checks/run-all.sh)
 just build         # Build the app (Debug) for the iOS Simulator
 just run           # Build, then install and launch it on an iOS Simulator (SIMULATOR_DEVICE picks one)
 just logs          # Stream this app's log output from the booted simulator (Ctrl-C to stop)
 just uitest        # Run the XCUITest launch test on an iOS Simulator
-just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → test → build
+just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → build
 just agents-sync   # Regenerate the .claude/skills/ mirror from .agents/skills/
 just agents-check  # Fail if .claude/skills/ differs from .agents/skills/
 just clean         # Remove build artifacts and the generated project
@@ -78,8 +79,10 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | Behavior only the running app shows | `just run`, then `just logs` — no gate asserts it, so the PR carries the evidence (a screenshot: `xcrun simctl io booted screenshot shot.png`) |
 | A shell script under `scripts/` (including the sourced `scripts/guard/*.sh`), or `.githooks/pre-commit` | `just lint`, then `just test-scripts` |
 | `scripts/verify-hooks.sh` | `just lint`, then `just test-scripts`; `just verify-hooks` for the check itself |
-| A skill under `.agents/skills/` | `just agents-sync`, then `just agents-check`; `just test-scripts` when the skill ships scripts (it runs their `scripts/tests/` unittest suite) |
-| A workflow under `.github/workflows/` | `just lint` (actionlint) |
+| A harness check under `scripts/checks/` (including the sourced `scripts/checks/lib.sh`) | `just lint`, then `just test-scripts`; `just check-harness` for the checks themselves |
+| A `just` recipe name, a workflow's `uses:`, `permissions:`, `concurrency:`, or `run:` shell, a skill's frontmatter, the Skills table, `.claude/settings.json`'s `permissions` rules, the Core import ban list (`.swiftlint.yml`'s `no_ui_import_in_core` or `ArchitectureBoundaryTests.forbiddenModules`), the gates `just check` or `ci.yml` runs, or a label an issue form, a workflow, or `scripts/label-pr.sh` applies | `just check-harness` |
+| A skill under `.agents/skills/` | `just agents-sync`, then `just agents-check` and `just check-harness`; `just test-scripts` when the skill ships scripts (it runs their `scripts/tests/` unittest suite) |
+| A workflow under `.github/workflows/` | `just lint` (actionlint), then `just check-harness` |
 | Markdown | `just lint` (its `typos` spell-check) |
 | `mise.toml` | `mise install`, then `just check` |
 
@@ -235,8 +238,8 @@ stops and asks.
 ## Repository scripts
 
 Every script under `scripts/` follows these rules, whoever writes it
-(`scripts/tests/lib.sh` and the `scripts/guard/*.sh` libraries are sourced, so they
-carry no shebang or `set` line of their own):
+(`scripts/tests/lib.sh`, `scripts/checks/lib.sh`, and the `scripts/guard/*.sh`
+libraries are sourced, so they carry no shebang or `set` line of their own):
 
 - `#!/usr/bin/env bash` and `set -euo pipefail`, and bash 3.2-compatible (macOS
   `/bin/bash`): no associative arrays, no `mapfile`/`readarray`, no `${var,,}`, and no
@@ -270,7 +273,10 @@ carry no shebang or `set` line of their own):
   `stub_command` — a simulator test stubs `xcrun` in every case, since CI's lint job
   runs on Ubuntu, where there is none. A sourced library under `scripts/guard/` gets
   its own test file too, `scripts/tests/guard-<library>_test.sh`
-  (`guard-paths_test.sh`, `guard-credentials_test.sh`). Known exception: `coverage.sh`, whose test file
+  (`guard-paths_test.sh`, `guard-credentials_test.sh`). The harness checks under
+  `scripts/checks/`, their runner `run-all.sh`, and their sourced `lib.sh` share one
+  test file, `scripts/tests/checks_test.sh`, which builds a fixture tree per failure
+  mode and points each check at it with `--root`. Known exception: `coverage.sh`, whose test file
   `scripts/tests/coverage_test.sh` is partial — it stubs `swift` to cover its rejection
   of the removed environment override and its line- and function-floor comparisons,
   but not a real coverage run, which is CI's `test` job. `coverage.sh`'s
@@ -282,10 +288,10 @@ carry no shebang or `set` line of their own):
 This repository is being brought up to the macOS template's harness
 (`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
 in order. What exists today is what the tables above describe. Not yet ported, each owned by
-an open issue: the harness self-checks (`scripts/checks/`, `just check-harness`), the
-remaining skills and the ADR tree, labels and the branch ruleset as code, PR hygiene
-and security workflows, dependency bots, `scripts/bootstrap.sh`, the localization
-harness, the iOS design system, distribution, and the fuller documentation. When an issue
+an open issue: the remaining skills and the ADR tree, labels and the branch ruleset as
+code, PR hygiene and security workflows, dependency bots, `scripts/bootstrap.sh`, the
+localization harness, the iOS design system, distribution, and the fuller
+documentation. When an issue
 lands one of these, it updates this section and the tables above in the same pull
 request.
 
@@ -295,12 +301,13 @@ request.
 |---|---|---|
 | `.githooks/pre-commit` (installed by `just install`) | `git commit` | `scripts/lint.sh --staged-tree` on the staged Swift files; the skills-mirror check when a staged path is under `.agents/skills/` or `.claude/skills/`; the staged guard (`scripts/check-staged.sh`, rules in `scripts/guard/`) on every commit that stages a change — no secret-shaped path or credential-shaped content lands in a commit, and a staged deletion is never inspected |
 | `scripts/verify-hooks.sh` (`just install`'s last step, and `just check`'s first) | `just install`, `just check` | git resolves the hooks directory to `.githooks/` and `.githooks/pre-commit` is executable — skips under CI or the `ALLOW_MISSING_GIT_HOOKS` opt-out |
+| `scripts/checks/run-all.sh` (`just check-harness`, part of `just check` before `just test`) | `just check-harness`, `just check`, CI `lint` | the harness's claims about itself stay true — every `just <recipe>` in this file exists and every `Bash(just <recipe>…)` rule in `.claude/settings.json` names a recipe the justfile defines, every workflow has a top-level `permissions:` and every non-local `uses:` (workflows and composite actions) is pinned to a full SHA with a `# v…` comment, no workflow grants a `write` scope or a `read-all`/`write-all` shorthand at the top level (a write goes on the job that needs it, and no job takes a shorthand), every workflow triggered on `pull_request` declares a top-level `concurrency:`, and every declared group varies per run, is unique to its workflow unless it names `github.workflow`, and never cancels in progress on a `push` except through a `github.event_name` expression, every `run:` step (composite actions included) resolves to `shell: bash` (`-eo pipefail`) or opens with a `set` carrying `-e` and `pipefail`, every skill's frontmatter is exactly a matching `name` and a `description`, no `SKILL.md` sits below a skill's top directory and every skill's `description` is printable ASCII, at most 1,024 characters, and free of unquoted values Codex CLI's YAML parser rejects, the Skills table matches `.agents/skills/`, `.swiftlint.yml`'s `no_ui_import_in_core` regex and `ArchitectureBoundaryTests.forbiddenModules` ban the same modules, the gates `just check` runs and the `run:` steps of `.github/workflows/ci.yml` match in both directions apart from the reasoned exception list in `scripts/checks/just-check-matches-ci.sh`, and every label an issue form, a workflow, or `scripts/label-pr.sh`'s type-to-label mapping applies is declared in `.github/labels.yml` and no label is declared there twice |
 | `.swiftlint.yml`'s `no_ui_import_in_core` + `ArchitectureBoundaryTests` | the hook, `just lint`, CI `lint`; `just test`, CI `test` | Core's import ban; UI and Platform never import each other; no shipped module imports `MyAppTestSupport` |
 | `.swiftlint.yml`'s `no_print_in_sources` | the hook, `just lint`, CI `lint` | no `print`/`debugPrint`/`NSLog` in shipped code |
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
 | `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary. `hooks` holds one `PostToolUse` hook, `scripts/format-edited-file.sh`, that runs `swiftformat` on the one `.swift` file an `Edit`/`Write`/`MultiEdit` touched and reports a failure back to the agent (exit 2) — a convenience on this host only; the git hook is the gate |
-| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest) |
+| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest) |
 
 `git commit --no-verify` bypasses the hook, and a clone where `just install` never ran
 has no hook at all (`scripts/verify-hooks.sh` makes that fail loudly at `just install`
@@ -308,6 +315,16 @@ and `just check` time, but a contributor who runs neither still commits without 
 CI is the backstop for everything except the staged guard, which no CI job re-runs over
 a pull request's diff: a secret committed with `--no-verify` or from a clone without
 `just install` reaches the branch unchecked (#10 adds the history scan).
+
+**Everything in `.claude/settings.json` applies to Claude Code only.** Its `permissions`
+block decides which commands that host runs without stopping to ask, so it shapes where
+a human is consulted rather than what is possible, and its format-on-edit hook is a
+convenience on that host, not a gate: Codex CLI, another agent, and a human at a shell
+are bound by the instructions in this file and by the gates above, not by that file.
+
+**No gate runs code behind `#if os(iOS)` in `MyAppKit`, or the app on the iOS 18
+deployment floor.** `just test` runs on macOS, and CI's simulators run the Xcode-pinned
+iOS runtime only.
 
 ## Review Checklist
 

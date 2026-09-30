@@ -44,6 +44,12 @@ verify-hooks:
 test-scripts:
     mise exec -- scripts/tests/run.sh
 
+# Re-assert the harness's claims about itself: every check under scripts/checks/,
+# each listed in AGENTS.md's Enforcement layers
+[doc("Re-assert the harness's claims about itself (scripts/checks/)")]
+check-harness:
+    mise exec -- scripts/checks/run-all.sh
+
 # Run the MyAppKit tests on the host Mac with the 80% line / 75% function coverage floors on MyAppCore
 test:
     scripts/coverage.sh
@@ -80,9 +86,10 @@ uitest:
     rm -rf build/LaunchUITests.xcresult
     set -o pipefail && xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult | mise exec -- xcbeautify
 
-# Run all checks: verify hooks, format, lint, script tests, test, build (CI's app job adds uitest)
-[doc("Run all checks: verify-hooks, fmt, lint, test-scripts, test, build")]
-check: verify-hooks fmt lint test-scripts test build
+# Run all checks: verify hooks, format, lint, script tests, harness checks, test, build
+# (CI's app job adds uitest)
+[doc("Run all checks: verify-hooks, fmt, lint, test-scripts, check-harness, test, build")]
+check: verify-hooks fmt lint test-scripts check-harness test build
 
 # Regenerate the .claude/skills/ mirror from .agents/skills/ (run after any skill edit)
 agents-sync:

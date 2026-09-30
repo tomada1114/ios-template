@@ -12,6 +12,7 @@
       "Bash(just test)",
       "Bash(just test-fast:*)",
       "Bash(just test-scripts)",
+      "Bash(just check-harness)",
       "Bash(just build)",
       "Bash(just run)",
       "Bash(just uitest)",
