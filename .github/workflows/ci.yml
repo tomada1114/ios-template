@@ -101,3 +101,18 @@ jobs:
           path: build/*.xcresult
           if-no-files-found: ignore
           retention-days: 7
+
+  zizmor:
+    name: Workflow Security Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: zizmor
+        uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        with:
+          # Plain annotations instead of SARIF upload — keeps permissions read-only.
+          advanced-security: false

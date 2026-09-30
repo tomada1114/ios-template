@@ -179,13 +179,20 @@ exception added to `scripts/checks/just-check-matches-ci.sh` carries its reason.
 ## `.github/workflows/`
 
 `ci.yml` splits into `lint` (ubuntu: `scripts/lint.sh`, `scripts/tests/run.sh`,
-`scripts/checks/run-all.sh`), `test` (macos-26: `scripts/coverage.sh`), and `app`
+`scripts/checks/run-all.sh`), `test` (macos-26: `scripts/coverage.sh`), `app`
 (macos-26: `just build`, then `just uitest` on an iPhone simulator that
 `scripts/simulator-destination.sh` chooses, with the `.xcresult` bundles uploaded on
-failure). Beside it run `check-pr-title.yml` (the required `Validate PR title`) and
-`pr-label.yml`, which labels a pull request from its title type with
-`scripts/label-pr.sh` checked out at the base SHA. A job added later is added to this
-paragraph by the change that adds it.
+failure), and `zizmor` (ubuntu: the required `Workflow Security Lint`, zizmor's audit of
+every workflow, configured by `.github/zizmor.yml`). Beside it run `check-pr-title.yml`
+(the required `Validate PR title`) and `pr-label.yml`, which labels a pull request from
+its title type with `scripts/label-pr.sh` checked out at the base SHA, and the security
+workflows: `codeql.yml` (CodeQL for the package's Swift, on push to `main` and weekly),
+`gitleaks.yml` (a checksum-verified full-history gitleaks scan, weekly and on a pull
+request that edits it, with `.gitleaksignore` holding the fake fixture's fingerprints),
+`osv-scan.yml` (OSV on every pull request and weekly), `dependency-review.yml` (the
+required `Dependency Review`, with the license allow-list), and `scorecard.yml` (OpenSSF
+Scorecard, weekly). A job added later is added to this paragraph by the change that adds
+it.
 Which layer holds what is `AGENTS.md`'s "Enforcement layers" table; read it rather than
 re-deriving it.
 
@@ -195,7 +202,7 @@ narrow top-level `permissions:`, `persist-credentials: false`, a `pull_request`
 `permissions:` or adding a workflow that writes needs sign-off. **REQUIRED:** before
 editing a workflow, read
 [references/workflow-conventions.md](references/workflow-conventions.md) for the full
-list and which of it `actionlint` and `just check-harness` check.
+list and which of it `actionlint`, `zizmor`, and `just check-harness` check.
 
 ## What no gate here sees
 

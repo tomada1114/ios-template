@@ -1,0 +1,9 @@
+# zizmor configuration, discovered by CI's `zizmor` job (.github/workflows/ci.yml).
+rules:
+  # zizmor 0.6 asks for GitHub's `uses: $/…` self-repository syntax in place of
+  # `./.github/actions/…`, but actionlint (scripts/lint.sh, pinned in mise.toml) does
+  # not accept `$/` yet and rejects it as an unpinned remote action. Re-enable this
+  # audit and switch every `./.github/actions/select-xcode` use to `$/` once an
+  # actionlint release supports the syntax.
+  self-repository:
+    disable: true

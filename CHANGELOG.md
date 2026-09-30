@@ -31,3 +31,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ruleset as code (`just labels`, `just ruleset`)
 - Skills for errors, Core logic, ADRs, the roadmap, and documentation, and the empty ADR
   tree under `docs/architecture/`
+- CodeQL, gitleaks, OSV, dependency review, Scorecard, and zizmor workflows; SECURITY.md
+  and CODE_OF_CONDUCT.md
