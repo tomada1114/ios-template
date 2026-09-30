@@ -104,7 +104,7 @@ case_google_service_info_any_case_blocked() {
 case_public_and_ordinary_files_allowed() {
     expect_allowed App/MyApp.entitlements cert.cer Signing/Request.certSigningRequest \
         Slides.key Package.resolved README.md cert.pem \
-        Packages/MyAppKit/Sources/MyAppCore/CounterViewModel.swift
+        Packages/MyAppKit/Sources/MyAppCore/TodoListViewModel.swift
 }
 
 run_case "every .env and .env.* is blocked" case_env_files_blocked

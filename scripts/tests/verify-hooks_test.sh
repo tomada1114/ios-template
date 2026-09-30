@@ -49,7 +49,7 @@ case_hooks_path_unset_fails() {
     assert_stderr_contains "Actual:"
     assert_stderr_contains "Next:"
     assert_stderr_contains "Or, if this environment cannot have git hooks, set ALLOW_MISSING_GIT_HOOKS=1."
-    head -n 1 "${CASE_DIR}/stderr" | grep -q '^ERR_HOOKS_NOT_INSTALLED: ' || _fail "first stderr line is not ERR_HOOKS_NOT_INSTALLED"
+    grep -q '^ERR_HOOKS_NOT_INSTALLED: ' <<<"$(head -n 1 "${CASE_DIR}/stderr")" || _fail "first stderr line is not ERR_HOOKS_NOT_INSTALLED"
 }
 
 case_hook_missing_fails() {
@@ -128,7 +128,7 @@ case_broken_git_config_fails() {
     assert_stderr_contains "Expected:"
     assert_stderr_contains "Actual:"
     assert_stderr_contains "Next:"
-    head -n 1 "${CASE_DIR}/stderr" | grep -q '^ERR_HOOKS_GIT_FAILED: ' || _fail "first stderr line is not ERR_HOOKS_GIT_FAILED"
+    grep -q '^ERR_HOOKS_GIT_FAILED: ' <<<"$(head -n 1 "${CASE_DIR}/stderr")" || _fail "first stderr line is not ERR_HOOKS_GIT_FAILED"
 }
 
 # Any other git failure (stubbed here) also fails rather than skips.
@@ -140,7 +140,7 @@ case_git_other_failure_fails() {
     capture "${BASH}" "${VERIFY_SRC}"
     assert_exit 1
     assert_stderr_contains "Permission denied"
-    head -n 1 "${CASE_DIR}/stderr" | grep -q '^ERR_HOOKS_GIT_FAILED: ' || _fail "first stderr line is not ERR_HOOKS_GIT_FAILED"
+    grep -q '^ERR_HOOKS_GIT_FAILED: ' <<<"$(head -n 1 "${CASE_DIR}/stderr")" || _fail "first stderr line is not ERR_HOOKS_GIT_FAILED"
 }
 
 # The Actual: line quotes only the first line of git's report.
