@@ -359,6 +359,32 @@ write_labels() {
     done
 }
 
+# rename_fixture_app ROOT — the one signal scripts/bootstrap.sh leaves behind that
+# product-section-filled.sh reads: project.yml no longer names the app-name placeholder.
+rename_fixture_app() {
+    sed "s/${PH_NAME}/DemoApp/g" "$1/project.yml" >"${CASE_DIR}/project.yml"
+    mv "${CASE_DIR}/project.yml" "$1/project.yml"
+}
+
+# fill_fixture_product ROOT — replaces the fixture's Product section with a filled-in
+# one: no TODO marker left, non-goals still named.
+fill_fixture_product() {
+    awk '
+        /^## Product$/ {
+            print; print ""
+            print "A fixture app for whoever runs the harness checks."
+            print ""
+            print "**Non-goals** — growing a second fixture."
+            print ""
+            skipping = 1
+            next
+        }
+        skipping && /^## / { skipping = 0 }
+        !skipping
+    ' "$1/AGENTS.md" >"${CASE_DIR}/AGENTS.md"
+    mv "${CASE_DIR}/AGENTS.md" "$1/AGENTS.md"
+}
+
 # first_stderr_is CODE — the failure contract: the first stderr line is `CODE: …`.
 first_stderr_is() {
     grep -q "^$1: " <<<"$(head -n 1 "${CASE_DIR}/stderr")" || _fail "first stderr line is not $1"
@@ -378,7 +404,7 @@ case_run_all_passes() {
     root=$(make_fixture)
     capture "${BASH}" "${CHECKS}/run-all.sh" --root "${root}"
     assert_exit 0
-    assert_stdout_contains "harness checks: 10 check(s) passed"
+    assert_stdout_contains "harness checks: 11 check(s) passed"
 }
 
 case_run_all_reports_every_failure() {
@@ -391,7 +417,7 @@ case_run_all_reports_every_failure() {
     assert_exit 1
     assert_stderr_contains "ERR_CHECK_RECIPE_MISSING"
     assert_stderr_contains "ERR_CHECK_WORKFLOW_PERMISSIONS"
-    assert_stderr_contains "ERR_CHECKS_FAILED: 2 of 10 harness check(s) failed: just-recipes-exist.sh workflow-pins-and-permissions.sh"
+    assert_stderr_contains "ERR_CHECKS_FAILED: 2 of 11 harness check(s) failed: just-recipes-exist.sh workflow-pins-and-permissions.sh"
     assert_stderr_not_contains "skills-frontmatter.sh" "a passing check named as failed"
     assert_stderr_not_contains "skills-index-complete.sh" "a passing check named as failed"
     assert_stdout_contains "==> scripts/checks/skills-index-complete.sh"
@@ -801,6 +827,84 @@ case_index_no_skills_table() {
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_INDEX
     assert_stderr_contains "no table under a \`## Skills\` heading"
+}
+
+# --- product-section-filled.sh ------------------------------------------------
+
+case_product_pass_in_template() {
+    local root
+    root=$(make_fixture)
+    capture "${BASH}" "${CHECKS}/product-section-filled.sh" --root "${root}"
+    assert_exit 0
+    assert_stdout_contains "matches the template"
+}
+
+case_product_pass_in_renamed_app() {
+    local root
+    root=$(make_fixture)
+    rename_fixture_app "${root}"
+    fill_fixture_product "${root}"
+    capture "${BASH}" "${CHECKS}/product-section-filled.sh" --root "${root}"
+    assert_exit 0
+    assert_stdout_contains "matches an app"
+}
+
+case_product_marker_survived_the_rename() {
+    local root
+    root=$(make_fixture)
+    rename_fixture_app "${root}"
+    capture "${BASH}" "${CHECKS}/product-section-filled.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_PRODUCT_SECTION
+    assert_stderr_contains "AGENTS.md:$(grep -n '^TODO: what the fixture app is' "${root}/AGENTS.md" | cut -d: -f1): a ${BT}TODO:${BT} marker survived the rename"
+}
+
+# The marker is `TODO:` with its colon, so an app whose product genuinely mentions a
+# to-do list, or points at a docs/TODO.md, is not mistaken for an unfilled skeleton.
+case_product_prose_may_say_todo() {
+    local root
+    root=$(make_fixture)
+    rename_fixture_app "${root}"
+    fill_fixture_product "${root}"
+    awk '/^A fixture app for whoever/ { print "A TODO list app; decisions live in docs/TODO.md."; next } { print }' \
+        "${root}/AGENTS.md" >"${CASE_DIR}/x"
+    mv "${CASE_DIR}/x" "${root}/AGENTS.md"
+    capture "${BASH}" "${CHECKS}/product-section-filled.sh" --root "${root}"
+    assert_exit 0
+}
+
+case_product_skeleton_filled_in_the_template() {
+    local root
+    root=$(make_fixture)
+    fill_fixture_product "${root}"
+    capture "${BASH}" "${CHECKS}/product-section-filled.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_PRODUCT_SECTION
+    assert_stderr_contains "holds no ${BT}TODO:${BT} marker, but project.yml still names the template's app-name placeholder"
+}
+
+case_product_no_section() {
+    local root
+    root=$(make_fixture)
+    sed 's/^## Product$/## Purpose/' "${root}/AGENTS.md" >"${CASE_DIR}/x"
+    mv "${CASE_DIR}/x" "${root}/AGENTS.md"
+    capture "${BASH}" "${CHECKS}/product-section-filled.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_PRODUCT_SECTION
+    assert_stderr_contains "no ${BT}## Product${BT} section"
+}
+
+case_product_no_non_goals() {
+    local root
+    root=$(make_fixture)
+    rename_fixture_app "${root}"
+    fill_fixture_product "${root}"
+    sed '/^\*\*Non-goals\*\*/d' "${root}/AGENTS.md" >"${CASE_DIR}/x"
+    mv "${CASE_DIR}/x" "${root}/AGENTS.md"
+    capture "${BASH}" "${CHECKS}/product-section-filled.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_PRODUCT_SECTION
+    assert_stderr_contains "does not name its ${BT}**Non-goals**${BT}"
 }
 
 # --- ruleset-contexts.sh ----------------------------------------------------
@@ -1621,6 +1725,13 @@ run_case "index: passes, and ignores the ### Rules table" case_index_pass_ignore
 run_case "index: a skill directory without a row fails" case_index_directory_without_row
 run_case "index: a row without a directory fails" case_index_row_without_directory
 run_case "index: no Skills table fails" case_index_no_skills_table
+run_case "product: passes on the template's TODO skeleton" case_product_pass_in_template
+run_case "product: passes on a renamed app with the section written" case_product_pass_in_renamed_app
+run_case "product: a TODO marker left in a renamed app fails" case_product_marker_survived_the_rename
+run_case "product: the word TODO in real prose is not a marker" case_product_prose_may_say_todo
+run_case "product: a skeleton filled in inside the template fails" case_product_skeleton_filled_in_the_template
+run_case "product: no Product section fails" case_product_no_section
+run_case "product: a section that never names its non-goals fails" case_product_no_non_goals
 run_case "contexts: passes when a context matches a job id" case_contexts_pass_by_id
 run_case "contexts: passes on a quoted name and a matrix expression" case_contexts_pass_by_name_and_expression
 run_case "contexts: a context matching no job fails" case_contexts_missing_job

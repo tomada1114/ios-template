@@ -102,6 +102,172 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  bootstrap-smoke:
+    # Template-only: scripts/bootstrap.sh removes this job, and its required context in
+    # .github/rulesets/main.json, from every app it renames.
+    name: Template Bootstrap Smoke
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      # 19 characters: long enough to push lines past SwiftFormat's width and to
+      # reorder imports, so the lint step below proves the rename re-formats the tree.
+      DEMO_NAME: LongDemoApplication
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Full history so the local `git clone` below works from a non-shallow source.
+          fetch-depth: 0
+
+      - uses: ./.github/actions/select-xcode
+
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+
+      - name: Bootstrap a pristine copy as the demo app
+        run: |
+          git clone . "$RUNNER_TEMP/bootstrap-smoke"
+          mise trust "$RUNNER_TEMP/bootstrap-smoke/mise.toml"
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          scripts/bootstrap.sh "$DEMO_NAME" --bundle-id-prefix io.example --github-user demo
+
+      - name: Assert no placeholders remain
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          # Author/email placeholders are intentionally kept (no --author/--email above).
+          # README's leftover-check line is spelled with wildcards, so it never matches.
+          # Lines inside bootstrap's keep markers explain the placeholders on purpose,
+          # so they are skipped (the marker names are split so this file never holds one).
+          grep -rilE 'my-?app|com\.example|your-username' . --exclude-dir=.git --null >"$RUNNER_TEMP/matches" || [ $? -eq 1 ]
+          # shellcheck disable=SC2016 # the perl program's $ variables are perl's, not the shell's
+          leftovers=$(KB="bootstrap:keep""-begin" KE="bootstrap:keep""-end" xargs -0 perl -ne '
+              $k = 1 if index($_, $ENV{KB}) >= 0;
+              print "$ARGV:$.: $_" if !$k && /my-?app|com\.example|your-username/i;
+              $k = 0 if index($_, $ENV{KE}) >= 0;
+              if (eof) { close ARGV; $k = 0 }
+            ' <"$RUNNER_TEMP/matches")
+          if [ -n "$leftovers" ]; then
+            printf '%s\n' "$leftovers"
+            echo "::error::bootstrap left placeholder leftovers on the lines listed above"
+            exit 1
+          fi
+
+      - name: Assert the placeholder-explaining passages survived
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          # These passages sit between keep markers, so the rename must leave them naming
+          # the original placeholders instead of turning them into nonsense.
+          status=0
+          check() {
+            grep -qF -- "$2" "$1" || { echo "::error file=$1::kept passage was rewritten: $2"; status=1; }
+          }
+          check scripts/bootstrap.sh "#   MyApp        -> NewName"
+          check scripts/bootstrap.sh "#   my-app       -> repo slug"
+          check README.md "This replaces \`MyApp\` (and \`MyAppKit\`/\`MyAppCore\`/\`MyAppUI\`/\`MyAppPlatform\`), \`my-app\`,"
+          check .agents/skills/starting-an-app/SKILL.md "small set of literals — \`MyApp\`, \`my-app\`, \`com.example\`, \`your-username\`, \`Your Name\`,"
+          check .claude/skills/starting-an-app/SKILL.md "small set of literals — \`MyApp\`, \`my-app\`, \`com.example\`, \`your-username\`, \`Your Name\`,"
+          check .agents/skills/starting-an-app/SKILL.md "- **Paths** named after the app (\`MyAppCore\`, \`MyAppUI\`, …) are renamed deepest-first,"
+          check .claude/skills/starting-an-app/SKILL.md "- **Paths** named after the app (\`MyAppCore\`, \`MyAppUI\`, …) are renamed deepest-first,"
+          # The header still prints as usage, without the marker lines (usage exits 1).
+          usage_out=$(bash scripts/bootstrap.sh 2>/dev/null || true)
+          if grep -F 'bootstrap:keep' <<<"$usage_out"; then
+            echo "::error::usage() prints the keep-marker lines"; status=1
+          fi
+          grep -qF 'MyApp        -> NewName' <<<"$usage_out" || {
+            echo "::error::usage() no longer prints the placeholder map"; status=1
+          }
+          exit "$status"
+
+      - name: Assert the template-only passages were removed
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          # The marker name is split so this file never holds one.
+          if grep -rn "bootstrap:template""-only" . --exclude-dir=.git; then
+            echo "::error::bootstrap left template-only markers on the lines listed above"
+            exit 1
+          fi
+          if grep -n 'created from this template' SECURITY.md; then
+            echo "::error::SECURITY.md still holds a template-only passage"
+            exit 1
+          fi
+
+      - name: Assert CHANGELOG was reset
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          grep -qF 'Initial project scaffold from' CHANGELOG.md || {
+            echo "::error::bootstrap did not reset CHANGELOG.md"
+            exit 1
+          }
+          if grep -qF 'Initial template:' CHANGELOG.md; then
+            echo "::error::template history still present in CHANGELOG.md"
+            exit 1
+          fi
+
+      - name: Assert the template origin was recorded
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          test -f .template-origin || {
+            echo "::error::bootstrap did not write .template-origin"
+            exit 1
+          }
+          # This clone has the template's own history, so line 1 must be a real commit
+          # (the "unknown" fallback is for a repository created from a fresh history).
+          grep -qE '^[0-9a-f]{40}$' <<<"$(sed -n 1p .template-origin)" || {
+            echo "::error::.template-origin line 1 is not a 40-hex template commit SHA"
+            sed -n 1,2p .template-origin
+            exit 1
+          }
+          test -n "$(sed -n 2p .template-origin)" || {
+            echo "::error::.template-origin line 2 (the template repository) is empty"
+            exit 1
+          }
+
+      - name: Assert the template-only job was retired
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          if grep -nE '^  bootstrap-smoke:$|Template Bootstrap Smoke' .github/workflows/ci.yml .github/rulesets/main.json; then
+            echo "::error::bootstrap did not retire the bootstrap-smoke job and its required check"
+            exit 1
+          fi
+          # Every remaining required context still names a job (parses main.json too).
+          bash scripts/tests/apply-ruleset_test.sh
+
+      - name: Assert the Product section check now fires
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          # The rename cannot write the new app's product intent, and this check is the
+          # only thing that makes a new repository write it: on a renamed tree whose
+          # AGENTS.md still holds the template's TODO skeleton it must fail. Asserting
+          # that it fires keeps the smoke honest without inventing a product here.
+          if out=$(bash scripts/checks/product-section-filled.sh 2>&1); then
+            echo "::error::product-section-filled.sh passed on the bootstrapped clone"
+            echo "$out"
+            exit 1
+          fi
+          grep -q '^ERR_CHECK_PRODUCT_SECTION: ' <<<"$out" || {
+            echo "::error::product-section-filled.sh failed, but not as ERR_CHECK_PRODUCT_SECTION"
+            echo "$out"
+            exit 1
+          }
+
+      - name: Lint the renamed tree
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          # What the pre-commit hook runs on the bootstrap commit; a longer name that
+          # breaks a line width or the import order fails here.
+          scripts/lint.sh
+
+      - name: Test the renamed package
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke/Packages/${DEMO_NAME}Kit"
+          swift test
+
+      - name: Build the renamed app
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          xcodegen generate
+          set -o pipefail
+          xcodebuild -project "$DEMO_NAME.xcodeproj" -scheme "$DEMO_NAME" -configuration Debug -destination 'generic/platform=iOS Simulator' build | xcbeautify --quiet
+
   zizmor:
     name: Workflow Security Lint
     runs-on: ubuntu-latest
