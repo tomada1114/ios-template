@@ -39,3 +39,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a simulator), both in CI
 - iOS skills for running the app on the Simulator, integrating system APIs, and building
   SwiftUI screens; `just reset-permissions`
+- `DesignTokens` and the iOS `designing-ui` skill, with the template's design research in
+  `docs/design-system.md`
