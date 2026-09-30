@@ -39,3 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a simulator), both in CI
 - iOS skills for running the app on the Simulator, integrating system APIs, and building
   SwiftUI screens; `just reset-permissions`
+
+### Fixed
+
+- `LaunchTests` no longer fails intermittently on CI: it waits for `newItemField` to
+  take keyboard focus before typing, and `just uitest` boots the simulator and waits
+  for it before `xcodebuild` launches the app, so a cold boot no longer times out the
+  launch
