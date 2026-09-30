@@ -109,8 +109,8 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     env:
-      # 19 characters: long enough to push lines past SwiftFormat's width and to
-      # reorder imports, so the lint step below proves the rename re-formats the tree.
+      # 19 characters: long enough to push lines past SwiftFormat's width, so the lint
+      # step below proves the rename re-formats the tree.
       DEMO_NAME: LongDemoApplication
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -252,7 +252,7 @@ jobs:
       - name: Lint the renamed tree
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
-          # What the pre-commit hook runs on the bootstrap commit; a longer name that
+          # What the pre-commit hook runs on the bootstrap commit; a renamed tree that
           # breaks a line width or the import order fails here.
           scripts/lint.sh
 

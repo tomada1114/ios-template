@@ -88,8 +88,8 @@ scripts/bootstrap.sh CoolApp --bundle-id-prefix io.example --github-user janedoe
   skipping `.git/` and build output, and the Xcode project is regenerated.
 <!-- bootstrap:keep-end -->
 - **Formatting:** after the rename and `xcodegen generate`, the script runs
-  `swiftformat .` over the tree. A longer name pushes lines past the width and moves
-  imports out of order, so without this the pre-commit hook refuses the bootstrap
+  `swiftformat .` over the tree. A new name can push a line past the width or change
+  the imports' sorted order, so without this the pre-commit hook refuses the bootstrap
   commit (`ERR_BOOTSTRAP_FORMAT_FAILED` if SwiftFormat itself fails).
 - **`.template-origin`** records where the app was cut from: the template commit on
   line 1, its repository on line 2, then comment lines. It is written only when the

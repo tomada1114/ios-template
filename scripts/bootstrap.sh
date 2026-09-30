@@ -13,8 +13,8 @@
 #   your-username / Your Name / you@example.com -> optional args (kept if omitted)
 #
 # Then renames MyApp* paths, regenerates the Xcode project, and runs SwiftFormat over
-# the tree (a longer name moves line widths and import order, and the pre-commit hook
-# would otherwise refuse the bootstrap commit).
+# the tree (a new name can push a line past the width or change the imports' sorted
+# order, and the pre-commit hook would otherwise refuse the bootstrap commit).
 # Also removes the template-only passages (from a line naming the template-only-begin
 # marker through the next line naming the template-only-end marker — TEMPLATE_ONLY_BEGIN
 # and TEMPLATE_ONLY_END below spell them), resets CHANGELOG.md, and removes the
@@ -336,8 +336,9 @@ else
     echo "warning: xcodegen not found — run 'just generate' after installing tools" >&2
 fi
 
-# A longer name moves line widths and import order, so the renamed tree is formatted
-# here; otherwise the pre-commit hook's swiftformat --lint refuses the bootstrap commit.
+# A new name can push a line past the width or change the imports' sorted order, so the
+# renamed tree is formatted here; otherwise the pre-commit hook's swiftformat --lint
+# refuses the bootstrap commit.
 echo "==> Formatting the renamed tree"
 if command -v swiftformat >/dev/null 2>&1; then
     swiftformat . || fail ERR_BOOTSTRAP_FORMAT_FAILED "swiftformat failed on the renamed tree" \
