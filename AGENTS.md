@@ -78,6 +78,7 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | An adapter under `Packages/MyAppKit/Sources/MyAppPlatform/` | `just test` (its contract runs against the real framework on the host); `just build` if `App/` wires it |
 | A fake or a port contract under `Packages/MyAppKit/Tests/MyAppTestSupport/` | `just test` (the contract runs against both the fake and the adapter) |
 | A view under `Packages/MyAppKit/Sources/MyAppUI/`, or anything under `App/` | `just build`; `just uitest` if it changes what the launch test touches |
+| How a screen looks (`DesignTokens`, colors, type, the design lock) | `just build`, then screenshots per `designing-ui`'s review pass (light, dark, largest Dynamic Type, Increase Contrast) |
 | Formatting or style of any Swift file | `just lint` (`just fix` for what is auto-fixable) |
 | One Core suite, while iterating | `just test-fast <filter>` — no coverage floor, so finish with `just test` |
 | `Localizable.xcstrings`, or a `LocalizedStringResource` in Core | `just test`; `just build` to compile the catalog into the app |
@@ -109,7 +110,8 @@ Packages/MyAppKit/
 ├── Sources/MyAppCore/      # Domain values, view models, ports (protocols), wording,
 │                           #   logging — no UI, persistence, or OS-integration import
 │                           #   (enforced by lint and test); coverage-gated
-├── Sources/MyAppUI/        # SwiftUI views — thin, render Core view models
+├── Sources/MyAppUI/        # SwiftUI views — thin, render Core view models; shared
+│                           #   presentation values in `DesignSystem/DesignTokens.swift`
 ├── Sources/MyAppPlatform/  # Adapters behind Core ports (SwiftData today) — translation
 │                           #   only, no domain logic, outside the coverage floor
 ├── Tests/MyAppTestSupport/ # Each port's fake and contract function — test code no
@@ -198,6 +200,7 @@ into `.claude/skills/`, the only path Claude Code reads:
 | `starting-an-app` | turning this template into a new app: `scripts/bootstrap.sh`'s rename, the template-only passages it removes, what the new repository keeps, its `just labels` and `just ruleset` setup, choosing the device family (iPhone only or iPhone and iPad), and deciding which capabilities and entitlements it takes |
 | `running-the-app` | seeing a change work on the iOS Simulator: `just run` and confirming the installed app is the fresh build, reading `just logs`, `simctl` screenshots in dark mode and at large Dynamic Type sizes, deep links, simulated pushes, launch arguments, a throwaway XCUITest, `just reset-permissions`, and the evidence a PR then carries |
 | `integrating-system-apis` | reaching an iOS system API through a Core port: the adapter in `MyAppPlatform`, a permission as a Core enum, usage descriptions and `Info.plist` keys in `project.yml`, `PrivacyInfo.xcprivacy`, notifications, PhotosPicker, background tasks, `simctl privacy`, `#if os(iOS)`, and what `just test`, `just test-ios`, and a device each prove |
+| `designing-ui` | how a screen looks: HIG craft rules, `DesignTokens`, Liquid Glass on iOS 26 with an iOS 18 floor, and the app's design lock ADR, researched with `/refero-design` |
 | `building-swiftui-screens` | a view in `MyAppUI`: a thin renderer over a `MyAppCore` `@Observable` view model, navigation, sheets and alerts, size classes, Dynamic Type, safe areas and the keyboard, touch targets, `#Preview` per state, accessibility identifiers and labels, and verifying a screen |
 | `updating-docs` | deciding whether a change owes a documentation update and which surface it lands on: `README.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/architecture.md`, `docs/architecture/`, a skill, or a `///` comment |
 
@@ -367,8 +370,8 @@ libraries are sourced, so they carry no shebang or `set` line of their own):
 This repository is being brought up to the macOS template's harness
 (`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
 in order. What exists today is what the tables above describe. Not yet ported, each owned
-by an open issue: the remaining skills, dependency bots, the localization harness, the
-iOS design system, distribution, and the fuller documentation. When an issue lands one
+by an open issue: the remaining skills, dependency bots, the localization harness,
+distribution, and the fuller documentation. When an issue lands one
 of these, it updates this section and the tables above in the same pull request.
 
 ## Enforcement layers
