@@ -1,11 +1,6 @@
 import MyAppCore
 import SwiftUI
 
-/// Layout metrics for ``TodoListView``.
-private enum Layout {
-    static let barSpacing: CGFloat = 12
-}
-
 /// One row: the done toggle and the title.
 private struct TodoRow: View {
     let item: TodoItem
@@ -13,11 +8,17 @@ private struct TodoRow: View {
     let toggle: () -> Void
 
     var body: some View {
-        HStack {
+        HStack(spacing: DesignTokens.Spacing.xSmall) {
             Button(action: toggle) {
                 Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
                     .imageScale(.large)
                     .foregroundStyle(item.isDone ? Color.accentColor : Color.secondary)
+                    // The glyph is smaller than a fingertip; the hit region is not.
+                    .frame(
+                        minWidth: DesignTokens.Size.minimumHitTarget,
+                        minHeight: DesignTokens.Size.minimumHitTarget,
+                    )
+                    .contentShape(Rectangle())
             }
             // Borderless, so only the glyph toggles and a tap on the title does not.
             .buttonStyle(.borderless)
@@ -116,14 +117,23 @@ public struct TodoListView: View {
     }
 
     private var addBar: some View {
-        HStack(spacing: Layout.barSpacing) {
+        HStack(spacing: DesignTokens.Spacing.medium) {
             TextField(
                 text: $model.draftTitle,
                 prompt: Text(TodoListStrings.draftPlaceholder),
             ) {
                 Text(TodoListStrings.draftPlaceholder)
             }
-            .textFieldStyle(.roundedBorder)
+            // Plain field on a filled, continuous rounded rectangle: the system's
+            // `.roundedBorder` field is 34 pt tall and ignores a taller frame, so it
+            // cannot reach the minimum hit target.
+            .textFieldStyle(.plain)
+            .frame(minHeight: DesignTokens.Size.minimumHitTarget)
+            .padding(.horizontal, DesignTokens.Spacing.medium)
+            .background(
+                .fill.tertiary,
+                in: RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous),
+            )
             .submitLabel(.done)
             .onSubmit { Task { await model.addDraft() } }
             .accessibilityIdentifier("newItemField")
@@ -132,6 +142,7 @@ public struct TodoListView: View {
                 Task { await model.addDraft() }
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(.large)
             .disabled(!model.canAdd)
             .accessibilityIdentifier("addButton")
         }

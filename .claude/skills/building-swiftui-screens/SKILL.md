@@ -66,9 +66,10 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 
 - An action that waits is `async`; call it from `.task` (cancelled with the view) or a
   `Task { }` in a button's closure.
-- Numbers go in a `private enum Layout` in the view's file (`Layout.barSpacing`), drawn
-  from the design lock's scale. Enforced by: `opt_in_rules: all`, which turns on
-  `no_magic_numbers`.
+- Spacing, radius, and hit-target numbers come from `DesignTokens` in `MyAppUI`
+  (`DesignTokens.Spacing.medium`), whose values the design lock sets (`designing-ui`); a
+  number only one view needs goes in a `private enum Layout` in that view's file.
+  Enforced by: `opt_in_rules: all`, which turns on `no_magic_numbers`.
 - When `body` nears `function_body_length`, extract a subview `struct` taking exactly the
   slice it renders, as `TodoRow` does.
 
@@ -117,7 +118,8 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 ## Touch targets and iOS-only modifiers
 
 - Every tappable element is at least 44×44 pt (HIG). An icon-only button reaches it with
-  padding or `.contentShape(Rectangle())` over a larger frame, from `Layout`.
+  `.contentShape(Rectangle())` over a frame of `DesignTokens.Size.minimumHitTarget`, as
+  `TodoRow`'s toggle does.
 - `MyAppUI` also compiles for macOS under `swift build`, so an iOS-only modifier —
   `.navigationBarTitleDisplayMode`, `.keyboardType`, `.textInputAutocapitalization` —
   sits inside `#if os(iOS)`. `TodoListView` needs none today: `.submitLabel`,

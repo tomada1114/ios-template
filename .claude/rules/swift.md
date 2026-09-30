@@ -71,9 +71,11 @@ paths:
 
 ## Constants
 
-- A view's layout numbers (spacing, font size): a `private enum Layout` at the top of
-  that view's file — `TodoListView.swift` is the worked example; a test's timeouts
-  likewise (`LaunchTests.swift`'s `Timeout`)
+- A view's spacing, corner radius, and hit-target size: `DesignTokens`
+  (`Sources/MyAppUI/DesignSystem/DesignTokens.swift`) — `TodoListView.swift` is the
+  worked example. A number only one view needs and the scale does not cover: a
+  `private enum Layout` at the top of that view's file. A test's timeouts likewise
+  (`LaunchTests.swift`'s `Timeout`)
 - A number someone might tune (a delay, a threshold, a limit): one tuning type in Core
   (the `designing-core-logic` skill); a domain invariant is a parameter or a `static` on
   its type (`TodoItem.normalizedTitle(_:)`), not a tunable
