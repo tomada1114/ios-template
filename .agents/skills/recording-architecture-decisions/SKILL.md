@@ -42,8 +42,8 @@ The template repository ships the index empty, on purpose. Its own reasoning liv
 `docs/architecture.md` (its "Decisions at a glance" and the patterns it deliberately
 does not adopt), and ADRs belong to the apps cut from it. So:
 
-- In the template itself — the `MyApp` names not yet renamed (README's "Using This
-  Template") and `AGENTS.md`'s `## Product` still a `TODO:` skeleton — a change that
+- In the template itself — while `project.yml` still names the template's app-name
+  placeholder (README's "Using This Template") and `AGENTS.md`'s `## Product` still a `TODO:` skeleton — a change that
   hits a trigger below updates `docs/architecture.md`'s "Decisions at a glance"
   (`updating-docs`), not the tree. Never seed the template's index with an ADR.
 - In an app, the same change owes an ADR.
