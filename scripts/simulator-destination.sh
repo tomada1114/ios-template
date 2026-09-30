@@ -69,8 +69,13 @@ for _, devices in sorted(runtimes, key=lambda runtime: runtime[0], reverse=True)
             sys.exit(0)
 sys.exit(1)
 ' <<<"${DEVICES_JSON}"); then
+    if [ -n "${SIMULATOR_DEVICE:-}" ]; then
+        WANTED="a device named \"${SIMULATOR_DEVICE}\""
+    else
+        WANTED="an available iPhone"
+    fi
     fail ERR_SIM_NO_DEVICE "no available simulator matches" \
-        "${SIMULATOR_DEVICE:+a device named '${SIMULATOR_DEVICE}'}${SIMULATOR_DEVICE:-an available iPhone} on an installed iOS runtime" \
+        "${WANTED} on an installed iOS runtime" \
         "none among \`xcrun simctl list devices available\`" \
         "install an iOS simulator runtime (Xcode › Settings › Components), or set SIMULATOR_DEVICE to a listed device name"
 fi
