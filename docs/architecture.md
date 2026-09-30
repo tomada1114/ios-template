@@ -45,6 +45,9 @@ Tests/MyAppTestSupport       each port's fake and contract function (test code o
   `no_ui_import_in_core` and `ArchitectureBoundaryTests`, whose lists change together.
   `Foundation`, `Observation`, and `os` are allowed.
 - **`App/` holds no logic.** It decides which adapter each port gets, and nothing else.
+- **Shared presentation values live in `MyAppUI`**, in `DesignSystem/DesignTokens.swift`
+  (spacing, radius, hit target, motion), never in Core; `docs/design-system.md` records
+  why each has its value.
 
 ### Why the package also builds for macOS
 
