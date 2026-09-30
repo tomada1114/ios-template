@@ -361,7 +361,7 @@ write_labels() {
 
 # first_stderr_is CODE — the failure contract: the first stderr line is `CODE: …`.
 first_stderr_is() {
-    head -n 1 "${CASE_DIR}/stderr" | grep -q "^$1: " || _fail "first stderr line is not $1"
+    grep -q "^$1: " <<<"$(head -n 1 "${CASE_DIR}/stderr")" || _fail "first stderr line is not $1"
 }
 
 assert_contract() {
@@ -1161,7 +1161,7 @@ case_labels_missing_file() {
 
 # line_of ROOT REL TEXT — the line number of the first line of ROOT/REL containing TEXT.
 line_of() {
-    grep -nF -- "$3" "$1/$2" | head -n 1 | cut -d: -f1
+    grep -m 1 -nF -- "$3" "$1/$2" | cut -d: -f1
 }
 
 case_hygiene_pass() {
