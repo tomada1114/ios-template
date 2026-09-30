@@ -213,8 +213,8 @@ stops and asks.
 ## Harness status
 
 This repository is being brought up to the macOS template's harness
-(`tomada1114/macos-app-template`) one issue at a time; the tracking issue lists them in
-order. What exists today is what the tables above describe. Not yet ported, each owned by
+(`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
+in order. What exists today is what the tables above describe. Not yet ported, each owned by
 an open issue: the script test harness (`scripts/tests/`, `just test-scripts`), the
 commit-time secret guard and hook verification, the harness self-checks
 (`scripts/checks/`, `just check-harness`), `.claude/rules/` and the format-on-edit hook,
