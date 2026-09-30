@@ -26,3 +26,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Path-scoped Claude Code rules under `.claude/rules/`, and a PostToolUse hook that formats
   the edited Swift file
 - Harness self-checks (`just check-harness`)
+- Skills for repository scripts, gate changes, and skill authoring
