@@ -87,8 +87,10 @@ it received — which the test reads afterwards with `#expect`. It declares no
 expectations up front, verifies nothing itself, and needs no framework:
 `InMemoryTodoRepository` is the worked example to copy — `fail(_:with:)` to make an
 operation throw, `calls` and `snapshot` to read what happened, `onSave(_:)` to act while
-a save is in flight. It is `package`, not `public`, and an actor like the adapter, so it
-is `Sendable` the honest way — never `@unchecked Sendable`. Every test of a given port
+a save is in flight. It is `package`, not `public`, and matches its port's shape — an
+actor for an async port (`InMemoryTodoRepository`), a final class over a `Mutex` for a
+synchronous one (`InMemoryPreferences`) — so it is `Sendable` the honest way, never
+`@unchecked Sendable`. Every test of a given port
 uses that one fake, so the port's test-time behavior is defined in one place rather than
 re-stubbed per test. Asserting on the recorded calls is for the cases where *asking* is
 the behavior (not asking the repository before `load()`); otherwise assert on the state

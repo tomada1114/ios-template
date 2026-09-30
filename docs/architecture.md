@@ -260,9 +260,9 @@ lines, it moves into an `AppDependencies` value built in `App/` — still no sin
 
 Shipped code logs through `AppLog` in Core — `os.Logger`, one subsystem (the bundle
 identifier, checked against `project.yml` by `AppLogTests`) and one category per concern
-(`todos`, `persistence`). `print`, `debugPrint`, and `NSLog` are rejected under
-`Packages/*/Sources/` and `App/` by `.swiftlint.yml`'s `no_print_in_sources`: an app
-launched from the Home Screen has nowhere to send stdout. Anything user-derived is
+(`todos`, `persistence`, `network`, `preferences`). `print`, `debugPrint`, and `NSLog` are
+rejected under `Packages/*/Sources/` and `App/` by `.swiftlint.yml`'s
+`no_print_in_sources`: an app launched from the Home Screen has nowhere to send stdout. Anything user-derived is
 interpolated `.private`; identifiers, counts, and operation names are `.public`.
 `just logs` streams the subsystem from the booted simulator.
 

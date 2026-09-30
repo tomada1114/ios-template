@@ -7,9 +7,9 @@ import SwiftUI
 ///
 /// This is also the composition root: the one place that knows both halves of a port.
 /// It opens the SwiftData store and the `UserDefaults` preferences through their
-/// `MyAppPlatform` adapters and hands them to a `MyAppCore` view model, so nothing below `App/` —
-/// not the view model, not the view —
-/// depends on which store answers (`docs/architecture.md` › Layers).
+/// `MyAppPlatform` adapters and hands them to a `MyAppCore` view model, so nothing below
+/// `App/` — not the view model, not the view — depends on which store answers
+/// (`docs/architecture.md` › Layers).
 @main
 struct MyAppApp: App {
     /// The launch argument `LaunchUITests` passes: an in-memory store and a scratch
