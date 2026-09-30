@@ -40,16 +40,18 @@ public enum TodoListFailure: Equatable, Sendable {
     }
 }
 
-/// Observable presentation state for the to-do list, over a ``TodoRepository`` port.
+/// Observable presentation state for the to-do list, over a ``TodoRepository`` port and a
+/// ``PreferencesStoring`` port.
 ///
 /// The template's worked example of a view model (`docs/architecture.md` › View models):
-/// it holds the port, not an adapter, so `MyAppCoreTests` drives it with the in-memory
+/// it holds the ports, not adapters, so `MyAppCoreTests` drives it with the in-memory
 /// fake and `App/` hands it the SwiftData adapter. Every decision a reader can observe —
 /// when Add is enabled, what an empty list says, what a failed save does to the row — is
 /// made here, where the coverage floor sees it; `TodoListView` only renders it.
 ///
 /// Action-shaped: the view calls one method per user intent (``addDraft()``,
-/// ``toggle(_:)``, ``delete(atOffsets:)``) and never mutates ``items`` itself.
+/// ``toggle(_:)``, ``delete(atOffsets:)``, ``setHideCompleted(_:)``) and never mutates
+/// ``items`` itself.
 /// Time and identity are injected so a test can pin both.
 @MainActor
 @Observable
@@ -66,7 +68,8 @@ public final class TodoListViewModel {
         case loading
     }
 
-    /// The items to show, in ``TodoItem/isOrderedBefore(_:_:)`` order.
+    /// Every item the repository holds, in ``TodoItem/isOrderedBefore(_:_:)`` order —
+    /// hidden ones included. The list renders ``visibleItems``.
     public private(set) var items: [TodoItem] = []
     /// Where loading stands.
     public private(set) var phase: Phase = .idle
@@ -76,8 +79,12 @@ public final class TodoListViewModel {
     public private(set) var isAdding = false
     /// The failure to present, or `nil`. Cleared by ``dismissFailure()``.
     public private(set) var failure: TodoListFailure?
+    /// Whether done items are hidden: ``PreferenceKeys/hideCompleted``, read by
+    /// ``load()`` and written by ``setHideCompleted(_:)``. Off until the first load.
+    public private(set) var hideCompleted = false
 
     private let repository: any TodoRepository
+    private let preferences: any PreferencesStoring
     private let now: @Sendable () -> Date
     private let makeID: @Sendable () -> UUID
 
@@ -85,6 +92,18 @@ public final class TodoListViewModel {
     /// flight, so a double tap cannot store the same item twice.
     public var canAdd: Bool {
         !isAdding && TodoItem.normalizedTitle(draftTitle) != nil
+    }
+
+    /// The items the list shows: ``items`` without the done ones while ``hideCompleted``
+    /// is on. `List.onDelete` offsets index this array (``delete(atOffsets:)``).
+    public var visibleItems: [TodoItem] {
+        hideCompleted ? items.filter { !$0.isDone } : items
+    }
+
+    /// Whether the list loaded, has items, and hides every one of them because each is
+    /// done — the state that says so instead of looking empty.
+    public var showsAllDoneState: Bool {
+        phase == .loaded && !items.isEmpty && visibleItems.isEmpty
     }
 
     /// Whether the list loaded and is genuinely empty — not merely not loaded yet.
@@ -103,20 +122,29 @@ public final class TodoListViewModel {
         phase == .loading && items.isEmpty
     }
 
-    /// Creates the view model over `repository`. Nothing is read until ``load()``:
-    /// touching storage in an initializer would make construction a side effect.
+    /// Creates the view model over `repository` and `preferences`. Nothing is read until
+    /// ``load()``: touching storage in an initializer would make construction a side
+    /// effect.
+    ///
+    /// `preferences` has no default: a composition root that forgot to wire it would
+    /// otherwise compile and silently stop remembering the user's settings.
     public init(
         repository: any TodoRepository,
+        preferences: any PreferencesStoring,
         now: @escaping @Sendable () -> Date = { Date() },
         makeID: @escaping @Sendable () -> UUID = { UUID() },
     ) {
         self.repository = repository
+        self.preferences = preferences
         self.now = now
         self.makeID = makeID
     }
 
-    /// Replaces ``items`` with what the repository holds.
+    /// Reads ``hideCompleted`` from the preferences, then replaces ``items`` with what the
+    /// repository holds. The preference is read first, so it is current even when the
+    /// repository fails.
     public func load() async {
+        hideCompleted = preferences.value(for: PreferenceKeys.hideCompleted)
         phase = .loading
         do {
             let loaded = try await repository.fetchAll()
@@ -183,10 +211,13 @@ public final class TodoListViewModel {
         }
     }
 
-    /// Deletes the items at `offsets` in ``items`` — the shape `List.onDelete` hands over.
-    /// Offsets are resolved to identifiers before anything suspends.
+    /// Deletes the items at `offsets` in ``visibleItems`` — the rows the list shows, and
+    /// the shape `List.onDelete` hands over. Resolving them against ``items`` would delete
+    /// a hidden row whenever ``hideCompleted`` is on. Offsets are resolved to identifiers
+    /// before anything suspends.
     public func delete(atOffsets offsets: IndexSet) async {
-        let ids = offsets.filter(items.indices.contains).map { items[$0].id }
+        let shown = visibleItems
+        let ids = offsets.filter(shown.indices.contains).map { shown[$0].id }
         await delete(ids)
     }
 
@@ -204,6 +235,12 @@ public final class TodoListViewModel {
             }
             items.removeAll { $0.id == id }
         }
+    }
+
+    /// Shows or hides done items, and remembers the choice for the next launch.
+    public func setHideCompleted(_ hide: Bool) {
+        hideCompleted = hide
+        preferences.set(hide, for: PreferenceKeys.hideCompleted)
     }
 
     /// Clears ``failure`` once the view has shown it.
