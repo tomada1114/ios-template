@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `PreferencesStoring` port with a `UserDefaults` adapter, and the Hide Completed toggle
 - Typed navigation (`AppRoute`, `NavigationModel`), a to-do detail screen, and
   `my-app://todo/<id>` deep links
+- An Edit button on the to-do list, so an item can be deleted without the swipe
 
 ### Fixed
 

@@ -3,7 +3,8 @@ import XCTest
 /// The template's launch guarantee: the app starts on a simulator, shows its list, and
 /// the core interaction — adding an item — reaches the screen. Hiding completed items
 /// proves the preferences wiring in `App/` reaches the view model, and opening an item
-/// proves the navigation model reaches the stack.
+/// proves the navigation model reaches the stack. Deleting in Edit mode proves a swipe
+/// is not the only way to delete.
 ///
 /// XCTest by necessity — Apple has not ported UI automation to Swift Testing.
 /// All other tests use Swift Testing in Packages/MyAppKit.
@@ -79,6 +80,41 @@ final class LaunchTests: XCTestCase {
         XCTAssertTrue(
             app.buttons["detailToggle"].exists,
             "the detail screen should show the item it was opened for",
+        )
+    }
+
+    @MainActor
+    func testEditModeDeletesAnItemWithoutASwipe() {
+        continueAfterFailure = false
+        let app = launchAndAddAnItem()
+
+        let edit = app.buttons["editButton"]
+        XCTAssertTrue(edit.waitForExistence(timeout: Timeout.elementAppears))
+        edit.tap()
+
+        // Edit mode's leading delete control carries no accessibility element of its own,
+        // so the test taps the cell's leading edge, where the control sits, and then the
+        // trailing Delete button it reveals.
+        let cell = app.cells.containing(.staticText, identifier: "Buy milk").firstMatch
+        XCTAssertTrue(cell.waitForExistence(timeout: Timeout.elementAppears))
+        cell.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+            .withOffset(CGVector(dx: 20, dy: 0))
+            .tap()
+        let confirm = app.buttons["Delete"]
+        XCTAssertTrue(
+            confirm.waitForExistence(timeout: Timeout.elementAppears),
+            "Edit mode's delete control should reveal the Delete button",
+        )
+        confirm.tap()
+
+        let gone = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: app.staticTexts["Buy milk"],
+        )
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [gone], timeout: Timeout.elementAppears),
+            .completed,
+            "deleting in Edit mode should remove the item",
         )
     }
 

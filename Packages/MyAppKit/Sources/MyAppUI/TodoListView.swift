@@ -46,11 +46,7 @@ public struct TodoListView: View {
             list
                 .overlay { placeholder }
                 .navigationTitle(Text(TodoListStrings.title))
-                .toolbar {
-                    // `.primaryAction` rather than an iOS-only placement: MyAppUI also
-                    // compiles for macOS.
-                    ToolbarItem(placement: .primaryAction) { hideCompletedToggle }
-                }
+                .toolbar { toolbar }
                 .safeAreaInset(edge: .bottom) { addBar }
                 .refreshable { await model.load() }
                 .task {
@@ -76,6 +72,22 @@ public struct TodoListView: View {
                     }
                 }
         }
+    }
+
+    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        // `.primaryAction` rather than an iOS-only placement: MyAppUI also compiles for
+        // macOS.
+        ToolbarItem(placement: .primaryAction) { hideCompletedToggle }
+        #if os(iOS)
+            // The non-gesture way to delete: Edit mode shows a delete control on every
+            // row and reuses `.onDelete`, so a swipe is never the only way. The system
+            // button localizes its own title and takes the toolbar's hit target, like
+            // the toggle beside it. `EditButton` is iOS-only.
+            ToolbarItem(placement: .topBarLeading) {
+                EditButton()
+                    .accessibilityIdentifier("editButton")
+            }
+        #endif
     }
 
     private var list: some View {
