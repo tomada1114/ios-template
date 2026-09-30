@@ -12,6 +12,28 @@
         }
       }
     },
+    "todoList.allDone.description" : {
+      "comment" : "Explanation under the all-done headline: done items exist but are hidden.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Completed items are hidden."
+          }
+        }
+      }
+    },
+    "todoList.allDone.title" : {
+      "comment" : "Headline shown when every to-do item is done and done items are hidden.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Done"
+          }
+        }
+      }
+    },
     "todoList.draftPlaceholder" : {
       "comment" : "Placeholder in the text field where a new to-do item is typed.",
       "localizations" : {
@@ -96,6 +118,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Something Went Wrong"
+          }
+        }
+      }
+    },
+    "todoList.hideCompleted" : {
+      "comment" : "Toolbar toggle that hides or shows to-do items that are done.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Completed"
           }
         }
       }

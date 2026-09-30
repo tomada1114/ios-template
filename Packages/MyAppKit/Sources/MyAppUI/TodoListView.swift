@@ -52,6 +52,11 @@ public struct TodoListView: View {
             list
                 .overlay { placeholder }
                 .navigationTitle(Text(TodoListStrings.title))
+                .toolbar {
+                    // `.primaryAction` rather than an iOS-only placement: MyAppUI also
+                    // compiles for macOS.
+                    ToolbarItem(placement: .primaryAction) { hideCompletedToggle }
+                }
                 .safeAreaInset(edge: .bottom) { addBar }
                 .refreshable { await model.load() }
                 .task {
@@ -75,11 +80,13 @@ public struct TodoListView: View {
 
     private var list: some View {
         List {
-            ForEach(model.items) { item in
+            ForEach(model.visibleItems) { item in
                 TodoRow(item: item, toggleLabel: model.toggleLabel(for: item)) {
                     Task { await model.toggle(item.id) }
                 }
             }
+            // The offsets index `visibleItems`, which is what the view model resolves them
+            // against.
             .onDelete { offsets in
                 Task { await model.delete(atOffsets: offsets) }
             }
@@ -114,7 +121,32 @@ public struct TodoListView: View {
             } description: {
                 Text(TodoListStrings.emptyDescription)
             }
+        } else if model.showsAllDoneState {
+            ContentUnavailableView {
+                Label {
+                    Text(TodoListStrings.allDoneTitle)
+                } icon: {
+                    Image(systemName: "checkmark.circle")
+                }
+            } description: {
+                Text(TodoListStrings.allDoneDescription)
+            }
         }
+    }
+
+    /// A toolbar button that stays pressed while done items are hidden. The toolbar gives
+    /// it the system's hit target and shows the symbol alone; the title is what VoiceOver
+    /// reads.
+    private var hideCompletedToggle: some View {
+        Toggle(isOn: isHidingCompleted) {
+            Label {
+                Text(TodoListStrings.hideCompleted)
+            } icon: {
+                Image(systemName: "eye.slash")
+            }
+        }
+        .toggleStyle(.button)
+        .accessibilityIdentifier("hideCompletedToggle")
     }
 
     private var addBar: some View {
@@ -164,6 +196,14 @@ public struct TodoListView: View {
         RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
     }
 
+    /// Hide Completed, built from the model's action so every change is remembered.
+    private var isHidingCompleted: Binding<Bool> {
+        Binding(
+            get: { model.hideCompleted },
+            set: { model.setHideCompleted($0) },
+        )
+    }
+
     /// The alert's presentation, derived from the model: dismissing it (by any route)
     /// clears the failure, and a new failure presents it again.
     private var isFailurePresented: Binding<Bool> {
@@ -191,14 +231,29 @@ public struct TodoListView: View {
                 "Call the bank",
                 "Water plants",
             ]),
+            preferences: PreviewPreferences(),
         ))
     }
 
     #Preview("Empty") {
-        TodoListView(model: TodoListViewModel(repository: PreviewTodoRepository(titles: [])))
+        TodoListView(model: TodoListViewModel(
+            repository: PreviewTodoRepository(titles: []),
+            preferences: PreviewPreferences(),
+        ))
     }
 
     #Preview("Load failed") {
-        TodoListView(model: TodoListViewModel(repository: UnavailableTodoRepository()))
+        TodoListView(model: TodoListViewModel(
+            repository: UnavailableTodoRepository(),
+            preferences: PreviewPreferences(),
+        ))
+    }
+
+    #Preview("All done hidden") {
+        // PreviewTodoRepository checks off its first item, so one title is all done.
+        TodoListView(model: TodoListViewModel(
+            repository: PreviewTodoRepository(titles: ["Buy milk"]),
+            preferences: PreviewPreferences(hideCompleted: true),
+        ))
     }
 #endif
