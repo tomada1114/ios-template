@@ -15,7 +15,7 @@ public struct TodoDetailView: View {
         Group {
             if let item = model.item(withID: id) {
                 details(of: item)
-            } else if model.showsProgress {
+            } else if model.isAwaitingItems {
                 ProgressView()
             } else {
                 notFound

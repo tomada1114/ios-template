@@ -45,6 +45,34 @@ struct TodoListViewModelLookupTests {
         #expect(model.item(withID: milk.id) == nil)
     }
 
+    // MARK: - Before the items are known
+
+    /// Before the first load, a missing item is not yet "not found": the detail screen
+    /// shows progress instead, so a deep link that arrives first never flashes not-found.
+    @Test
+    func `is awaiting items before anything is loaded`() {
+        let model = Fixture.model(over: InMemoryTodoRepository())
+        #expect(model.phase == .idle)
+        #expect(model.isAwaitingItems)
+    }
+
+    @Test
+    func `is no longer awaiting items once a load has succeeded`() async {
+        let model = Fixture.model(over: InMemoryTodoRepository())
+        await model.load()
+        #expect(!model.isAwaitingItems)
+    }
+
+    @Test
+    func `is no longer awaiting items once a load has failed`() async {
+        let repository = InMemoryTodoRepository()
+        await repository.fail(.fetchAll, with: .storageFailure)
+        let model = Fixture.model(over: repository)
+        await model.load()
+        #expect(model.phase == .failed)
+        #expect(!model.isAwaitingItems)
+    }
+
     @Test
     func `reflects a toggle`() async throws {
         let milk = try Fixture.item("Milk", minute: 1)

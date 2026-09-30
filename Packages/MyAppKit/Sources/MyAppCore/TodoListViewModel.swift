@@ -117,6 +117,14 @@ public final class TodoListViewModel {
         phase == .failed && items.isEmpty
     }
 
+    /// Whether the items are not known yet — nothing has loaded, or a load is running — so
+    /// an identifier ``item(withID:)`` does not find may still arrive. The detail screen
+    /// shows progress rather than "not found" while this holds, which covers a deep link
+    /// that pushes it before the list under it ever loaded.
+    public var isAwaitingItems: Bool {
+        phase == .idle || phase == .loading
+    }
+
     /// Whether the first load is still running with nothing on screen yet.
     public var showsProgress: Bool {
         phase == .loading && items.isEmpty
