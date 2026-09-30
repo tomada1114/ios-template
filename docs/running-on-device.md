@@ -52,9 +52,9 @@ contract (`docs/architecture.md` › What is contract and what is private), and
   again.
 - For logs, open Console.app, select the device, and filter by subsystem (the bundle
   identifier). `just logs` reads the simulator only.
-- Each failure names itself on its first stderr line (`ERR_DEVICE_NO_TEAM`,
-  `ERR_DEVICE_NONE`, `ERR_DEVICE_BUILD_FAILED`, `ERR_DEVICE_INSTALL_FAILED`,
-  `ERR_DEVICE_LAUNCH_FAILED`), followed by what to do next.
+- Each failure names itself on its first stderr line (`ERR_DEVICE_SETTINGS_FAILED`,
+  `ERR_DEVICE_NO_TEAM`, `ERR_DEVICE_NONE`, `ERR_DEVICE_BUILD_FAILED`,
+  `ERR_DEVICE_INSTALL_FAILED`, `ERR_DEVICE_LAUNCH_FAILED`), followed by what to do next.
 
 ## What is unverified
 

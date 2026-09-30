@@ -71,13 +71,17 @@ done
 SCRIPTS="$(cd "$(dirname "$0")" && pwd)"
 cd "${ROOT}"
 
+SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/run-device.XXXXXX")
+trap 'rm -rf "${SCRATCH}"' EXIT
+
 # 1. Team check. The settings output is kept in a variable and never echoed: it holds
-# the team value when one is set.
+# the team value when one is set. Its stderr carries no settings, so a failure shows it.
 if ! SETTINGS=$(xcodebuild -project "${APP_NAME}.xcodeproj" -scheme "${APP_NAME}" -configuration Debug \
-    -showBuildSettings -destination 'generic/platform=iOS' 2>/dev/null); then
+    -showBuildSettings -destination 'generic/platform=iOS' 2>"${SCRATCH}/settings.err"); then
     fail ERR_DEVICE_SETTINGS_FAILED "xcodebuild could not resolve the Debug build settings" \
-        "\`xcodebuild -showBuildSettings\` to succeed for ${APP_NAME}.xcodeproj" "it failed" \
-        "run \`just generate\`, then \`just run-device\` again (the recipe regenerates the project itself)"
+        "\`xcodebuild -showBuildSettings\` to succeed for ${APP_NAME}.xcodeproj" \
+        "it failed: $(tail -n 5 "${SCRATCH}/settings.err")" \
+        "fix what xcodebuild reports (a missing iOS platform is installed under Xcode › Settings › Components), then rerun \`just run-device\`"
 fi
 TEAM_SET=$(python3 -c '
 import re, sys
@@ -96,8 +100,7 @@ if [ "${TEAM_SET}" != "yes" ]; then
 fi
 
 # 2. Device.
-DEVICES_JSON=$(mktemp "${TMPDIR:-/tmp}/run-device.XXXXXX")
-trap 'rm -f "${DEVICES_JSON}"' EXIT
+DEVICES_JSON="${SCRATCH}/devices.json"
 LIST_ERROR=""
 if ! LIST_OUTPUT=$(xcrun devicectl list devices --json-output "${DEVICES_JSON}" 2>&1); then
     LIST_ERROR=" (devicectl list devices failed: ${LIST_OUTPUT})"

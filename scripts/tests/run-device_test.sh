@@ -39,9 +39,10 @@ EOF
 }
 
 # stub_tools TEAM_VALUE DEVICES(none|phone) [FAILING_STEP] — xcodebuild answers
-# -showBuildSettings with TEAM_VALUE and succeeds a build unless FAILING_STEP is
-# build; xcrun writes the device fixture for `list devices` and fails install or
-# launch when FAILING_STEP names it; mise passes the build log through.
+# -showBuildSettings with TEAM_VALUE (or fails it when FAILING_STEP is settings) and
+# succeeds a build unless FAILING_STEP is build; xcrun writes the device fixture for
+# `list devices` and fails install or launch when FAILING_STEP names it; mise passes
+# the build log through.
 stub_tools() {
     export STUB_TEAM="$1" STUB_FAIL="${3:-}" DEVICES_FIXTURE="${CASE_DIR}/devices.json"
     if [ "$2" = phone ]; then
@@ -59,6 +60,7 @@ EOF
     # shellcheck disable=SC2016 # expanded when the stub runs, not here
     stub_command xcodebuild 'case " $* " in
     *" -showBuildSettings "*)
+        if [ "${STUB_FAIL}" = settings ]; then echo "xcodebuild: error: iOS is not installed" >&2; exit 70; fi
         echo "Build settings for action build and target MyApp:"
         echo "    CODE_SIGN_STYLE = Automatic"
         echo "    DEVELOPMENT_TEAM = ${STUB_TEAM}"
@@ -107,6 +109,17 @@ case_no_team() {
     assert_stderr_contains "docs/running-on-device.md"
     [ ! -e "${STUB_BIN}/xcrun.log" ] || _fail "devicectl ran without a team"
     [ "$(grep -c '' "${STUB_BIN}/xcodebuild.log")" = 1 ] || _fail "xcodebuild built without a team"
+}
+
+case_settings_failure() {
+    local root
+    root=$(make_fixture_root)
+    stub_tools "${TEAM}" phone settings
+    capture "${BASH}" "${root}/scripts/run-device.sh" --root "${root}"
+    assert_exit 1
+    assert_first_stderr_line ERR_DEVICE_SETTINGS_FAILED
+    assert_stderr_contains "iOS is not installed"
+    [ ! -e "${STUB_BIN}/xcrun.log" ] || _fail "devicectl ran after the settings failed"
 }
 
 case_no_device_team_hidden() {
@@ -205,6 +218,7 @@ case_unknown_argument() {
 }
 
 run_case "an empty team fails ERR_DEVICE_NO_TEAM before any build" case_no_team
+run_case "a failed -showBuildSettings fails ERR_DEVICE_SETTINGS_FAILED and shows why" case_settings_failure
 run_case "no connected device fails ERR_DEVICE_NONE, and the team is never printed" case_no_device_team_hidden
 run_case "IOS_DEVICE naming no device fails ERR_DEVICE_NONE and names it" case_ios_device_unmatched
 run_case "IOS_DEVICE matches a CoreDevice identifier" case_ios_device_matches_coredevice_id
