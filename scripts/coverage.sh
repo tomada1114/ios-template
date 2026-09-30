@@ -5,10 +5,9 @@
 # and waived. The floors are
 # honest because all logic lives in Core: views render it and MyAppPlatform adapters
 # only translate for it, so neither holds a decision a test could catch
-# (AGENTS.md > Architecture). MyAppPlatformTests does link MyAppPlatform, but its
-# tests are skipped unless RUN_LOCAL_MACHINE_TESTS=1 (`just test-local`) — so they
-# contribute nothing here, and measuring Platform would gate the build on whether a
-# human opted in.
+# (AGENTS.md > Architecture). MyAppPlatformTests links MyAppPlatform and runs under
+# `swift test`, but the report is filtered to Sources/MyAppCore, so the adapters are
+# never measured.
 #
 # Swift's llvm-cov has no dependable branch metric, so this gates on LINE
 # coverage (uv-template gates on branch coverage; documented divergence), and on
@@ -24,7 +23,7 @@
 # one is a reviewed diff of this file. They are raised, never lowered (AGENTS.md,
 # "Important Reminders").
 #
-#   scripts/coverage.sh    (what `just test` and CI's test and release jobs run)
+#   scripts/coverage.sh    (what `just test` and CI's `test` job run)
 #
 # Git work tree: not required — it runs from the package directory next to it.
 #

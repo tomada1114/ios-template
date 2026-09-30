@@ -60,7 +60,8 @@ MANIFEST="${ROOT}/project.yml"
     "${MANIFEST} to exist" "no file at ${MANIFEST}" \
     "run this from a checkout of this repository, or pass --root DIR"
 
-VALUE=$(sed -n 's/^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER:[[:space:]]*//p' "${MANIFEST}" | head -n 1)
+VALUE=$(sed -n 's/^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER:[[:space:]]*//p' "${MANIFEST}")
+VALUE=$(head -n 1 <<<"${VALUE}")
 # A trailing carriage return (a CRLF manifest), a YAML comment, and trailing
 # spaces are not part of the value; strip them before the quotes, which would
 # otherwise not be last. A comment needs whitespace in front of its `#` to be
