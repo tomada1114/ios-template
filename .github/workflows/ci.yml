@@ -42,12 +42,10 @@ jobs:
         # install the macOS-only tools this job leaves out.
         run: scripts/lint.sh
 
-      - name: Skill script tests (shipping-issues)
-        # The ported skill's own unittest suite. The script-test harness
-        # (scripts/tests/run.sh, `just test-scripts`) will take this over once ported.
-        env:
-          PYTHONDONTWRITEBYTECODE: "1"
-        run: python3 -m unittest discover -s .agents/skills/shipping-issues/scripts/tests
+      - name: Script tests (scripts/tests/run.sh)
+        # The same runner `just test-scripts` calls; needs bash, git, python3, and the
+        # swiftformat and swiftlint installed above.
+        run: scripts/tests/run.sh
 
   # This job calls scripts/coverage.sh (what `just test` runs); the app job calls the
   # just recipes itself.

@@ -44,11 +44,12 @@ just fix           # Format, auto-fix SwiftLint violations, then run just lint
 just lint          # Lint (scripts/lint.sh: swiftformat --lint + swiftlint --strict + shellcheck + actionlint + typos + skills mirror)
 just test          # Run the package tests on the host Mac with the 80% line / 75% function floors on MyAppCore
 just test-fast TodoItemTests  # Run only the matching tests, no coverage floor (iteration only)
+just test-scripts  # Run the plain-bash tests for scripts/ and the skills' Python suites (scripts/tests/run.sh)
 just build         # Build the app (Debug) for the iOS Simulator
 just run           # Build, then install and launch it on an iOS Simulator (SIMULATOR_DEVICE picks one)
 just logs          # Stream this app's log output from the booted simulator (Ctrl-C to stop)
 just uitest        # Run the XCUITest launch test on an iOS Simulator
-just check         # Run all checks: fmt → lint → test → build
+just check         # Run all checks: fmt → lint → test-scripts → test → build
 just agents-sync   # Regenerate the .claude/skills/ mirror from .agents/skills/
 just agents-check  # Fail if .claude/skills/ differs from .agents/skills/
 just clean         # Remove build artifacts and the generated project
@@ -74,8 +75,8 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | `project.yml` | `just generate && just build` |
 | A test under `LaunchUITests/`, or launch behavior | `just uitest` |
 | Behavior only the running app shows | `just run`, then `just logs` — no gate asserts it, so the PR carries the evidence (a screenshot: `xcrun simctl io booted screenshot shot.png`) |
-| A shell script under `scripts/`, or `.githooks/pre-commit` | `just lint` (shellcheck) |
-| A skill under `.agents/skills/` | `just agents-sync`, then `just agents-check`; for `shipping-issues` scripts, `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .agents/skills/shipping-issues/scripts/tests` (a stray `__pycache__/` would fail the mirror check) |
+| A shell script under `scripts/`, or `.githooks/pre-commit` | `just lint`, then `just test-scripts` |
+| A skill under `.agents/skills/` | `just agents-sync`, then `just agents-check`; `just test-scripts` when the skill ships scripts (it runs their `scripts/tests/` unittest suite) |
 | A workflow under `.github/workflows/` | `just lint` (actionlint) |
 | Markdown | `just lint` (its `typos` spell-check) |
 | `mise.toml` | `mise install`, then `just check` |
@@ -210,13 +211,52 @@ that skill exists to make, for that invocation only.
 None of them covers anything else in the list above. A skill that reaches one of those
 stops and asks.
 
+## Repository scripts
+
+Every script under `scripts/` follows these rules, whoever writes it
+(`scripts/tests/lib.sh` is sourced, so it carries no shebang or `set` line of its own):
+
+- `#!/usr/bin/env bash` and `set -euo pipefail`, and bash 3.2-compatible (macOS
+  `/bin/bash`): no associative arrays, no `mapfile`/`readarray`, no `${var,,}`, and no
+  `"${arr[@]}"` on a possibly empty array under `set -u` (use `${arr[@]+"${arr[@]}"}`).
+  Under `pipefail`, never pipe into a reader that exits early (`grep -q`, `head`): feed
+  it a here-string, `grep -qxF -- "${x}" <<<"${list}"`.
+- `shellcheck`-clean — `scripts/lint.sh` checks every tracked `*.sh`
+  outside the generated `.claude/skills/` mirror.
+- Pinned tools are called by bare name; the caller provides PATH (`mise exec -- …`
+  locally and in `just` recipes, `jdx/mise-action` in CI). Beyond that, assume only
+  `git` and POSIX utilities, and no GNU- or BSD-only flag (`sed -i`, `readlink -f`,
+  `mktemp -t`) — the scripts run on macOS and on CI's Ubuntu. The simulator scripts
+  also need Xcode's `xcrun` and `python3`, as their headers say.
+- Failure contract: the first stderr line is `ERR_<STAGE>_<WHAT>: <what failed>`, then
+  `Expected:`, `Actual:`, and `Next:` lines (the next safe command); exit 1. List the
+  codes in the script's header comment. Never print a secret value.
+- Never assume the checkout is the only repository on the machine. A script that
+  enumerates or rewrites tracked files refuses to run outside a git work tree (the
+  `scripts/lint.sh` pattern, `ERR_LINT_NOT_A_REPO`); a check that is meaningless
+  outside one skips with a one-line notice instead. Each script's header states which
+  it does.
+- Every script directly under `scripts/` has a test file `scripts/tests/<script-name>_test.sh`
+  built on `scripts/tests/lib.sh`, and `scripts/tests/run.sh` (`just test-scripts`,
+  part of `just check` and CI's lint job) runs them all — concurrently, so a test file
+  must share no state with any other: its own throwaway repository or temp directory,
+  its own stubs, and only read-only use of the checkout. The runner itself is covered
+  by `scripts/tests/run_test.sh`. A test works in a throwaway repository or temp
+  directory, never the real checkout, and fakes external commands with
+  `stub_command` — a simulator test stubs `xcrun` in every case, since CI's lint job
+  runs on Ubuntu, where there is none. Known exception: `coverage.sh`, whose test file
+  `scripts/tests/coverage_test.sh` is partial — it stubs `swift` to cover its rejection
+  of the removed environment override and its line- and function-floor comparisons,
+  but not a real coverage run, which is CI's `test` job. `coverage.sh`'s
+  below-the-line-floor failure also predates the failure contract and does not follow
+  it yet (its function-floor failure, `ERR_COVERAGE_FUNCTIONS_BELOW_FLOOR`, does).
+
 ## Harness status
 
 This repository is being brought up to the macOS template's harness
 (`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
 in order. What exists today is what the tables above describe. Not yet ported, each owned by
-an open issue: the script test harness (`scripts/tests/`, `just test-scripts`), the
-commit-time secret guard and hook verification, the harness self-checks
+an open issue: the commit-time secret guard and hook verification, the harness self-checks
 (`scripts/checks/`, `just check-harness`), `.claude/rules/` and the format-on-edit hook,
 the remaining skills and the ADR tree, labels and the branch ruleset as code, PR hygiene
 and security workflows, dependency bots, `scripts/bootstrap.sh`, the localization
@@ -234,7 +274,7 @@ request.
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
 | `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary |
-| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror, the shipping-issues script tests), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest) |
+| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest) |
 
 `git commit --no-verify` bypasses the hook, and a clone where `just install` never ran
 has no hook at all; CI is the backstop for everything except secrets, which nothing here
