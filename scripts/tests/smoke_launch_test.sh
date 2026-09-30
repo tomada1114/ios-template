@@ -168,8 +168,10 @@ case_prebuilt_app_skips_the_build() {
     make_app "${app}"
     stub_tools
 
-    # A relative path with a trailing slash, from a directory outside the checkout.
-    capture sh -c 'cd "$1" && "$2" "$3" "$4"' sh "${elsewhere}" "${BASH}" "${root}/scripts/smoke_launch.sh" "Built/Other.app/"
+    # A relative path with a trailing slash, from a directory outside the checkout (the
+    # case is its own subshell, so the cd stays inside it).
+    cd "${elsewhere}"
+    capture "${BASH}" "${root}/scripts/smoke_launch.sh" "Built/Other.app/"
     assert_exit 0
     assert_not_called xcodegen "with a pre-built bundle"
     assert_not_called xcodebuild "with a pre-built bundle"
