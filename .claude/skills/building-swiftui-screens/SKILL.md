@@ -120,6 +120,12 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 - Every tappable element is at least 44×44 pt (HIG). An icon-only button reaches it with
   `.contentShape(Rectangle())` over a frame of `DesignTokens.Size.minimumHitTarget`, as
   `TodoRow`'s toggle does.
+- A text field padded out to that target is a trap: a plain `TextField` takes focus only
+  from a tap on its own text line, so the padding is dead, and `.onTapGesture` on it
+  fails SwiftLint's `accessibility_trait_for_button` (an `.isButton` trait would
+  mislead VoiceOver). Draw the fill with a `.plain` `Button` in `.background { … }` that
+  sets a `@FocusState`, marked `.accessibilityHidden(true)` so VoiceOver still reaches
+  the field — `TodoListView`'s `addBar` is the worked example.
 - `MyAppUI` also compiles for macOS under `swift build`, so an iOS-only modifier —
   `.navigationBarTitleDisplayMode`, `.keyboardType`, `.textInputAutocapitalization` —
   sits inside `#if os(iOS)`. `TodoListView` needs none today: `.submitLabel`,
