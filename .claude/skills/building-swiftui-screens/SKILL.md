@@ -41,7 +41,8 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 
 - **A model with a port is built in `App/`**, the composition root, because its adapter
   lives in `MyAppPlatform`, which this module must not import. `MyAppApp` keeps
-  `TodoListViewModel` in `@State` and passes it to `TodoListView(model:)`.
+  `TodoListViewModel` and the `NavigationModel` in `@State` and passes both to
+  `TodoListView(model:navigation:)`.
 - **A view handed its model** holds it as a plain `let`; `@Observable` re-renders the
   view when a property its `body` read changes. `TodoListView` uses `@Bindable` instead
   only because its text field binds to `draftTitle`, the one settable property.
@@ -75,11 +76,13 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 
 ## Navigation
 
-- One `NavigationStack` per navigation root, with value-based
-  `navigationDestination(for:)`: a link pushes a Core value, the destination builds its
-  screen from it. Once a screen needs deep links or state restoration, the path is Core
-  state owned by a view model — the navigation model is a later decision, not this
-  skill's.
+- One `NavigationStack(path:)` per navigation root, bound to Core's `NavigationModel`
+  (`docs/architecture.md` › Navigation), with one value-based
+  `navigationDestination(for: AppRoute.self)`: a link pushes an `AppRoute`, the
+  destination builds its screen from it. A new screen is a new `AppRoute` case and a new
+  branch of that destination's `switch`, never navigation state in a view's `@State`.
+- A button inside a `NavigationLink` row takes a non-default style
+  (`.buttonStyle(.borderless)`, as `TodoDoneToggle` has), or a tap on it follows the link.
 - `NavigationSplitView` only for a regular-width iPad layout the design lock asks for;
   on iPhone it collapses to a stack anyway.
 

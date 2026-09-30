@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An `HTTPClient` port with a `URLSession` adapter, a fake, and a contract run against
   both
 - A `PreferencesStoring` port with a `UserDefaults` adapter, and the Hide Completed toggle
+- Typed navigation (`AppRoute`, `NavigationModel`), a to-do detail screen, and
+  `my-app://todo/<id>` deep links
 
 ### Fixed
 

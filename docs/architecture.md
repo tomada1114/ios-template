@@ -16,6 +16,7 @@ a SwiftData adapter, a fake, a contract test, and a UI test.
 | Persistence | SwiftData, behind a Core-declared repository port | First-party (no dependency), migrations built in, and the port keeps it replaceable: Core never imports SwiftData |
 | Networking | `URLSession` behind a Core `HTTPClient` port | First-party, no dependency; the port keeps decisions about status codes and failures in Core, where tests see them |
 | Preferences | `UserDefaults` behind a synchronous Core `PreferencesStoring` port | First-party and synchronous; the port keeps key names in one Core file where a test pins them |
+| Navigation | One `NavigationStack(path:)` bound to a Core `NavigationModel`; a custom URL scheme (`my-app`, `project.yml`'s `info:` block) parsed by Core's `DeepLink` | Which screen shows is Core state a test drives, so a deep link and state restoration have something to hold on to. A custom scheme is an `Info.plist` entry, not an entitlement; universal links (Associated Domains) are an app's decision |
 | Module layout | One local Swift package, `MyAppKit`, with `MyAppCore` / `MyAppUI` / `MyAppPlatform` | Module boundaries the compiler enforces, and a package `swift test` can run without a simulator |
 | Project file | XcodeGen (`project.yml`); `MyApp.xcodeproj` is generated and gitignored | No merge conflicts in a `.pbxproj`, and the whole app target is reviewable as text |
 | Language mode | Swift 6, warnings as errors | Data-race safety is checked from the first line; there is never a "migrate later" |
@@ -96,6 +97,41 @@ The view model is written for that:
 
 Each of these has a test in `TodoListViewModelTests` that drives the interleaving through
 the fake's `onSave` hook.
+
+## Navigation
+
+Which screen shows is Core state, not `@State` inside a view, so a deep link and state
+restoration have something to hold on to and a test can drive navigation without a view.
+
+- **Routes are a Core enum.** `AppRoute` (`Sources/MyAppCore/Navigation/`) has one case
+  per pushable screen, carrying an identifier rather than the value it shows:
+  `.todoDetail(TodoItem.ID)`. The destination looks the item up in its view model when
+  it renders (`TodoListViewModel.item(withID:)`, which searches every item, not only the
+  visible ones), so a pushed screen shows the current state, and an identifier nothing
+  holds shows a not-found state.
+- **The path is a Core view model.** `NavigationModel` is a `@MainActor @Observable`
+  class holding `path: [AppRoute]`, with one action per intent: `show(_:)` pushes,
+  `popToRoot()` returns, `open(_:)` handles a deep link. `App/` owns it in `@State`
+  beside the other view models and hands it to the root view.
+- **One `NavigationStack(path:)` at the root.** `TodoListView` binds the stack to
+  `NavigationModel.path` and declares every destination in one
+  `navigationDestination(for: AppRoute.self)`; a row's `NavigationLink(value:)` pushes a
+  route. The back button writes the path back, which is why `path` is the one settable
+  property.
+- **Deep links are parsed in Core.** `DeepLink.route(for:)` accepts exactly
+  `my-app://todo/<uuid>` — the scheme in any case, the host `todo`, one `UUID` path
+  component — and rejects every other shape rather than guessing; `DeepLink.url(for:)`
+  is its inverse. `App/` forwards `.onOpenURL` to `NavigationModel.open(_:)`, which
+  replaces the path with the parsed route or logs the rejected link's scheme and host in
+  the `navigation` category. The scheme is registered under `project.yml`'s `info:` block
+  (XcodeGen writes the gitignored `App/Info.plist` from it on every `just generate`, and
+  the build merges it with the `INFOPLIST_KEY_*` settings); `DeepLinkTests` fails when
+  the scheme Core parses and the one `project.yml` registers differ, and
+  `scripts/bootstrap.sh` rewrites both together.
+- **Tabs are an app's decision.** A tab-based app keeps one `NavigationModel` per tab, one
+  stack each; tabs versus a single stack is the design lock's navigation field
+  (`designing-ui`). `NavigationSplitView` and state restoration (`@SceneStorage` over
+  `path`) are likewise an app's to add.
 
 ## Repositories
 
@@ -241,9 +277,10 @@ public protocol PreferencesStoring: Sendable {
 `App/MyAppApp.swift` is the one place that knows both halves of every port. It picks the
 storage and the preferences suite from the launch arguments, opens the SwiftData adapter,
 falls back to the null object on failure, creates the view model in `@State` over both
-adapters, and hands it to the root view. A
-second screen or a second port is wired here too; if the wiring grows past a handful of
-lines, it moves into an `AppDependencies` value built in `App/` — still no singletons.
+adapters, and hands it to the root view. It also owns the `NavigationModel` and forwards
+opened URLs to it (`.onOpenURL`). A second screen or a second port is wired here too; if
+the wiring grows past a handful of lines, it moves into an `AppDependencies` value built
+in `App/` — still no singletons.
 
 ## Concurrency
 
@@ -260,7 +297,7 @@ lines, it moves into an `AppDependencies` value built in `App/` — still no sin
 
 Shipped code logs through `AppLog` in Core — `os.Logger`, one subsystem (the bundle
 identifier, checked against `project.yml` by `AppLogTests`) and one category per concern
-(`todos`, `persistence`, `network`, `preferences`). `print`, `debugPrint`, and `NSLog` are
+(`todos`, `persistence`, `network`, `preferences`, `navigation`). `print`, `debugPrint`, and `NSLog` are
 rejected under `Packages/*/Sources/` and `App/` by `.swiftlint.yml`'s
 `no_print_in_sources`: an app launched from the Home Screen has nowhere to send stdout. Anything user-derived is
 interpolated `.private`; identifiers, counts, and operation names are `.public`.
@@ -312,6 +349,7 @@ device that ran an earlier build, or the user.
 | **Core's public API** | `MyAppUI`, `MyAppPlatform`, `App/`, the tests | Update every caller in the same pull request; a new public declaration carries a `///` saying why; a new port is an ADR |
 | **The bundle identifier** (`PRODUCT_BUNDLE_IDENTIFIER` in `project.yml`) | The app's data container and Keychain items on every device, App Store Connect, push and other capabilities, `AppLog.subsystem`, `just run`/`just logs` | Fixed once a build has left your machine: a new identifier is a new app, and the user's data stays behind. `project.yml` and `AppLog.subsystem` change together (`AppLogTests`) |
 | **The stored schema** (`TodoSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus a `TodoMigrationPlan` stage, with a test that opens a store written by the previous version. Never edit a shipped schema version |
+| **The URL scheme** (`DeepLink.scheme`, registered in `project.yml`) | Links to the app in messages, notes, and other apps | Fixed once a build has left your machine: a renamed scheme breaks every link in the wild. `project.yml` and `DeepLink.scheme` change together (`DeepLinkTests`); a new link shape is a new `DeepLink` case with its tests, and an old shape keeps parsing |
 | **`UserDefaults` keys and file formats** | Saved preferences and files on a user's device | Read the old key or format and migrate it in Core, with a test that starts from the old value. Every key is a `PreferenceKeys` constant, pinned by `PreferenceKeysTests` |
 
 Everything else is private: `internal` declarations, how an adapter talks to its
@@ -329,7 +367,9 @@ framework, view structure, file and type layout, test helpers, log messages.
    `Tests/MyAppPlatformTests`.
 5. The view in `MyAppUI`, rendering the view model; `#Preview` per state; accessibility
    identifiers on what a UI test touches.
-6. The wiring in `App/`.
+6. A case in `AppRoute`, and its destination in the root `navigationDestination`
+   (Navigation, above).
+7. The wiring in `App/`.
 
 **A new OS integration** (notifications, location, photos, purchases): the same port and
 adapter shape. The framework import lives only in `MyAppPlatform`; the permission's
