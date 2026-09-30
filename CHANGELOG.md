@@ -23,3 +23,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plain-bash tests for every script under `scripts/`, run with the skills' Python suites
   by `just test-scripts`
 - Pre-commit staged guard for secret-shaped paths and content, and `just verify-hooks`
+- Path-scoped Claude Code rules under `.claude/rules/`, and a PostToolUse hook that formats
+  the edited Swift file

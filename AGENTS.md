@@ -160,6 +160,18 @@ into `.claude/skills/`, the only path Claude Code reads:
 More skills are ported from the macOS template by open issues (see
 [Harness status](#harness-status)).
 
+### Rules
+
+The files under `.claude/rules/` load by path: each applies while you touch a file
+matching its `paths:` globs.
+
+| Rule | Loads when you touch |
+|---|---|
+| `.claude/rules/project.md` | `project.yml`, `Packages/**/Package.swift`, `Packages/**/Package.resolved`, `mise.toml`, `.swiftlint.yml`, `.swiftformat`, `scripts/coverage.sh` |
+| `.claude/rules/docs.md` | `docs/**/*.md`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md` |
+| `.claude/rules/swift.md` | `Packages/**/*.swift`, `App/**/*.swift` |
+| `.claude/rules/testing.md` | `Packages/**/Tests/**`, `LaunchUITests/**` |
+
 ### Sub-agents
 
 `.claude/agents/` defines three named sub-agent tiers a skill or session hands a step to
@@ -240,7 +252,9 @@ carry no shebang or `set` line of their own):
   also need Xcode's `xcrun` and `python3`, as their headers say.
 - Failure contract: the first stderr line is `ERR_<STAGE>_<WHAT>: <what failed>`, then
   `Expected:`, `Actual:`, and `Next:` lines (the next safe command); exit 1. List the
-  codes in the script's header comment. Never print a secret value.
+  codes in the script's header comment. Never print a secret value. The one exit-code
+  exception is `scripts/format-edited-file.sh`, which exits 2: Claude Code feeds a
+  `PostToolUse` hook's stderr back to the agent only on exit 2.
 - Never assume the checkout is the only repository on the machine. A script that
   enumerates or rewrites tracked files refuses to run outside a git work tree (the
   `scripts/lint.sh` pattern, `ERR_LINT_NOT_A_REPO`); a check that is meaningless
@@ -268,9 +282,8 @@ carry no shebang or `set` line of their own):
 This repository is being brought up to the macOS template's harness
 (`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
 in order. What exists today is what the tables above describe. Not yet ported, each owned by
-an open issue: the harness self-checks
-(`scripts/checks/`, `just check-harness`), `.claude/rules/` and the format-on-edit hook,
-the remaining skills and the ADR tree, labels and the branch ruleset as code, PR hygiene
+an open issue: the harness self-checks (`scripts/checks/`, `just check-harness`), the
+remaining skills and the ADR tree, labels and the branch ruleset as code, PR hygiene
 and security workflows, dependency bots, `scripts/bootstrap.sh`, the localization
 harness, the iOS design system, distribution, and the fuller documentation. When an issue
 lands one of these, it updates this section and the tables above in the same pull
@@ -286,7 +299,7 @@ request.
 | `.swiftlint.yml`'s `no_print_in_sources` | the hook, `just lint`, CI `lint` | no `print`/`debugPrint`/`NSLog` in shipped code |
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
-| `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary |
+| `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary. `hooks` holds one `PostToolUse` hook, `scripts/format-edited-file.sh`, that runs `swiftformat` on the one `.swift` file an `Edit`/`Write`/`MultiEdit` touched and reports a failure back to the agent (exit 2) — a convenience on this host only; the git hook is the gate |
 | CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest) |
 
 `git commit --no-verify` bypasses the hook, and a clone where `just install` never ran

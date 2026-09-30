@@ -28,6 +28,7 @@
       "Bash(mise exec -- scripts/lint.sh)",
       "Bash(scripts/lint.sh)",
       "Bash(scripts/check-staged.sh)",
+      "Bash(scripts/format-edited-file.sh:*)",
       "Bash(scripts/coverage.sh)",
       "Bash(scripts/tests/run.sh)",
       "Bash(scripts/bundle-id.sh)",
@@ -97,6 +98,19 @@
       "Bash(git push +*)",
       "Bash(git push * +*)",
       "Edit(/App/*.entitlements)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && mise exec -- scripts/format-edited-file.sh"
+          }
+        ]
+      }
     ]
   }
 }
