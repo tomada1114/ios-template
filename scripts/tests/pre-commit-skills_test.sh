@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Tests for the "Skills mirror" section of .githooks/pre-commit. Each case builds a
-# throwaway git repository with its own copy of the hook, scripts/lint.sh, and
-# scripts/sync-agents.sh, with core.hooksPath pointing at .githooks, so the real
+# throwaway git repository with its own copy of the hook, scripts/lint.sh,
+# scripts/sync-agents.sh, and the "Staged guard" section's scripts/check-staged.sh and
+# scripts/guard/ (every commit reaches that section), with core.hooksPath pointing at .githooks, so the real
 # checkout is never touched. None of these commits stage a Swift file, so the
 # Swift-lint section never runs and no case needs swiftformat, swiftlint, or mise —
 # only git, diff, and the shell, which every machine running these tests already has.
@@ -13,6 +14,7 @@ trap cleanup_temp EXIT
 HOOK_SRC="${REPO_ROOT}/.githooks/pre-commit"
 LINT_SRC="${REPO_ROOT}/scripts/lint.sh"
 SYNC_SRC="${REPO_ROOT}/scripts/sync-agents.sh"
+CHECK_STAGED_SRC="${REPO_ROOT}/scripts/check-staged.sh"
 
 # Prints a repo with .githooks/pre-commit (wired via core.hooksPath), copies of
 # scripts/lint.sh and scripts/sync-agents.sh, and a synced .agents/skills/ +
@@ -24,7 +26,10 @@ make_repo_with_hook() {
     cp "${HOOK_SRC}" "${repo}/.githooks/pre-commit"
     cp "${LINT_SRC}" "${repo}/scripts/lint.sh"
     cp "${SYNC_SRC}" "${repo}/scripts/sync-agents.sh"
-    chmod +x "${repo}/.githooks/pre-commit" "${repo}/scripts/lint.sh" "${repo}/scripts/sync-agents.sh"
+    cp "${CHECK_STAGED_SRC}" "${repo}/scripts/check-staged.sh"
+    cp -R "${REPO_ROOT}/scripts/guard" "${repo}/scripts/guard"
+    chmod +x "${repo}/.githooks/pre-commit" "${repo}/scripts/lint.sh" "${repo}/scripts/sync-agents.sh" \
+        "${repo}/scripts/check-staged.sh"
     git -C "${repo}" config core.hooksPath .githooks
 
     mkdir -p "${repo}/.agents/skills/alpha" "${repo}/.claude"

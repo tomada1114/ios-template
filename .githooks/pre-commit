@@ -71,3 +71,14 @@ if [ ${#STAGED_SKILLS_FILES[@]} -gt 0 ]; then
         xargs -0 git checkout-index --prefix="${STAGED_SKILLS_TREE}/" --
     scripts/sync-agents.sh --check --root "${STAGED_SKILLS_TREE}"
 fi
+
+# --- Staged guard ------------------------------------------------------------
+# Fires on every commit that stages any change — not only commits with a Swift
+# file. scripts/check-staged.sh reads the index itself: it refuses a secret-shaped
+# staged path (scripts/guard/paths.sh), then scans the staged content of every path
+# that passes (scripts/guard/credentials.sh), and never inspects a staged deletion.
+# It needs only git, grep, and the shell, so it runs without `mise exec --`.
+if ! git diff --cached --quiet; then
+    echo "pre-commit: Staged guard — checking staged paths and content for secret shapes"
+    scripts/check-staged.sh
+fi
