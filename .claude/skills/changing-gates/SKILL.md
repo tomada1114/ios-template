@@ -90,13 +90,10 @@ CI, never as a silent rewrite. Changing an option reformats the whole tree: land
 option and the resulting reformat in the same commit, and check that the output still
 passes `swiftlint --strict`. `--swiftversion` follows the package's tools version.
 
-`--decimalgrouping 3,4` is the same agreement as `trailing_comma` in the other
-direction: SwiftLint's `number_separator` requires separators from four digits, so
-SwiftFormat is set to group by three from four digits up rather than SwiftLint being
-relaxed — otherwise `just fmt` strips a separator from a four-digit literal that
-`swiftlint --strict` then demands back. `scripts/tests/lint_test.sh`'s number-separator
-case (a 4- and a 5-digit literal pass both linters) runs the pinned tools against each
-other and fails if they drift, for example on a SwiftLint or SwiftFormat bump.
+`--decimalgrouping 3,4` and SwiftLint's `number_separator` must agree, as must
+`trailing_comma`; fix a drift by aligning SwiftFormat, never by relaxing SwiftLint. Read
+[references/swiftformat-agreement.md](references/swiftformat-agreement.md) for why and
+for the `scripts/tests/lint_test.sh` case that fails if the pinned tools drift.
 
 ## `Package.swift`'s `strictSettings`
 
@@ -123,21 +120,15 @@ every macOS job reads through `.github/actions/select-xcode`.
 
 ## `scripts/coverage.sh`
 
-It gates on line and function coverage of `Sources/MyAppCore/` only, by filtering
-llvm-cov's report to that path. `MyAppUI` and `MyAppPlatform` are outside it because a
-view or an adapter holds translation rather than a decision (`AGENTS.md`'s
-"Architecture") — not because nothing exercises them: `MyAppPlatformTests` runs under
-plain `swift test`, so under `just test` and CI's `test` job, against an in-memory
-SwiftData store that needs no device and no permission. The filter is a path, not a
-target list, so those tests add nothing to the floor. The floors are `readonly COVERAGE_FLOOR=80` (lines) and
-`FUNCTION_COVERAGE_FLOOR=75` in the script and nothing else — no environment variable or
-flag moves either, so every change is a reviewed diff of this file, and only ever a
-raise. The function floor sits lower because llvm-cov counts compiler-generated closures
-(an `os.Logger` interpolation) as functions no test evaluates; the script's header
-records the value it was set against. The script rejects the environment override it
-used to read with `ERR_COVERAGE_OVERRIDE_REMOVED` before any test runs, rather than
-silently ignoring it; `scripts/tests/coverage_test.sh` holds that. Adding a new way to
-set the floor from a recipe, workflow, or hook is lowering it by another route.
+It gates line and function coverage of `Sources/MyAppCore/` only, filtered by path, so
+`MyAppUI` and `MyAppPlatform` tests add nothing to the floor. The floors are
+`readonly COVERAGE_FLOOR=80` (lines) and `FUNCTION_COVERAGE_FLOOR=75` in the script and
+nothing else — no environment variable or flag moves either, so every change is a
+reviewed diff of this file, and only ever a raise. The script rejects its removed
+environment override with `ERR_COVERAGE_OVERRIDE_REMOVED` (`scripts/tests/coverage_test.sh`
+holds that). Adding a new way to set the floor from a recipe, workflow, or hook is
+lowering it by another route. Read [references/coverage-floor.md](references/coverage-floor.md)
+for why only Core is gated and why the function floor sits lower.
 
 ## `.githooks/pre-commit`
 
@@ -180,34 +171,13 @@ exception added to `scripts/checks/just-check-matches-ci.sh` carries its reason.
 
 ## `.github/workflows/`
 
-`ci.yml` splits into `lint` (ubuntu: `scripts/lint.sh`, `scripts/tests/run.sh`,
-`scripts/checks/run-all.sh`), `test` (macos-26: `scripts/coverage.sh`), `app`
-(macos-26: `just build`, then `just uitest` on an iPhone simulator that
-`scripts/simulator-destination.sh` chooses, then the "Smoke launch (Release)" step,
-`just smoke` — `scripts/smoke_launch.sh` builds Release and asserts the app stays alive
-on that simulator for ten seconds — with the `.xcresult` bundles uploaded on failure),
-`ios-tests` (macos-26, the required `Package Tests (iOS Simulator)`: `just test-ios` runs
-every package test suite on that simulator, with no coverage floor, uploading its
-`.xcresult` on failure), `bootstrap-smoke` (macos-26, the required
-`Template Bootstrap Smoke`: `scripts/bootstrap.sh` renames a clone of the template, then
-the renamed tree is linted, tested, and built for the simulator — template-only, so the
-rename removes it from every app), and `zizmor` (ubuntu: the required `Workflow Security Lint`, zizmor's audit of
-every workflow, configured by `.github/zizmor.yml`). Beside it run `check-pr-title.yml`
-(the required `Validate PR title`) and `pr-label.yml`, which labels a pull request from
-its title type with `scripts/label-pr.sh` checked out at the base SHA, and the security
-workflows: `codeql.yml` (CodeQL for the package's Swift, on push to `main` and weekly),
-`gitleaks.yml` (a checksum-verified full-history gitleaks scan, weekly and on a pull
-request that edits it, with `.gitleaksignore` holding the fake fixture's fingerprints),
-`osv-scan.yml` (OSV on every pull request and weekly), `dependency-review.yml` (the
-required `Dependency Review`, with the license allow-list), and `scorecard.yml` (OpenSSF
-Scorecard, weekly). A job added later is added to this paragraph by the change that adds
-it.
+`ci.yml` runs the jobs `lint`, `test`, `app`, `ios-tests`, `bootstrap-smoke`, and
+`zizmor`; the PR-title, labeling, and security workflows run beside it, and Dependabot
+bumps the pinned `uses:` SHAs. A job or workflow added later is added to
+[references/ci-jobs.md](references/ci-jobs.md) — what each runs, which contexts are
+required, and when each fires — by the change that adds it.
 Which layer holds what is `AGENTS.md`'s "Enforcement layers" table; read it rather than
 re-deriving it.
-
-Dependabot (`.github/dependabot.yml`) bumps the pinned `uses:` SHAs and their `# v…`
-comments in `ci:`-prefixed pull requests (Toolchain Pinning's prefix and cooldown, held
-by `scripts/checks/dependency-bots-agree.sh`).
 
 Every workflow follows a set of conventions — remote `uses:` pinned to a full SHA, a
 narrow top-level `permissions:`, `persist-credentials: false`, a `pull_request`
