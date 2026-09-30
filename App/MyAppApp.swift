@@ -21,15 +21,19 @@ struct MyAppApp: App {
         ProcessInfo.processInfo.arguments.contains(uiTestingArgument)
     }
 
-    /// Owned here, in `@State`, so the model outlives any one scene's view tree.
+    /// Owned here, in `@State`, so the models outlive any one scene's view tree.
     @State private var todoList = TodoListViewModel(
         repository: Self.makeRepository(),
         preferences: Self.makePreferences(),
     )
+    @State private var navigation = NavigationModel()
 
     var body: some Scene {
         WindowGroup {
-            TodoListView(model: todoList)
+            // A `my-app://` link (project.yml registers the scheme) goes to Core, which
+            // decides what it opens.
+            TodoListView(model: todoList, navigation: navigation)
+                .onOpenURL { navigation.open($0) }
         }
     }
 
