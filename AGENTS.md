@@ -86,6 +86,7 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | A skill under `.agents/skills/` | `just agents-sync`, then `just agents-check` and `just check-harness`; `just test-scripts` when the skill ships scripts (it runs their `scripts/tests/` unittest suite) |
 | A workflow under `.github/workflows/` | `just lint` (actionlint), then `just check-harness` |
 | Markdown | `just lint` (its `typos` spell-check) |
+| `docs/architecture/` (an ADR, the index, the roadmap) | `just lint` (its `typos` spell-check) |
 | `mise.toml` | `mise install`, then `just check` |
 | `.github/labels.yml`, or an issue form under `.github/ISSUE_TEMPLATE/` | `just lint` (its `typos` spell-check), then `just check-harness` (every applied label declared, once); `scripts/tests/sync-labels_test.sh` for `scripts/sync-labels.sh` itself |
 | `.github/rulesets/main.json`, or `scripts/apply-ruleset.sh` | `scripts/tests/apply-ruleset_test.sh`; `just check-harness` for `main.json` (`scripts/checks/ruleset-contexts.sh` reads it) |
@@ -131,17 +132,33 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
 
 ## Before changing the architecture
 
-A change to any of these is a decision a human makes, recorded as an ADR once the ADR
-tree (`docs/architecture/`) is ported — until then, in the pull request description:
+An app cut from this template records its architecture decisions as ADRs under
+`docs/architecture/` — start at its `README.md`, the index, whose statuses say what is
+decided and what is only proposed. `docs/architecture.md` describes the layers every app
+starts with; the ADRs record what the app decided on top of them. A change to any of
+these owes an ADR, as `recording-architecture-decisions` sets out:
 
 - a new target (`project.yml`, `Package.swift`) or a new Core port;
-- persistence — a new store, a schema version, CloudKit sync;
+- the device family and scene model — iPhone only or iPhone and iPad
+  (`TARGETED_DEVICE_FAMILY`), and multiple windows (`UIApplicationSupportsMultipleScenes`);
+- a capability or entitlement — Push Notifications, iCloud/CloudKit, App Groups,
+  Background Modes, Associated Domains, Sign in with Apple, HealthKit, or any other;
+- persistence — where and in what format state is kept: the SwiftData schema and its
+  migration plan (`VersionedSchema`/`SchemaMigrationPlan`), CloudKit sync, `UserDefaults`
+  keys, files;
 - a new dependency;
-- a capability or entitlement (push, iCloud, App Groups, HealthKit, …) or a permission
-  prompt (notifications, location, photos, camera, tracking);
-- distribution — TestFlight, the App Store, signing;
+- distribution — App Store, TestFlight (internal or external), or another channel;
 - `deploymentTarget` in `project.yml`, with `platforms:` in `Package.swift`;
+- a privacy-gated permission — an `Info.plist` usage-description key (camera, photo
+  library, location, contacts, microphone, notifications authorization, App Tracking
+  Transparency) — or a required-reason API declared in `PrivacyInfo.xcprivacy`;
 - a shipped language beyond English.
+
+An agent writes an ADR as Proposed; only a human accepts it. An ADR records reasoning and
+grants nothing: an entitlement, a signing change, or a new dependency still needs the
+sign-off "Security and human approval" asks for. The template repository ships the index
+empty — its own reasoning lives in `docs/architecture.md`'s "Decisions at a glance", and
+ADRs belong to the apps cut from it.
 
 ## Skills
 
@@ -166,6 +183,11 @@ into `.claude/skills/`, the only path Claude Code reads:
 | `changing-gates` | a file that enforces rather than implements: `.swiftlint.yml`, `.swiftformat`, `Package.swift`'s `strictSettings`, `mise.toml`, `.githooks/pre-commit`, `scripts/lint.sh`, `scripts/coverage.sh`, the `scripts/guard/` commit-time guard, a `scripts/checks/` harness check, or a workflow — and which gate would catch a change |
 | `authoring-skills` | adding, editing, or reviewing a skill: authoring under `.agents/skills/`, the `just agents-sync` mirror, frontmatter, layout, and size limits |
 | `writing-repo-scripts` | writing or testing a shell script under `scripts/`, `.githooks/pre-commit`, or `scripts/tests/`: why bash, refusing or skipping outside a git checkout, the stderr contract by example, and `scripts/tests/lib.sh` |
+| `designing-errors` | an `Error` type, a `throws`/`throws(E)` signature, a `do`/`catch`, or cancellation: Core error enums, typed throws, no user data in errors or logs, `CancellationError`, and mapping a SwiftData or Foundation (`NSError`/`CocoaError`) error in an adapter |
+| `designing-core-logic` | shaping logic in `MyAppCore`: injecting time (`Clock`, a `() -> Date`), identifiers, `Locale`, and a `RandomNumberGenerator`; one `Tuning` type for tunables; action-shaped `@Observable` view models; and the patterns deliberately not adopted |
+| `recording-architecture-decisions` | the ADRs under `docs/architecture/`: whether a change owes an ADR (a target or port, the device family and scene model, a capability or entitlement, persistence, a dependency, distribution, `deploymentTarget`, a privacy-gated permission, a shipped language), an ADR's statuses, amending versus superseding, and fact discipline — every external claim with a URL and a checked date |
+| `steering-the-roadmap` | the app's direction in `docs/architecture/roadmap.md`: its Now / Next / Later horizons, who changes it and when, how the backlog and parked `on hold` issues feed it, and answering "what is next?" before `shipping-issues` |
+| `updating-docs` | deciding whether a change owes a documentation update and which surface it lands on: `README.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/architecture.md`, `docs/architecture/`, a skill, or a `///` comment |
 
 More skills are ported from the macOS template by open issues (see
 [Harness status](#harness-status)).
@@ -312,7 +334,7 @@ libraries are sourced, so they carry no shebang or `set` line of their own):
 This repository is being brought up to the macOS template's harness
 (`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
 in order. What exists today is what the tables above describe. Not yet ported, each owned
-by an open issue: the remaining skills and the ADR tree, security workflows, dependency
+by an open issue: the remaining skills, security workflows, dependency
 bots, `scripts/bootstrap.sh`, the localization harness, the iOS design system,
 distribution, and the fuller documentation. When an issue lands one of these, it updates
 this section and the tables above in the same pull request.

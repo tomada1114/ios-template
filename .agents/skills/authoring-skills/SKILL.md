@@ -14,8 +14,8 @@ description: >
 **Owns:** how a skill in this repository is authored, mirrored, and kept from silently
 failing to load. **Does not own:** how a script under `scripts/` is written
 (`writing-repo-scripts`); a change to the gate files that run the mirror check
-(`changing-gates`); which documentation surface a change lands on; the content of any
-individual skill.
+(`changing-gates`); which documentation surface a change lands on (`updating-docs`); the
+content of any individual skill.
 
 ## The single source of truth
 
@@ -123,7 +123,8 @@ the same commit, and widening a skill's subject means widening its row. Enforced
 - **Platform skills.** A skill about an iOS or Apple API surface holds only what this
   repository decided there and why. It links Apple's documentation by URL instead of
   restating it, and a version, availability, or policy it must state carries its URL and
-  a checked date.
+  a checked date (**BACKGROUND:** `recording-architecture-decisions` › "Fact
+  discipline").
 
 ## Where a skill lives
 
