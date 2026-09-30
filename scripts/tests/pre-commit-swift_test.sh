@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Tests for the "Swift lint" section of .githooks/pre-commit. Each case builds a
-# throwaway git repository with its own copy of the hook, scripts/lint.sh, and
-# scripts/sync-agents.sh, with core.hooksPath pointing at .githooks, so the real
-# checkout is never touched.
+# throwaway git repository with its own copy of the hook, scripts/lint.sh,
+# scripts/sync-agents.sh, and the "Staged guard" section's scripts/check-staged.sh and
+# scripts/guard/ (every commit reaches that section), with core.hooksPath pointing at
+# .githooks, so the real checkout is never touched.
 #
 # `mise` is stubbed, so `mise exec -- scripts/lint.sh --staged-tree DIR` never reaches
 # a real linter: the stub records its arguments, copies DIR before the hook's cleanup
@@ -15,8 +16,8 @@ set -euo pipefail
 trap cleanup_temp EXIT
 
 # Prints a repo with .githooks/pre-commit (wired via core.hooksPath), copies of
-# scripts/lint.sh and scripts/sync-agents.sh, and a README, all committed as the
-# starting point for each case.
+# scripts/lint.sh, scripts/sync-agents.sh, scripts/check-staged.sh, and
+# scripts/guard/, and a README, all committed as the starting point for each case.
 make_repo_with_hook() {
     local repo
     repo=$(make_temp_repo)
@@ -24,7 +25,10 @@ make_repo_with_hook() {
     cp "${REPO_ROOT}/.githooks/pre-commit" "${repo}/.githooks/pre-commit"
     cp "${REPO_ROOT}/scripts/lint.sh" "${repo}/scripts/lint.sh"
     cp "${REPO_ROOT}/scripts/sync-agents.sh" "${repo}/scripts/sync-agents.sh"
-    chmod +x "${repo}/.githooks/pre-commit" "${repo}/scripts/lint.sh" "${repo}/scripts/sync-agents.sh"
+    cp "${REPO_ROOT}/scripts/check-staged.sh" "${repo}/scripts/check-staged.sh"
+    cp -R "${REPO_ROOT}/scripts/guard" "${repo}/scripts/guard"
+    chmod +x "${repo}/.githooks/pre-commit" "${repo}/scripts/lint.sh" "${repo}/scripts/sync-agents.sh" \
+        "${repo}/scripts/check-staged.sh"
     git -C "${repo}" config core.hooksPath .githooks
     echo "hello" >"${repo}/README.md"
     git -C "${repo}" add -A
