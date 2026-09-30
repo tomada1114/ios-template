@@ -33,3 +33,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tree under `docs/architecture/`
 - CodeQL, gitleaks, OSV, dependency review, Scorecard, and zizmor workflows; SECURITY.md
   and CODE_OF_CONDUCT.md
+- `scripts/bootstrap.sh` renames the template into an app, checked by CI's Template
+  Bootstrap Smoke job

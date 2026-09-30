@@ -23,7 +23,9 @@ repository port with a SwiftData adapter, a fake and a contract test, and an XCU
 **TODO: in the template this section is a placeholder.** It is the one part of this
 file about the application rather than the harness, so every repository cut from the
 template writes its own: without it an agent implementing an issue here has no in-repo
-answer to "is this in scope?".
+answer to "is this in scope?". Fill in every `TODO:` below right after the rename
+(`README.md`'s "Using This Template", step 3) — once `scripts/bootstrap.sh` has run,
+`just check-harness` fails while one is left (`scripts/checks/product-section-filled.sh`).
 
 - **What it is, and who it is for** — TODO: one paragraph. The problem it solves, and
   whose problem that is.
@@ -82,7 +84,7 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | A shell script under `scripts/` (including the sourced `scripts/guard/*.sh`), or `.githooks/pre-commit` | `just lint`, then `just test-scripts` |
 | `scripts/verify-hooks.sh` | `just lint`, then `just test-scripts`; `just verify-hooks` for the check itself |
 | A harness check under `scripts/checks/` (including the sourced `scripts/checks/lib.sh`) | `just lint`, then `just test-scripts`; `just check-harness` for the checks themselves |
-| A `just` recipe name, a workflow's `uses:`, `permissions:`, `concurrency:`, or `run:` shell, a skill's frontmatter, the Skills table, `.claude/settings.json`'s `permissions` rules, the Core import ban list (`.swiftlint.yml`'s `no_ui_import_in_core` or `ArchitectureBoundaryTests.forbiddenModules`), the gates `just check` or `ci.yml` runs, `.github/rulesets/main.json`'s required contexts, or a label an issue form, a workflow, or `scripts/label-pr.sh` applies | `just check-harness` |
+| A `just` recipe name, a workflow's `uses:`, `permissions:`, `concurrency:`, or `run:` shell, a skill's frontmatter, the Skills table, the `## Product` section, `.claude/settings.json`'s `permissions` rules, the Core import ban list (`.swiftlint.yml`'s `no_ui_import_in_core` or `ArchitectureBoundaryTests.forbiddenModules`), the gates `just check` or `ci.yml` runs, `.github/rulesets/main.json`'s required contexts, or a label an issue form, a workflow, or `scripts/label-pr.sh` applies | `just check-harness` |
 | A skill under `.agents/skills/` | `just agents-sync`, then `just agents-check` and `just check-harness`; `just test-scripts` when the skill ships scripts (it runs their `scripts/tests/` unittest suite) |
 | A workflow under `.github/workflows/` | `just lint` (actionlint), then `just check-harness` |
 | Markdown | `just lint` (its `typos` spell-check) |
@@ -187,6 +189,7 @@ into `.claude/skills/`, the only path Claude Code reads:
 | `designing-core-logic` | shaping logic in `MyAppCore`: injecting time (`Clock`, a `() -> Date`), identifiers, `Locale`, and a `RandomNumberGenerator`; one `Tuning` type for tunables; action-shaped `@Observable` view models; and the patterns deliberately not adopted |
 | `recording-architecture-decisions` | the ADRs under `docs/architecture/`: whether a change owes an ADR (a target or port, the device family and scene model, a capability or entitlement, persistence, a dependency, distribution, `deploymentTarget`, a privacy-gated permission, a shipped language), an ADR's statuses, amending versus superseding, and fact discipline — every external claim with a URL and a checked date |
 | `steering-the-roadmap` | the app's direction in `docs/architecture/roadmap.md`: its Now / Next / Later horizons, who changes it and when, how the backlog and parked `on hold` issues feed it, and answering "what is next?" before `shipping-issues` |
+| `starting-an-app` | turning this template into a new app: `scripts/bootstrap.sh`'s rename, the template-only passages it removes, what the new repository keeps, its `just labels` and `just ruleset` setup, choosing the device family (iPhone only or iPhone and iPad), and deciding which capabilities and entitlements it takes |
 | `updating-docs` | deciding whether a change owes a documentation update and which surface it lands on: `README.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/architecture.md`, `docs/architecture/`, a skill, or a `///` comment |
 
 More skills are ported from the macOS template by open issues (see
@@ -340,22 +343,24 @@ libraries are sourced, so they carry no shebang or `set` line of their own):
   (`guard-paths_test.sh`, `guard-credentials_test.sh`). The harness checks under
   `scripts/checks/`, their runner `run-all.sh`, and their sourced `lib.sh` share one
   test file, `scripts/tests/checks_test.sh`, which builds a fixture tree per failure
-  mode and points each check at it with `--root`. Known exception: `coverage.sh`, whose test file
-  `scripts/tests/coverage_test.sh` is partial — it stubs `swift` to cover its rejection
-  of the removed environment override and its line- and function-floor comparisons,
-  but not a real coverage run, which is CI's `test` job. `coverage.sh`'s
-  below-the-line-floor failure also predates the failure contract and does not follow
-  it yet (its function-floor failure, `ERR_COVERAGE_FUNCTIONS_BELOW_FLOOR`, does).
+  mode and points each check at it with `--root`. Known exceptions, each with its
+  reason: `bootstrap.sh`, which has no test file — it is exercised end to end by CI's
+  `bootstrap-smoke` job, which renames a clone of the template with it; and
+  `coverage.sh`, whose test file `scripts/tests/coverage_test.sh` is partial — it stubs
+  `swift` to cover its rejection of the removed environment override and its line- and
+  function-floor comparisons, but not a real coverage run, which is CI's `test` job.
+  `coverage.sh`'s below-the-line-floor failure also predates the failure contract and
+  does not follow it yet (its function-floor failure,
+  `ERR_COVERAGE_FUNCTIONS_BELOW_FLOOR`, does).
 
 ## Harness status
 
 This repository is being brought up to the macOS template's harness
 (`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
 in order. What exists today is what the tables above describe. Not yet ported, each owned
-by an open issue: the remaining skills, dependency bots, `scripts/bootstrap.sh`, the
-localization harness, the iOS design system, distribution, and the fuller documentation.
-When an issue lands one of these, it updates this section and the tables above in the
-same pull request.
+by an open issue: the remaining skills, dependency bots, the localization harness, the
+iOS design system, distribution, and the fuller documentation. When an issue lands one
+of these, it updates this section and the tables above in the same pull request.
 
 ## Enforcement layers
 
@@ -363,13 +368,13 @@ same pull request.
 |---|---|---|
 | `.githooks/pre-commit` (installed by `just install`) | `git commit` | `scripts/lint.sh --staged-tree` on the staged Swift files; the skills-mirror check when a staged path is under `.agents/skills/` or `.claude/skills/`; the staged guard (`scripts/check-staged.sh`, rules in `scripts/guard/`) on every commit that stages a change — no secret-shaped path or credential-shaped content lands in a commit, and a staged deletion is never inspected |
 | `scripts/verify-hooks.sh` (`just install`'s last step, and `just check`'s first) | `just install`, `just check` | git resolves the hooks directory to `.githooks/` and `.githooks/pre-commit` is executable — skips under CI or the `ALLOW_MISSING_GIT_HOOKS` opt-out |
-| `scripts/checks/run-all.sh` (`just check-harness`, part of `just check` before `just test`) | `just check-harness`, `just check`, CI `lint` | the harness's claims about itself stay true — every `just <recipe>` in this file exists and every `Bash(just <recipe>…)` rule in `.claude/settings.json` names a recipe the justfile defines, every workflow has a top-level `permissions:` and every non-local `uses:` (workflows and composite actions) is pinned to a full SHA with a `# v…` comment, no workflow grants a `write` scope or a `read-all`/`write-all` shorthand at the top level (a write goes on the job that needs it, and no job takes a shorthand), every workflow triggered on `pull_request` declares a top-level `concurrency:`, and every declared group varies per run, is unique to its workflow unless it names `github.workflow`, and never cancels in progress on a `push` except through a `github.event_name` expression, every `run:` step (composite actions included) resolves to `shell: bash` (`-eo pipefail`) or opens with a `set` carrying `-e` and `pipefail`, every skill's frontmatter is exactly a matching `name` and a `description`, no `SKILL.md` sits below a skill's top directory and every skill's `description` is printable ASCII, at most 1,024 characters, and free of unquoted values Codex CLI's YAML parser rejects, the Skills table matches `.agents/skills/`, every required status-check context in `.github/rulesets/main.json` matches a job `name:` (or id) in a workflow triggered on `pull_request`, `.swiftlint.yml`'s `no_ui_import_in_core` regex and `ArchitectureBoundaryTests.forbiddenModules` ban the same modules, the gates `just check` runs and the `run:` steps of `.github/workflows/ci.yml` match in both directions apart from the reasoned exception list in `scripts/checks/just-check-matches-ci.sh`, and every label an issue form, a workflow, or `scripts/label-pr.sh`'s type-to-label mapping applies is declared in `.github/labels.yml` and no label is declared there twice |
+| `scripts/checks/run-all.sh` (`just check-harness`, part of `just check` before `just test`) | `just check-harness`, `just check`, CI `lint` | the harness's claims about itself stay true — every `just <recipe>` in this file exists and every `Bash(just <recipe>…)` rule in `.claude/settings.json` names a recipe the justfile defines, every workflow has a top-level `permissions:` and every non-local `uses:` (workflows and composite actions) is pinned to a full SHA with a `# v…` comment, no workflow grants a `write` scope or a `read-all`/`write-all` shorthand at the top level (a write goes on the job that needs it, and no job takes a shorthand), every workflow triggered on `pull_request` declares a top-level `concurrency:`, and every declared group varies per run, is unique to its workflow unless it names `github.workflow`, and never cancels in progress on a `push` except through a `github.event_name` expression, every `run:` step (composite actions included) resolves to `shell: bash` (`-eo pipefail`) or opens with a `set` carrying `-e` and `pipefail`, every skill's frontmatter is exactly a matching `name` and a `description`, no `SKILL.md` sits below a skill's top directory and every skill's `description` is printable ASCII, at most 1,024 characters, and free of unquoted values Codex CLI's YAML parser rejects, the Skills table matches `.agents/skills/`, every required status-check context in `.github/rulesets/main.json` matches a job `name:` (or id) in a workflow triggered on `pull_request`, `.swiftlint.yml`'s `no_ui_import_in_core` regex and `ArchitectureBoundaryTests.forbiddenModules` ban the same modules, the gates `just check` runs and the `run:` steps of `.github/workflows/ci.yml` match in both directions apart from the reasoned exception list in `scripts/checks/just-check-matches-ci.sh`, and every label an issue form, a workflow, or `scripts/label-pr.sh`'s type-to-label mapping applies is declared in `.github/labels.yml` and no label is declared there twice, and the `## Product` section above stays a `TODO:` skeleton here while `project.yml` still names the template's app-name placeholder and holds no `TODO:` marker once `scripts/bootstrap.sh` has renamed this into an app |
 | `.swiftlint.yml`'s `no_ui_import_in_core` + `ArchitectureBoundaryTests` | the hook, `just lint`, CI `lint`; `just test`, CI `test` | Core's import ban; UI and Platform never import each other; no shipped module imports `MyAppTestSupport` |
 | `.swiftlint.yml`'s `no_print_in_sources` | the hook, `just lint`, CI `lint` | no `print`/`debugPrint`/`NSLog` in shipped code |
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
 | `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary. `hooks` holds one `PostToolUse` hook, `scripts/format-edited-file.sh`, that runs `swiftformat` on the one `.swift` file an `Edit`/`Write`/`MultiEdit` touched and reports a failure back to the agent (exit 2) — a convenience on this host only; the git hook is the gate |
-| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest), and the `zizmor` workflow lint (`Workflow Security Lint`) |
+| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest), `bootstrap-smoke` (`Template Bootstrap Smoke`: `scripts/bootstrap.sh` renames a clone of the template, which is then linted, tested, and built for the simulator — template-only, so the rename removes it from every app), and the `zizmor` workflow lint (`Workflow Security Lint`) |
 | Security workflows (`codeql.yml`, `gitleaks.yml`, `osv-scan.yml`, `dependency-review.yml`, `scorecard.yml`) | every pull request (OSV, dependency review), push to `main` (CodeQL), a pull request that edits `gitleaks.yml`, and weekly schedules (CodeQL, gitleaks, OSV, Scorecard) | CodeQL for the package's Swift, a checksum-verified full-history gitleaks scan, OSV and dependency-review checks of SwiftPM dependencies, OpenSSF Scorecard |
 | `.github/workflows/check-pr-title.yml` (job `Validate PR title`) | every pull request (opened, reopened, edited, synchronize) | the PR title is a Conventional Commit whose type is in its `types` list |
 
