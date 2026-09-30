@@ -85,7 +85,7 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | A test under `LaunchUITests/`, or launch behavior | `just uitest` |
 | Code behind `#if os(iOS)` in `MyAppKit`, or behavior that differs on the iOS runtime | `just test-ios` |
 | The Release configuration, or anything only a Release launch shows | `just smoke` |
-| Behavior only the running app shows | `just run`, then `just logs` — no gate asserts it, so the PR carries the evidence (a screenshot: `xcrun simctl io booted screenshot shot.png`) (the `running-the-app` skill) |
+| Behavior only the running app shows | `just run`, then `just logs` — no gate asserts it, so the PR carries the evidence (a screenshot: `xcrun simctl io booted screenshot shot.png`; the `running-the-app` skill) |
 | A permission prompt, or behavior after a grant is revoked | `just reset-permissions`, then `just run` |
 | A shell script under `scripts/` (including the sourced `scripts/guard/*.sh`), or `.githooks/pre-commit` | `just lint`, then `just test-scripts` |
 | `scripts/verify-hooks.sh` | `just lint`, then `just test-scripts`; `just verify-hooks` for the check itself |
