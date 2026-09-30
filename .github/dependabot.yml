@@ -1,0 +1,31 @@
+version: 2
+updates:
+  - package-ecosystem: "swift"
+    directory: "/Packages/MyAppKit"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps:"
+    groups:
+      # Routine updates arrive as one reviewable PR. Majors stay out of every
+      # group, so each gets its own PR, reviewed against its own migration notes.
+      swift-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "ci:"
+    groups:
+      # One upstream release pinned in several workflows (github/codeql-action's
+      # analyze, init and upload-sarif) arrives as one PR instead of one per file.
+      actions-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

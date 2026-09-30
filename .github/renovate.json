@@ -1,0 +1,48 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate covers mise.toml's tool pins, which Dependabot has no ecosystem for, and the gitleaks version pinned in .github/workflows/gitleaks.yml; SwiftPM and Actions stay with .github/dependabot.yml.",
+  "enabledManagers": [
+    "mise",
+    "custom.regex"
+  ],
+  "schedule": [
+    "* 0-3 * * 1"
+  ],
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "dependencyDashboard": false,
+  "commitMessagePrefix": "deps:",
+  "labels": [
+    "dependencies"
+  ],
+  "separateMinorPatch": false,
+  "prConcurrentLimit": 5,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "GITLEAKS_VERSION in gitleaks.yml. Renovate cannot rewrite GITLEAKS_SHA256, so the bump PR's gitleaks run (pull_request trigger) fails the checksum step until a human updates it (fail-closed).",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/gitleaks\\.yml$/"
+      ],
+      "matchStrings": [
+        "GITLEAKS_VERSION: (?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "gitleaks/gitleaks",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchDepNames": [
+        "gitleaks/gitleaks"
+      ],
+      "prBodyNotes": [
+        "GITLEAKS_SHA256 in .github/workflows/gitleaks.yml is not updated by Renovate, so this PR's Gitleaks History Scan run fails its sha256sum check until it is. Copy the linux_x64 line's hash from this release's gitleaks_<version>_checksums.txt into GITLEAKS_SHA256, push, and merge only once that run passes."
+      ]
+    }
+  ]
+}

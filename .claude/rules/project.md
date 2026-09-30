@@ -59,12 +59,28 @@ paths:
 - `.xcode-version` is the single source of truth for the CI Xcode pin (every macOS job
   derives `DEVELOPER_DIR` from it, through `.github/actions/select-xcode`); CLI tools are
   pinned in `mise.toml`. The values live in those files — never restate one elsewhere
-- This section is the one statement of the pin-bump policy; `mise.toml` and
-  `check-pr-title.yml` point here rather than restate it
+- This section is the one statement of the pin-bump policy; `mise.toml`, the
+  `changing-gates` skill, and `check-pr-title.yml` point here rather than restate it
 - A `mise.toml` pin is an exact version: never use `latest`, never bump by hand
-- `.xcode-version` is the one hand-bumped pin: the value must name an Xcode that GitHub's
-  macOS runner image actually installs (`/Applications/Xcode_<version>.app`), which no
-  release feed tracks. Bump it by hand in a `ci:` PR once the runner image ships the new
-  Xcode, and let the PR's macOS jobs prove the path exists
+- Bot-bumped pins arrive as bot PRs, never by hand: Dependabot (`.github/dependabot.yml`)
+  for SwiftPM (`Packages/MyAppKit/Package.resolved`, prefix `deps:`) and GitHub Actions
+  (prefix `ci:`), Renovate (`.github/renovate.json`, `enabledManagers` `mise` and
+  `custom.regex`, prefix `deps:`) for `mise.toml` and `GITLEAKS_VERSION` in
+  `.github/workflows/gitleaks.yml` — Renovate cannot rewrite `GITLEAKS_SHA256`, so a
+  human updates it on that PR, as the PR's body notes say. CI on the PR is the gate;
+  merge when it is green. A SwiftLint or SwiftFormat bump may fire new rules — fix the
+  code on that PR, never skip the bump (landing these PRs, and the human approval
+  merging them needs: the `merging-dependency-prs` skill)
+- Both wait 7 days after a release (Dependabot's `cooldown.default-days`, Renovate's
+  `minimumReleaseAge`) before opening a PR, so a compromised fresh release has time to be
+  pulled; note that SwiftPM itself has no resolver-level cooldown, so fresh installs are
+  only protected by the committed `Package.resolved`
+- `.xcode-version` is the one hand-bumped pin: neither bot has an ecosystem for it, and
+  the value must name an Xcode that GitHub's macOS runner image actually installs
+  (`/Applications/Xcode_<version>.app`), which no release feed tracks. Bump it by hand in
+  a `ci:` PR once the runner image ships the new Xcode, and let the PR's macOS jobs prove
+  the path exists
 - `.github/workflows/check-pr-title.yml` accepts the bots' prefixes (`deps`, `ci`); a
-  prefix change in a bot config changes that list in the same PR
+  prefix change in either bot config changes that list in the same PR.
+  `scripts/checks/dependency-bots-agree.sh` (`just check-harness`) fails while a bot's
+  prefix is missing or not a listed type, or the two bots' cooldowns disagree
