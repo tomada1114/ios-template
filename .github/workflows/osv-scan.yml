@@ -1,0 +1,46 @@
+name: OSV Scan
+
+on:
+  pull_request:
+  schedule:
+    - cron: "30 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A superseded pull request run is cancelled; a scheduled or manual scan finishes.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    # `bash` runs as `bash --noprofile --norc -eo pipefail {0}`; an unnamed shell is
+    # `bash -e {0}`, which misses a failure before a `|`
+    # (scripts/checks/workflow-hygiene.sh).
+    shell: bash
+
+jobs:
+  scan:
+    name: Scan dependencies for known vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: OSV scan
+        if: ${{ hashFiles('**/Package.resolved') != '' }}
+        # The runnable action lives in the osv-scanner-action/ subdirectory;
+        # the repository root has no runs: section and fails at job setup.
+        uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+        with:
+          scan-args: |-
+            --recursive
+            ./
+
+      - name: Nothing to scan
+        if: ${{ hashFiles('**/Package.resolved') == '' }}
+        run: echo "::notice::No Package.resolved found — the template has zero dependencies. The scan activates once you add one."

@@ -33,6 +33,8 @@
           { "context": "Lint & Format Check", "integration_id": 15368 },
           { "context": "Test & Coverage Gate", "integration_id": 15368 },
           { "context": "App Build & UI Test (iOS Simulator)", "integration_id": 15368 },
+          { "context": "Workflow Security Lint", "integration_id": 15368 },
+          { "context": "Dependency Review", "integration_id": 15368 },
           { "context": "Validate PR title", "integration_id": 15368 }
         ]
       }
