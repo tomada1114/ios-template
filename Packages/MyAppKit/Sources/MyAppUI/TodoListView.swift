@@ -31,8 +31,9 @@ private struct TodoRow: View {
 /// literal of its own. It turns each user intent into one view-model call and reads
 /// back the state to draw.
 ///
-/// It owns neither model: the app shell creates both (in `@State`, so they survive the
-/// scene) and hands them down. `@Bindable` is only what lets the text field bind to
+/// It owns neither model: the app shell creates the view model once for the app and the
+/// navigation model once per scene (both in `@State`), and hands them down. `@Bindable`
+/// is only what lets the text field bind to
 /// ``TodoListViewModel/draftTitle`` and the stack bind to ``NavigationModel/path``, so a
 /// row's link, the back button, and a deep link all move the same Core state.
 public struct TodoListView: View {

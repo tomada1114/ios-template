@@ -111,8 +111,11 @@ restoration have something to hold on to and a test can drive navigation without
   holds shows a not-found state.
 - **The path is a Core view model.** `NavigationModel` is a `@MainActor @Observable`
   class holding `path: [AppRoute]`, with one action per intent: `show(_:)` pushes,
-  `popToRoot()` returns, `open(_:)` handles a deep link. `App/` owns it in `@State`
-  beside the other view models and hands it to the root view.
+  `popToRoot()` returns, `open(_:)` handles a deep link. It is owned per scene: `App/`'s
+  scene root holds it in `@State` and hands it to the root view, while the view models
+  it routes between stay app-level and shared. The app supports multiple scenes (two
+  windows on iPad), so an app-level path would move every window in lockstep and a deep
+  link would move them all.
 - **One `NavigationStack(path:)` at the root.** `TodoListView` binds the stack to
   `NavigationModel.path` and declares every destination in one
   `navigationDestination(for: AppRoute.self)`; a row's `NavigationLink(value:)` pushes a
@@ -121,9 +124,9 @@ restoration have something to hold on to and a test can drive navigation without
 - **Deep links are parsed in Core.** `DeepLink.route(for:)` accepts exactly
   `my-app://todo/<uuid>` — the scheme in any case, the host `todo`, one `UUID` path
   component — and rejects every other shape rather than guessing; `DeepLink.url(for:)`
-  is its inverse. `App/` forwards `.onOpenURL` to `NavigationModel.open(_:)`, which
-  replaces the path with the parsed route or logs the rejected link's scheme and host in
-  the `navigation` category. The scheme is registered under `project.yml`'s `info:` block
+  is its inverse. The scene root forwards `.onOpenURL` to its `NavigationModel.open(_:)`,
+  which replaces the path with the parsed route or logs the rejected link's scheme and
+  host in the `navigation` category. The scheme is registered under `project.yml`'s `info:` block
   (XcodeGen writes the gitignored `App/Info.plist` from it on every `just generate`, and
   the build merges it with the `INFOPLIST_KEY_*` settings); `DeepLinkTests` fails when
   the scheme Core parses and the one `project.yml` registers differ, and
@@ -277,10 +280,10 @@ public protocol PreferencesStoring: Sendable {
 `App/MyAppApp.swift` is the one place that knows both halves of every port. It picks the
 storage and the preferences suite from the launch arguments, opens the SwiftData adapter,
 falls back to the null object on failure, creates the view model in `@State` over both
-adapters, and hands it to the root view. It also owns the `NavigationModel` and forwards
-opened URLs to it (`.onOpenURL`). A second screen or a second port is wired here too; if
-the wiring grows past a handful of lines, it moves into an `AppDependencies` value built
-in `App/` — still no singletons.
+adapters, and hands it to each scene's root view. That scene root owns the scene's own
+`NavigationModel` and forwards opened URLs to it (`.onOpenURL`). A second screen or a
+second port is wired here too; if the wiring grows past a handful of lines, it moves into
+an `AppDependencies` value built in `App/` — still no singletons.
 
 ## Concurrency
 

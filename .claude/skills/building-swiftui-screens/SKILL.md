@@ -41,8 +41,9 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 
 - **A model with a port is built in `App/`**, the composition root, because its adapter
   lives in `MyAppPlatform`, which this module must not import. `MyAppApp` keeps
-  `TodoListViewModel` and the `NavigationModel` in `@State` and passes both to
-  `TodoListView(model:navigation:)`.
+  `TodoListViewModel` in `@State` for the whole app; its private `SceneRoot` keeps a
+  `NavigationModel` in `@State` per scene, so each window navigates on its own, and
+  passes both to `TodoListView(model:navigation:)`.
 - **A view handed its model** holds it as a plain `let`; `@Observable` re-renders the
   view when a property its `body` read changes. `TodoListView` uses `@Bindable` instead
   only because its text field binds to `draftTitle`, the one settable property.
