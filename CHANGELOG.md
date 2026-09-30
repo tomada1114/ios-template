@@ -41,3 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   SwiftUI screens; `just reset-permissions`
 - `DesignTokens` and the iOS `designing-ui` skill, with the template's design research in
   `docs/design-system.md`
+
+### Fixed
+
+- `LaunchTests` no longer fails intermittently on CI: it waits for `newItemField` to
+  take keyboard focus before typing, and `just uitest` boots the simulator and waits
+  for it before `xcodebuild` launches the app, so a cold boot no longer times out the
+  launch

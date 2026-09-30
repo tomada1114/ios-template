@@ -9,6 +9,26 @@ final class LaunchTests: XCTestCase {
     private enum Timeout {
         static let launch: TimeInterval = 20
         static let elementAppears: TimeInterval = 5
+        static let keyboardFocus: TimeInterval = 3
+    }
+
+    /// Taps `field` until it holds keyboard focus, then asserts that it does.
+    ///
+    /// On a loaded CI runner the first tap can land before SwiftUI makes the field
+    /// first responder, and `typeText` then fails with "Neither element nor any
+    /// descendant has keyboard focus" (#32). Re-tapping retries the input, not the
+    /// assertion: the test still fails if the field never takes focus.
+    @MainActor
+    private func focus(_ field: XCUIElement, attempts: Int = 3) {
+        let focused = NSPredicate(format: "hasKeyboardFocus == true")
+        for _ in 0 ..< attempts {
+            field.tap()
+            let expectation = XCTNSPredicateExpectation(predicate: focused, object: field)
+            if XCTWaiter().wait(for: [expectation], timeout: Timeout.keyboardFocus) == .completed {
+                return
+            }
+        }
+        XCTFail("newItemField never took keyboard focus after \(attempts) taps")
     }
 
     @MainActor
@@ -24,7 +44,7 @@ final class LaunchTests: XCTestCase {
 
         let field = app.textFields["newItemField"]
         XCTAssertTrue(field.waitForExistence(timeout: Timeout.launch))
-        field.tap()
+        focus(field)
         field.typeText("Buy milk")
         app.buttons["addButton"].tap()
 
