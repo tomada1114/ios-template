@@ -39,8 +39,9 @@ final class LaunchTests: XCTestCase {
     private func launchAndAddAnItem() -> XCUIApplication {
         let app = XCUIApplication()
         // An in-memory store and scratch preferences (App/MyAppApp.swift), so the list
-        // starts empty, and Hide Completed off, on every run.
-        app.launchArguments = ["-uiTesting"]
+        // starts empty, and Hide Completed off, on every run. English, whatever the
+        // simulator's language, because the tests find system controls ("Delete") by label.
+        app.launchArguments = ["-uiTesting", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
 
         let field = app.textFields["newItemField"]
