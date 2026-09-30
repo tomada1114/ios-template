@@ -10,7 +10,12 @@ import Testing
 ///
 /// SwiftData runs on the host with an in-memory store, so these run under plain
 /// `just test` and in CI — no simulator, no device, no permission grant.
-@Suite("SwiftDataTodoRepository")
+///
+/// `.serialized`: each test opens its own `ModelContainer`. A parallel run once crashed
+/// the test process (signal 11) on a CI runner, and concurrent container creation is
+/// the prime suspect — the one thing only this suite does. One container at a time
+/// costs milliseconds; a flaky crash costs every pull request a rerun.
+@Suite("SwiftDataTodoRepository", .serialized)
 struct SwiftDataTodoRepositoryTests {
     @Test
     func `the SwiftData adapter keeps the contract`() async throws {
