@@ -51,23 +51,20 @@ scripts/bootstrap.sh CoolApp --bundle-id-prefix io.example --github-user janedoe
   --author "Jane Doe" --email jane@example.com [--repo cool-app]
 ```
 
-- **Arguments** (the script's usage prints its header comment). The name is required
-  and must be PascalCase. The slug defaults to the kebab-case of the name (`--repo`
-  overrides it); the other four options are optional, and an omitted one leaves its
-  placeholder in place. A name or slug that itself contains the placeholder is refused
-  (`ERR_BOOTSTRAP_BAD_NAME`, `ERR_BOOTSTRAP_BAD_SLUG`), because a later run would match
-  it again and corrupt it. Every failure follows the `ERR_BOOTSTRAP_<WHAT>` contract;
-  the header lists the codes.
+- **Arguments** (usage prints the script's header, which also lists its
+  `ERR_BOOTSTRAP_<WHAT>` codes). The name is required and PascalCase; the slug defaults
+  to its kebab-case (`--repo` overrides it); an omitted option leaves its placeholder.
+  A name or slug that itself contains the placeholder is refused, because a later run
+  would match it again and corrupt it.
 - **The placeholder map** is the six `PH_*` variables at the top of the script. Each
   literal is quote-split there (`'My''App'`) so the replacement never rewrites the
   script's own match sources — a re-run keeps looking for the original placeholders.
   The bundle-id prefix reaches both `project.yml` and `AppLog.subsystem`, which
   `AppLogTests` holds equal.
 - **`replace()`** walks `git ls-files`, so only tracked files are touched: commit or
-  stage a new file before running if it should be renamed too. It skips binary and
-  empty files and leaves a file without a match untouched. This is why the script
-  refuses to run outside a git checkout (`ERR_BOOTSTRAP_NOT_A_REPO`; **BACKGROUND:**
-  `writing-repo-scripts`).
+  stage a new file first if it should be renamed too. Binary and empty files are
+  skipped. This is why the script refuses to run outside a git checkout
+  (`ERR_BOOTSTRAP_NOT_A_REPO`; **BACKGROUND:** `writing-repo-scripts`).
 - **Keep markers:** a line containing the keep-begin marker (the text `bootstrap:keep-`
   followed by `begin`) through the next line containing the keep-end marker is never
   rewritten. The passages that explain the placeholders — the script's header,
@@ -75,14 +72,12 @@ scripts/bootstrap.sh CoolApp --bundle-id-prefix io.example --github-user janedoe
   path-rename bullet — are wrapped in them (an HTML comment in Markdown, a `#` comment
   in shell), so they still name the placeholders after the rename. CI's
   `bootstrap-smoke` asserts they survive, and its leftover check ignores kept lines.
-- **Template-only blocks** are the opposite: passages about the template itself
-  (`SECURITY.md`'s notes to a repository created from it) sit between a line naming the
-  template-only-begin marker and a line naming the template-only-end marker (each the
-  `bootstrap:` prefix followed by that name, in an HTML comment), and the script deletes
-  each block, both marker lines included. A begin marker with no end after it stops the
-  run before anything is written (`ERR_BOOTSTRAP_TEMPLATE_ONLY_UNCLOSED`). Write a new
-  template-only passage the same way, and never spell a marker whole in prose: the
-  deletion matches the text anywhere on a line.
+- **Template-only blocks** are the opposite: a passage about the template itself
+  (`SECURITY.md`'s notes to a repository created from it) sits between HTML-comment
+  lines naming the template-only-begin and template-only-end markers (the `bootstrap:`
+  prefix, then that name), and the script deletes each block, markers included. An
+  unclosed block stops the run before anything is written. Never spell a marker whole
+  in prose: the deletion matches it anywhere on a line.
 <!-- bootstrap:keep-begin -->
 - **Paths** named after the app (`MyAppCore`, `MyAppUI`, …) are renamed deepest-first,
   skipping `.git/` and build output, and the Xcode project is regenerated.
@@ -91,23 +86,17 @@ scripts/bootstrap.sh CoolApp --bundle-id-prefix io.example --github-user janedoe
   `swiftformat .` over the tree. A new name can push a line past the width or change
   the imports' sorted order, so without this the pre-commit hook refuses the bootstrap
   commit (`ERR_BOOTSTRAP_FORMAT_FAILED` if SwiftFormat itself fails).
-- **`.template-origin`** records where the app was cut from: the template commit on
-  line 1, its repository on line 2, then comment lines. It is written only when the
-  file is absent — a re-run, and any hand-edit made after adopting template changes,
-  survives — and `replace()` skips it so the rename cannot rewrite the URL. `HEAD` is
-  recorded only when the history's root commit is the template's first commit (the
-  script carries that SHA); otherwise — a "Use this template" repository, whose fresh
-  root the template has never seen, or a shallow clone — both values are `unknown` and
-  the file names the tree to search for rather than a SHA `git log <sha>..template/main`
-  would reject. `README.md`'s "Keeping up with template updates" is the reader-facing
-  half.
+- **`.template-origin`** records the template commit (line 1) and repository (line 2).
+  It is written only when absent, `replace()` never touches it, and `HEAD` is recorded
+  only when the history's root commit is the template's first commit (the script's
+  `TEMPLATE_ROOT`); a "Use this template" repository or a shallow clone gets `unknown`
+  plus the tree to search for. The script's comment above `TEMPLATE_ROOT` holds the
+  reasoning; `README.md`'s "Keeping up with template updates" is the reader-facing half.
 - **`CHANGELOG.md`** is reset to a one-entry history for the new project, guarded by a
   marker line so a re-run never wipes the new app's own entries.
-- **Template-only CI job:** `bootstrap-smoke` and its `Template Bootstrap Smoke`
-  required check in `.github/rulesets/main.json` are removed together, guarded by
-  their presence. If either is in a shape the script cannot delete (the ruleset entry
-  not one comma-terminated line), it stops with `ERR_BOOTSTRAP_RETIRE_FAILED`, naming
-  the lines in both files.
+- **Template-only CI job:** `bootstrap-smoke` and its `Template Bootstrap Smoke` context
+  in `.github/rulesets/main.json` are removed together; keep that context one
+  comma-terminated line, or the run stops with `ERR_BOOTSTRAP_RETIRE_FAILED`.
 - **Idempotent:** running it again with the same name changes nothing further.
 
 When it finishes, it prints next steps, including a leftover check: an `rg -i` over the
@@ -117,17 +106,12 @@ replace cannot see — fix those by hand. `README.md`'s own leftover command spe
 placeholders with `.` wildcards for the same reason the script quote-splits them.
 
 Changing the script means keeping `bootstrap-smoke` green. It bootstraps a clone as
-`LongDemoApplication` — a name long enough to move line widths — and asserts, in order:
-no placeholder survives outside the kept passages; those passages still name the
-placeholders, and usage prints the header without a marker line; no template-only
-marker, and no template-only `SECURITY.md` sentence, is left; `CHANGELOG.md` was reset;
-`.template-origin` holds a 40-hex commit SHA and a repository line; the template-only job
-was retired (re-running `scripts/tests/apply-ruleset_test.sh` in the clone);
-`product-section-filled.sh` now *fails* on the renamed tree — the smoke proves the check
-fires rather than inventing a product for the clone. Then it runs `scripts/lint.sh`,
-`swift test`, and a simulator `xcodebuild` on the renamed tree. Its leftover grep is
-case-insensitive and allows a missing hyphen, so a new mention of the app name in a
-spelling the literal replace does not cover (all lowercase, say) fails that job.
+`LongDemoApplication` (long enough to push lines past the width), asserts each effect
+above — no placeholder outside kept passages, kept passages intact, no template-only
+marker left, the reset, the origin, the retirement, and `product-section-filled.sh` now
+*failing* on the renamed tree — then runs `scripts/lint.sh`, `swift test`, and a
+simulator `xcodebuild` on it. Its leftover grep is case-insensitive and allows a missing
+hyphen, so a spelling the literal replace does not cover fails that job.
 
 The rename leaves the example code in place: the to-do list — its `TodoRepository`
 port, the SwiftData adapter, the in-memory fake and the contract suite, the view, and
