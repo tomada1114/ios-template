@@ -16,6 +16,8 @@
       "Bash(just build)",
       "Bash(just run)",
       "Bash(just uitest)",
+      "Bash(just test-ios)",
+      "Bash(just smoke)",
       "Bash(just check)",
       "Bash(just agents-sync)",
       "Bash(just agents-check)",

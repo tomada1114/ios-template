@@ -86,8 +86,21 @@ uitest:
     rm -rf build/LaunchUITests.xcresult
     set -o pipefail && xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult | mise exec -- xcbeautify
 
+# Run every MyAppKit test suite on an iOS Simulator, with no coverage floor (`just test`
+# holds the floor on the host). Exercises code behind `#if os(iOS)` and the iOS runtime.
+[doc("Run the package tests on an iOS Simulator (no coverage floor)")]
+test-ios:
+    rm -rf build/MyAppKitTests-iOS.xcresult
+    set -o pipefail && cd Packages/MyAppKit && xcodebuild test -scheme MyAppKit-Package -destination "$(../../scripts/simulator-destination.sh)" -derivedDataPath ../../build/ios-test-derived-data -resultBundlePath ../../build/MyAppKitTests-iOS.xcresult | mise exec -- xcbeautify
+
+# Build Release, then assert the app launches and stays alive on an iOS Simulator
+# (scripts/smoke_launch.sh; SIMULATOR_DEVICE picks the device)
+[doc("Build Release and assert the app launches and stays alive on a simulator")]
+smoke:
+    mise exec -- scripts/smoke_launch.sh
+
 # Run all checks: verify hooks, format, lint, script tests, harness checks, test, build
-# (CI's app job adds uitest)
+# (CI adds uitest, smoke, and test-ios)
 [doc("Run all checks: verify-hooks, fmt, lint, test-scripts, check-harness, test, build")]
 check: verify-hooks fmt lint test-scripts check-harness test build
 

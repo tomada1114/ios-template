@@ -61,10 +61,15 @@ check_require_file "${CI}"
 #                 scripts/lint.sh's `swiftformat --lint` (`just lint`).
 LOCAL_ONLY="verify-hooks fmt"
 # CI_ONLY — recipes CI runs that `just check` deliberately leaves out (the justfile's
-# `check` comment: "CI's app job adds uitest"):
-#   uitest  drives the app on an iOS Simulator through XCUITest; slow, and `just build`
-#           already covers a compile break locally.
-CI_ONLY="uitest"
+# `check` comment: "CI adds uitest, smoke, and test-ios"):
+#   uitest    drives the app on an iOS Simulator through XCUITest; slow, and `just build`
+#             already covers a compile break locally.
+#   smoke     builds Release and launches it on an iOS Simulator; slow, and `just build`
+#             already covers a compile break locally.
+#   test-ios  runs the package tests on an iOS Simulator; `just test` already runs the
+#             same suites on the host, so a local `just check` catches everything but
+#             iOS-only behavior.
+CI_ONLY="uitest smoke test-ios"
 # CI_ONLY_JOBS — whole jobs outside the comparison:
 #   bootstrap-smoke  renames a throwaway clone of the template and builds it; it is a
 #                    test of scripts/bootstrap.sh, not a gate on this tree, and

@@ -93,11 +93,39 @@ jobs:
       - name: Run launch UI test
         run: just uitest
 
+      - name: Smoke launch (Release)
+        run: just smoke
+
       - name: Upload result bundles on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: xcresult-bundles
+          path: build/*.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
+
+  ios-tests:
+    name: Package Tests (iOS Simulator)
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/select-xcode
+
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+
+      - name: Run the package tests on an iOS Simulator
+        run: just test-ios
+
+      - name: Upload result bundles on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: xcresult-bundles-ios-tests
           path: build/*.xcresult
           if-no-files-found: ignore
           retention-days: 7
