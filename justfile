@@ -78,6 +78,13 @@ run: build
 logs:
     bundle_id="$(scripts/bundle-id.sh)" && xcrun simctl spawn booted log stream --level debug --predicate "subsystem == \"${bundle_id}\""
 
+# Make the booted simulator forget every privacy decision recorded for this app, so the
+# next request prompts again (scripts/reset-permissions.sh; the identifier comes from
+# project.yml). Changes simulator state, so it is not in .claude/settings.json's allow list.
+[doc("Make the booted simulator forget this app's privacy grants")]
+reset-permissions:
+    scripts/reset-permissions.sh
+
 # Run the XCUITest launch test on an iOS Simulator (scripts/simulator-destination.sh
 # picks the device; SIMULATOR_DEVICE overrides it)
 [doc("Run the XCUITest launch test on an iOS Simulator")]
