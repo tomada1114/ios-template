@@ -22,6 +22,12 @@
             }
         }
 
+        /// Starts with exactly `items`, for a preview that needs to know an item's
+        /// identifier (the detail screen's).
+        init(items: [TodoItem]) {
+            self.items = items.sorted(by: TodoItem.isOrderedBefore)
+        }
+
         func fetchAll() -> [TodoItem] {
             items
         }

@@ -2,7 +2,8 @@ import XCTest
 
 /// The template's launch guarantee: the app starts on a simulator, shows its list, and
 /// the core interaction — adding an item — reaches the screen. Hiding completed items
-/// proves the preferences wiring in `App/` reaches the view model.
+/// proves the preferences wiring in `App/` reaches the view model, and opening an item
+/// proves the navigation model reaches the stack.
 ///
 /// XCTest by necessity — Apple has not ported UI automation to Swift Testing.
 /// All other tests use Swift Testing in Packages/MyAppKit.
@@ -60,6 +61,25 @@ final class LaunchTests: XCTestCase {
         // cascading through the remaining waits against a dead app.
         continueAfterFailure = false
         _ = launchAndAddAnItem()
+    }
+
+    @MainActor
+    func testOpeningAnItemShowsItsDetail() {
+        continueAfterFailure = false
+        let app = launchAndAddAnItem()
+
+        app.staticTexts["Buy milk"].tap()
+
+        // The identifier lands on the detail screen's Form, which XCUITest sees as a
+        // collection view; the not-found state would carry it on another element type.
+        XCTAssertTrue(
+            app.collectionViews["todoDetail"].waitForExistence(timeout: Timeout.elementAppears),
+            "tapping a row's title should push that item's detail screen",
+        )
+        XCTAssertTrue(
+            app.buttons["detailToggle"].exists,
+            "the detail screen should show the item it was opened for",
+        )
     }
 
     @MainActor

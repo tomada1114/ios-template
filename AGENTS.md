@@ -84,6 +84,7 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | A `PreferenceKeys` name | `just test` (`PreferenceKeysTests` pins every stored name and default; a rename is a migration, not an edit to that test) |
 | `Localizable.xcstrings`, or a `LocalizedStringResource` in Core | `just test` (`LocalizationTests` scans Core's `LocalizedStringResource(…)` calls and holds their keys and English to the catalog); `just build` to compile the catalog into the app |
 | `project.yml` | `just generate && just build` |
+| A route, a deep link, or the URL scheme | `just test` (`DeepLinkTests` holds Core's scheme to `project.yml`); `just uitest` |
 | A test under `LaunchUITests/`, or launch behavior | `just uitest` |
 | Code behind `#if os(iOS)` in `MyAppKit`, or behavior that differs on the iOS runtime | `just test-ios` |
 | The Release configuration, or anything only a Release launch shows | `just smoke` |
@@ -386,6 +387,7 @@ of these, it updates this section and the tables above in the same pull request.
 | `.swiftlint.yml`'s `no_print_in_sources` | the hook, `just lint`, CI `lint` | no `print`/`debugPrint`/`NSLog` in shipped code |
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
+| `DeepLinkTests` | `just test`, CI `test` | the scheme Core parses is the one `project.yml` registers |
 | `PreferenceKeysTests` | `just test`, CI `test` | stored preference key names and defaults never change silently |
 | `LocalizationTests` | `just test`, CI `test` | every `LocalizedStringResource(…)` in Core has a key, a `defaultValue`, and `bundle: .module`; its keys are exactly the catalog's; the catalog's English is what Core renders |
 | `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary. `hooks` holds one `PostToolUse` hook, `scripts/format-edited-file.sh`, that runs `swiftformat` on the one `.swift` file an `Edit`/`Write`/`MultiEdit` touched and reports a failure back to the agent (exit 2) — a convenience on this host only; the git hook is the gate |

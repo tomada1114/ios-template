@@ -45,12 +45,25 @@ xcrun simctl status_bar booted clear
 ```bash
 xcrun simctl openurl booted https://example.com          # opens Safari
 xcrun simctl openurl booted unclaimed://item/1           # fails: no app claims the scheme
+xcrun simctl openurl booted "my-app://todo/<uuid>"       # opens that item's detail screen
 ```
 
 `openurl` hands the URL to the system exactly as a tap on a link would, so it exercises
-the app's URL handling only once the app declares a scheme or an associated domain —
-the template declares neither, and the second line fails with
-`LSApplicationWorkspaceErrorDomain, code=115`. Declaring either is an app's decision.
+the app's URL handling only for a scheme or an associated domain the app declares. An
+unclaimed scheme fails with `LSApplicationWorkspaceErrorDomain, code=115`. The template
+claims its own custom scheme (`project.yml`'s `info:` block, parsed by Core's
+`DeepLink`); an associated domain is an entitlement and an app's decision.
+
+- The first `openurl` of the scheme on a simulator shows the system's "Open in MyApp?"
+  prompt over the current app, and nothing reaches the app until it is accepted — by a
+  person, a Simulator control tool, or a throwaway XCUITest that calls
+  `XCUIDevice.shared.system.open(url)` and taps the prompt's button on
+  `XCUIApplication(bundleIdentifier: "com.apple.springboard")` (its label follows the
+  simulator's language). Once accepted, later `openurl` calls open the app directly.
+- The item's identifier is the suffix of its row toggle's `toggle-<uuid>` identifier,
+  and the `add:` line `just logs` streams in the `todos` category.
+- A link the app rejects is logged at error level in the `navigation` category, so
+  `log show` reaches it: `open: rejected scheme=… host=…`.
 
 ```bash
 printf '{"aps":{"alert":{"title":"Probe","body":"Hello"}}}\n' > build/payload.apns

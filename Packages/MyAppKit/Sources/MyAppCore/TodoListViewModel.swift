@@ -117,6 +117,14 @@ public final class TodoListViewModel {
         phase == .failed && items.isEmpty
     }
 
+    /// Whether the items are not known yet — nothing has loaded, or a load is running — so
+    /// an identifier ``item(withID:)`` does not find may still arrive. The detail screen
+    /// shows progress rather than "not found" while this holds, which covers a deep link
+    /// that pushes it before the list under it ever loaded.
+    public var isAwaitingItems: Bool {
+        phase == .idle || phase == .loading
+    }
+
     /// Whether the first load is still running with nothing on screen yet.
     public var showsProgress: Bool {
         phase == .loading && items.isEmpty
@@ -241,6 +249,13 @@ public final class TodoListViewModel {
     public func setHideCompleted(_ hide: Bool) {
         hideCompleted = hide
         preferences.set(hide, for: PreferenceKeys.hideCompleted)
+    }
+
+    /// The item with `id`, looked up in ``items`` rather than ``visibleItems``: the
+    /// detail screen, and a deep link to it, open an item that Hide Completed hides.
+    /// `nil` when no loaded item has that identifier — deleted, or not loaded yet.
+    public func item(withID id: TodoItem.ID) -> TodoItem? {
+        items.first { $0.id == id }
     }
 
     /// Clears ``failure`` once the view has shown it.

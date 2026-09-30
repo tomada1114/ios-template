@@ -26,6 +26,15 @@ targets:
       # adapters (MyAppPlatform) and hands them to Core view models as ports.
       - package: MyAppKit
         product: MyAppPlatform
+    # XcodeGen writes App/Info.plist from these properties on every `just generate`, and
+    # the build merges it with the INFOPLIST_KEY_* settings below. The URL scheme is
+    # DeepLink.scheme in MyAppCore; DeepLinkTests fails when the two differ.
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: com.example.MyApp
+            CFBundleURLSchemes: [my-app]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.MyApp
