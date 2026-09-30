@@ -28,8 +28,9 @@ paths:
     (`docs/architecture.md` › Why the package also builds for macOS)
   - **Advisories** — no open security advisory against the version being added
 - Allowed licenses (SPDX): MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, Zlib.
-  No workflow enforces this list yet, so the pull request states the license and review
-  checks it
+  `.github/workflows/dependency-review.yml` enforces this exact list (`allow-licenses`) on
+  every pull request — change both together; a per-package exception goes in its
+  `allow-dependencies-licenses` with a comment giving the reason
 - `Package.resolved` MUST be committed alongside any dependency change
 
 ## Version Requirements

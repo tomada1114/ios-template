@@ -271,11 +271,29 @@ that skill exists to make, for that invocation only.
 None of them covers anything else in the list above. A skill that reaches one of those
 stops and asks.
 
+### What no local gate sees
+
+Every local layer can be skipped, so these reach `main` only if CI or GitHub stops them
+(see "Enforcement layers" for the gaps each one leaves):
+
+- `git commit --no-verify`, a clone where `just install` never ran, or a commit made
+  outside this checkout's hooks — the pre-commit hook and staged guard never run.
+- An edit made through GitHub's web UI or API, which touches no local hook.
+- A secret inside a file whose path and content pattern the guard does not know.
+- Any tool other than Claude Code: `.claude/settings.json` binds nothing else.
+
 ### GitHub settings a new repository must enable
 
 "Use this template" copies files, not settings, so a repository's admin turns these on
 once under Settings › Advanced Security (Code security on older UIs):
 
+- **Secret scanning** and **Push protection** — the server-side layer for secrets that
+  the staged guard misses or a bypass skips; push protection blocks a detected secret
+  at `git push`.
+- **Private vulnerability reporting** — `SECURITY.md` sends reporters to a private
+  security advisory, which this setting enables.
+- **Dependabot alerts** — `.github/dependabot.yml` configures version updates; alerts
+  for known-vulnerable dependencies are a separate switch.
 - The `main` ruleset, applied by `just ruleset`. `.github/rulesets/main.json`
   deliberately lists no `bypass_actors`: a bypass lets an admin, or an agent acting
   with an admin's token, merge without the PR and green checks the ruleset exists to
@@ -334,10 +352,10 @@ libraries are sourced, so they carry no shebang or `set` line of their own):
 This repository is being brought up to the macOS template's harness
 (`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
 in order. What exists today is what the tables above describe. Not yet ported, each owned
-by an open issue: the remaining skills, security workflows, dependency
-bots, `scripts/bootstrap.sh`, the localization harness, the iOS design system,
-distribution, and the fuller documentation. When an issue lands one of these, it updates
-this section and the tables above in the same pull request.
+by an open issue: the remaining skills, dependency bots, `scripts/bootstrap.sh`, the
+localization harness, the iOS design system, distribution, and the fuller documentation.
+When an issue lands one of these, it updates this section and the tables above in the
+same pull request.
 
 ## Enforcement layers
 
@@ -351,7 +369,8 @@ this section and the tables above in the same pull request.
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
 | `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary. `hooks` holds one `PostToolUse` hook, `scripts/format-edited-file.sh`, that runs `swiftformat` on the one `.swift` file an `Edit`/`Write`/`MultiEdit` touched and reports a failure back to the agent (exit 2) — a convenience on this host only; the git hook is the gate |
-| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest) |
+| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest), and the `zizmor` workflow lint (`Workflow Security Lint`) |
+| Security workflows (`codeql.yml`, `gitleaks.yml`, `osv-scan.yml`, `dependency-review.yml`, `scorecard.yml`) | every pull request (OSV, dependency review), push to `main` (CodeQL), a pull request that edits `gitleaks.yml`, and weekly schedules (CodeQL, gitleaks, OSV, Scorecard) | CodeQL for the package's Swift, a checksum-verified full-history gitleaks scan, OSV and dependency-review checks of SwiftPM dependencies, OpenSSF Scorecard |
 | `.github/workflows/check-pr-title.yml` (job `Validate PR title`) | every pull request (opened, reopened, edited, synchronize) | the PR title is a Conventional Commit whose type is in its `types` list |
 
 `git commit --no-verify` bypasses the hook, and a clone where `just install` never ran
@@ -359,7 +378,10 @@ has no hook at all (`scripts/verify-hooks.sh` makes that fail loudly at `just in
 and `just check` time, but a contributor who runs neither still commits without hooks).
 CI is the backstop for everything except the staged guard, which no CI job re-runs over
 a pull request's diff: a secret committed with `--no-verify` or from a clone without
-`just install` reaches the branch unchecked (#10 adds the history scan).
+`just install` reaches the branch unchecked. GitHub push protection and secret scanning
+are the server-side layer for secrets, and `.github/workflows/gitleaks.yml` scans the
+full git history weekly with a pinned, checksum-verified gitleaks, so a secret that
+slipped past both is found after the fact rather than never.
 
 **Whether `main`'s ruleset is actually in force is invisible from the checkout.** The
 intended ruleset — PR required, checks green, no force-push or deletion — is defined as
