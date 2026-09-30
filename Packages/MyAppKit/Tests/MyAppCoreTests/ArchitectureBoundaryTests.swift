@@ -8,6 +8,9 @@ import Testing
 /// second; the lint rule runs in the `lint` job and the pre-commit hook, this suite in the
 /// `test` job, so removing either one still leaves the other catching a regression.
 ///
+/// Core also never names a Foundation type an adapter owns (`URLSession`): Core imports
+/// Foundation, so no import ban can see one, and this suite is the only enforcement.
+///
 /// `MyAppUI` and `MyAppPlatform` are siblings over Core and never import each other.
 /// SwiftPM's target graph already withholds the modules, but only until someone adds a
 /// dependency edge; this suite is what makes that edit fail a check rather than compile.
@@ -33,6 +36,12 @@ struct ArchitectureBoundaryTests {
         "SwiftData", "CoreData", "CloudKit",
         "UserNotifications", "CoreLocation", "Photos", "PhotosUI", "StoreKit", "WidgetKit",
     ]
+
+    /// Foundation types `MyAppCore` must not name: Core imports Foundation, so no import
+    /// ban can see them, yet each belongs to an adapter — `URLSession` to
+    /// `URLSessionHTTPClient`, behind the ``MyAppCore/HTTPClient`` port. `.swiftlint.yml`
+    /// has no twin rule, so this list and the test that reads it are the only enforcement.
+    static let forbiddenFoundationTypes = ["URLSession"]
 
     /// `Sources/MyAppCore`, the directory the Core ban list applies to.
     static let coreSourcesDirectory = sourcesDirectory(of: "MyAppCore")
@@ -68,6 +77,21 @@ struct ArchitectureBoundaryTests {
 
     static func importRegex() throws -> Regex<AnyRegexOutput> {
         try importRegex(forAnyOf: forbiddenModules)
+    }
+
+    /// Whether `line` names one of the types `regex` matches, outside a comment: a line
+    /// whose first non-space characters are `//` (a comment or a `///` doc comment) may
+    /// mention a type, since explaining why Core does not use it is how the rule is
+    /// taught.
+    static func namesType(_ line: String, matching regex: Regex<AnyRegexOutput>) -> Bool {
+        !line.trimmingCharacters(in: .whitespaces).hasPrefix("//")
+            && line.firstMatch(of: regex) != nil
+    }
+
+    /// `\b<Type>\b` for any of `types`, with simple word boundaries so `URLSession.shared`
+    /// matches and `URLSessionHTTPClient` does not.
+    static func typeRegex(forAnyOf types: [String]) throws -> Regex<AnyRegexOutput> {
+        try Regex(#"\b("# + types.joined(separator: "|") + #")\b"#).wordBoundaryKind(.simple)
     }
 
     /// Every `.swift` file under `directory`, recursively; empty if it does not exist.
@@ -110,6 +134,28 @@ struct ArchitectureBoundaryTests {
     @Test
     func `no MyAppCore source file imports a UI, persistence, or OS-integration framework`() throws {
         try Self.expectNoImports(of: Self.forbiddenModules, in: "MyAppCore")
+    }
+
+    /// Foundation types an adapter owns never appear in Core outside a comment
+    /// (``forbiddenFoundationTypes``).
+    @Test
+    func `no MyAppCore source file names a Foundation type an adapter owns`() throws {
+        let files = Self.swiftFiles(in: Self.coreSourcesDirectory)
+        try #require(
+            !files.isEmpty,
+            "no .swift files found under \(Self.coreSourcesDirectory.path)",
+        )
+
+        let regex = try Self.typeRegex(forAnyOf: Self.forbiddenFoundationTypes)
+        for file in files {
+            let lines = try String(contentsOf: file, encoding: .utf8)
+                .components(separatedBy: .newlines)
+            for (index, line) in lines.enumerated() where Self.namesType(line, matching: regex) {
+                Issue.record(
+                    "\(file.path):\(index + 1): MyAppCore names a type its adapter owns: \(line)",
+                )
+            }
+        }
     }
 
     @Test
@@ -177,6 +223,21 @@ struct ArchitectureBoundaryTests {
     func `pattern ignores comments and other modules`(line: String) throws {
         let regex = try Self.importRegex()
         #expect(line.firstMatch(of: regex) == nil)
+    }
+
+    @Test(arguments: [
+        ("let probe = URLSession.shared", true),
+        ("    private let session: URLSession", true),
+        ("// URLSession is the adapter's", false),
+        ("    /// Wraps `URLSession` in MyAppPlatform.", false),
+        ("let client: URLSessionHTTPClient", false),
+    ])
+    func `the Foundation type scan catches code and skips comments`(
+        line: String,
+        caught: Bool,
+    ) throws {
+        let regex = try Self.typeRegex(forAnyOf: Self.forbiddenFoundationTypes)
+        #expect(Self.namesType(line, matching: regex) == caught)
     }
 
     @Test

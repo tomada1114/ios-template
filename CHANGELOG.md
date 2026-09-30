@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/design-system.md`
 - `LocalizationTests` keep Core's `LocalizedStringResource` keys and the String Catalog in
   step, and the `localizing-the-app` skill
+- An `HTTPClient` port with a `URLSession` adapter, a fake, and a contract run against
+  both
 
 ### Fixed
 
