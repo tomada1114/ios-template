@@ -44,7 +44,7 @@ xcrun simctl status_bar booted clear
 
 ```bash
 xcrun simctl openurl booted https://example.com          # opens Safari
-xcrun simctl openurl booted myapp://item/1               # fails: no app claims the scheme
+xcrun simctl openurl booted unclaimed://item/1           # fails: no app claims the scheme
 ```
 
 `openurl` hands the URL to the system exactly as a tap on a link would, so it exercises
