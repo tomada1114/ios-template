@@ -41,4 +41,9 @@ public enum AppLog {
     /// of the wrong type. A key's name and a type's name are `.public`; the stored value
     /// itself is never logged.
     public static let preferences = Logger(subsystem: subsystem, category: "preferences")
+
+    /// The navigation concern: ``NavigationModel`` rejecting a deep link. A link's scheme
+    /// and host are `.public`; its path and query are never logged, since a URL can carry
+    /// user data.
+    public static let navigation = Logger(subsystem: subsystem, category: "navigation")
 }

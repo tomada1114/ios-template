@@ -243,6 +243,13 @@ public final class TodoListViewModel {
         preferences.set(hide, for: PreferenceKeys.hideCompleted)
     }
 
+    /// The item with `id`, looked up in ``items`` rather than ``visibleItems``: the
+    /// detail screen, and a deep link to it, open an item that Hide Completed hides.
+    /// `nil` when no loaded item has that identifier — deleted, or not loaded yet.
+    public func item(withID id: TodoItem.ID) -> TodoItem? {
+        items.first { $0.id == id }
+    }
+
     /// Clears ``failure`` once the view has shown it.
     public func dismissFailure() {
         failure = nil

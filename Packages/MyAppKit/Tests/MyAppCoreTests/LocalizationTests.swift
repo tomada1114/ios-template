@@ -76,6 +76,8 @@ struct LocalizationTests {
             TodoListStrings.markDone, TodoListStrings.markNotDone,
             TodoListStrings.hideCompleted, TodoListStrings.allDoneTitle,
             TodoListStrings.allDoneDescription,
+            TodoDetailStrings.created, TodoDetailStrings.notFoundTitle,
+            TodoDetailStrings.notFoundDescription,
         ]
         let failures: [TodoListFailure] = [.deleteFailed, .loadFailed, .saveFailed]
         return strings.map { Case(resource: $0, arguments: []) }

@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "todoDetail.created" : {
+      "comment" : "Label beside the date a to-do item was created, on its detail screen.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Created"
+          }
+        }
+      }
+    },
+    "todoDetail.notFound.description" : {
+      "comment" : "Explanation under the item-not-found headline on the detail screen.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It may have been deleted."
+          }
+        }
+      }
+    },
+    "todoDetail.notFound.title" : {
+      "comment" : "Headline on the detail screen when the to-do item it should show does not exist.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Item Not Found"
+          }
+        }
+      }
+    },
     "todoList.add" : {
       "comment" : "Button that adds the typed text as a new to-do item.",
       "localizations" : {
