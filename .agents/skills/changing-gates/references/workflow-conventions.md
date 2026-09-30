@@ -27,10 +27,16 @@ Conventions every workflow here follows, which `actionlint` (in `scripts/lint.sh
 - a new check goes into an existing job unless it needs a different runner, trigger, or
   permission footprint. Widening `permissions:` or adding a workflow that writes is a
   security-relevant change that needs sign-off, not a routine CI edit.
+- a job's `name:` is what `.github/rulesets/main.json` requires as a status-check
+  context, so renaming, removing, or re-triggering a job means editing that file in the
+  same change; `scripts/checks/ruleset-contexts.sh` (`just check-harness`) fails while a
+  required context matches no job in a `pull_request` workflow, and `just ruleset` then
+  pushes the edited ruleset to the live repository (sign-off first).
 
 `just check-harness` holds the mechanical part of this list:
 `scripts/checks/workflow-pins-and-permissions.sh` the pins and the presence of a
 top-level `permissions:`, `scripts/checks/workflow-hygiene.sh` the write-scope,
-concurrency, and shell rules, and `scripts/checks/just-check-matches-ci.sh` that
-ci.yml's `run:` steps and `just check` run the same gates. `timeout-minutes` and
-`persist-credentials: false` are review's to hold.
+concurrency, and shell rules, `scripts/checks/ruleset-contexts.sh` the job names, and
+`scripts/checks/just-check-matches-ci.sh` that ci.yml's `run:` steps and `just check`
+run the same gates. `timeout-minutes` and `persist-credentials: false` are review's to
+hold.

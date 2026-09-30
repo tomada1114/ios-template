@@ -102,3 +102,18 @@ agents-check:
 # Remove build artifacts and the generated project
 clean:
     rm -rf build Packages/MyAppKit/.build MyApp.xcodeproj
+
+# Create or update this repository's GitHub labels from .github/labels.yml
+# (never deletes). Requires `gh`, authenticated against this repository: it is
+# not a mise tool (see mise.toml), so it comes from your own PATH, not `mise exec --`.
+[doc("Create or update GitHub labels from .github/labels.yml (never deletes)")]
+labels:
+    scripts/sync-labels.sh
+
+# Create or update the "main" branch ruleset from .github/rulesets/main.json
+# (admin-only: applying a ruleset needs repository admin permissions). Requires
+# `gh`, authenticated against this repository: like `labels` above, it is not a
+# mise tool, so it comes from your own PATH, not `mise exec --`.
+[doc("Create or update the \"main\" branch ruleset (admin-only)")]
+ruleset:
+    scripts/apply-ruleset.sh

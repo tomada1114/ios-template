@@ -182,7 +182,10 @@ exception added to `scripts/checks/just-check-matches-ci.sh` carries its reason.
 `scripts/checks/run-all.sh`), `test` (macos-26: `scripts/coverage.sh`), and `app`
 (macos-26: `just build`, then `just uitest` on an iPhone simulator that
 `scripts/simulator-destination.sh` chooses, with the `.xcresult` bundles uploaded on
-failure). A job added later is added to this paragraph by the change that adds it.
+failure). Beside it run `check-pr-title.yml` (the required `Validate PR title`) and
+`pr-label.yml`, which labels a pull request from its title type with
+`scripts/label-pr.sh` checked out at the base SHA. A job added later is added to this
+paragraph by the change that adds it.
 Which layer holds what is `AGENTS.md`'s "Enforcement layers" table; read it rather than
 re-deriving it.
 

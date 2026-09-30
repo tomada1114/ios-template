@@ -55,6 +55,8 @@ just check         # Run all checks: verify-hooks → fmt → lint → test-scri
 just agents-sync   # Regenerate the .claude/skills/ mirror from .agents/skills/
 just agents-check  # Fail if .claude/skills/ differs from .agents/skills/
 just clean         # Remove build artifacts and the generated project
+just labels        # Create/update GitHub labels from .github/labels.yml (never deletes)
+just ruleset       # Create/update the "main" branch ruleset from .github/rulesets/main.json (admin-only)
 ```
 
 Building the app needs Xcode (`.xcode-version`) **with its iOS platform installed**
@@ -80,11 +82,13 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | A shell script under `scripts/` (including the sourced `scripts/guard/*.sh`), or `.githooks/pre-commit` | `just lint`, then `just test-scripts` |
 | `scripts/verify-hooks.sh` | `just lint`, then `just test-scripts`; `just verify-hooks` for the check itself |
 | A harness check under `scripts/checks/` (including the sourced `scripts/checks/lib.sh`) | `just lint`, then `just test-scripts`; `just check-harness` for the checks themselves |
-| A `just` recipe name, a workflow's `uses:`, `permissions:`, `concurrency:`, or `run:` shell, a skill's frontmatter, the Skills table, `.claude/settings.json`'s `permissions` rules, the Core import ban list (`.swiftlint.yml`'s `no_ui_import_in_core` or `ArchitectureBoundaryTests.forbiddenModules`), the gates `just check` or `ci.yml` runs, or a label an issue form, a workflow, or `scripts/label-pr.sh` applies | `just check-harness` |
+| A `just` recipe name, a workflow's `uses:`, `permissions:`, `concurrency:`, or `run:` shell, a skill's frontmatter, the Skills table, `.claude/settings.json`'s `permissions` rules, the Core import ban list (`.swiftlint.yml`'s `no_ui_import_in_core` or `ArchitectureBoundaryTests.forbiddenModules`), the gates `just check` or `ci.yml` runs, `.github/rulesets/main.json`'s required contexts, or a label an issue form, a workflow, or `scripts/label-pr.sh` applies | `just check-harness` |
 | A skill under `.agents/skills/` | `just agents-sync`, then `just agents-check` and `just check-harness`; `just test-scripts` when the skill ships scripts (it runs their `scripts/tests/` unittest suite) |
 | A workflow under `.github/workflows/` | `just lint` (actionlint), then `just check-harness` |
 | Markdown | `just lint` (its `typos` spell-check) |
 | `mise.toml` | `mise install`, then `just check` |
+| `.github/labels.yml`, or an issue form under `.github/ISSUE_TEMPLATE/` | `just lint` (its `typos` spell-check), then `just check-harness` (every applied label declared, once); `scripts/tests/sync-labels_test.sh` for `scripts/sync-labels.sh` itself |
+| `.github/rulesets/main.json`, or `scripts/apply-ruleset.sh` | `scripts/tests/apply-ruleset_test.sh`; `just check-harness` for `main.json` (`scripts/checks/ruleset-contexts.sh` reads it) |
 
 ## Architecture
 
@@ -223,7 +227,14 @@ Get a human's sign-off before acting on any of these:
 - Working around a denied command. Re-spelling it (`git -C . …`, `bash -c '…'`, bundled
   short flags, an alias or wrapper) is forbidden. Stop and ask.
 - Any write to a remote: `git push`, `gh pr create`, `gh issue create`, a label change,
-  a merge.
+  a merge. `scripts/sync-labels.sh` (`just labels`) is a script this repository ships
+  for labels: it only ever creates or updates a label `.github/labels.yml` declares,
+  via `gh label create --force`, and never deletes one — but running it against the
+  live repository still needs sign-off before its first run there, the same as any
+  other remote write. `scripts/apply-ruleset.sh` (`just ruleset`) is the same kind of
+  script for branch protection: it only ever creates or updates the ruleset named
+  "main" from `.github/rulesets/main.json`, needs repository admin permissions to
+  succeed, and still needs sign-off before its first run against the live repository.
 
 Standing exceptions: invoking one of these skills is the sign-off for the remote writes
 that skill exists to make, for that invocation only.
@@ -237,6 +248,16 @@ that skill exists to make, for that invocation only.
 
 None of them covers anything else in the list above. A skill that reaches one of those
 stops and asks.
+
+### GitHub settings a new repository must enable
+
+"Use this template" copies files, not settings, so a repository's admin turns these on
+once under Settings › Advanced Security (Code security on older UIs):
+
+- The `main` ruleset, applied by `just ruleset`. `.github/rulesets/main.json`
+  deliberately lists no `bypass_actors`: a bypass lets an admin, or an agent acting
+  with an admin's token, merge without the PR and green checks the ruleset exists to
+  require, and an emergency change can still go through a PR.
 
 ## Repository scripts
 
@@ -290,13 +311,11 @@ libraries are sourced, so they carry no shebang or `set` line of their own):
 
 This repository is being brought up to the macOS template's harness
 (`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
-in order. What exists today is what the tables above describe. Not yet ported, each owned by
-an open issue: the remaining skills and the ADR tree, labels and the branch ruleset as
-code, PR hygiene and security workflows, dependency bots, `scripts/bootstrap.sh`, the
-localization harness, the iOS design system, distribution, and the fuller
-documentation. When an issue
-lands one of these, it updates this section and the tables above in the same pull
-request.
+in order. What exists today is what the tables above describe. Not yet ported, each owned
+by an open issue: the remaining skills and the ADR tree, security workflows, dependency
+bots, `scripts/bootstrap.sh`, the localization harness, the iOS design system,
+distribution, and the fuller documentation. When an issue lands one of these, it updates
+this section and the tables above in the same pull request.
 
 ## Enforcement layers
 
@@ -304,13 +323,14 @@ request.
 |---|---|---|
 | `.githooks/pre-commit` (installed by `just install`) | `git commit` | `scripts/lint.sh --staged-tree` on the staged Swift files; the skills-mirror check when a staged path is under `.agents/skills/` or `.claude/skills/`; the staged guard (`scripts/check-staged.sh`, rules in `scripts/guard/`) on every commit that stages a change — no secret-shaped path or credential-shaped content lands in a commit, and a staged deletion is never inspected |
 | `scripts/verify-hooks.sh` (`just install`'s last step, and `just check`'s first) | `just install`, `just check` | git resolves the hooks directory to `.githooks/` and `.githooks/pre-commit` is executable — skips under CI or the `ALLOW_MISSING_GIT_HOOKS` opt-out |
-| `scripts/checks/run-all.sh` (`just check-harness`, part of `just check` before `just test`) | `just check-harness`, `just check`, CI `lint` | the harness's claims about itself stay true — every `just <recipe>` in this file exists and every `Bash(just <recipe>…)` rule in `.claude/settings.json` names a recipe the justfile defines, every workflow has a top-level `permissions:` and every non-local `uses:` (workflows and composite actions) is pinned to a full SHA with a `# v…` comment, no workflow grants a `write` scope or a `read-all`/`write-all` shorthand at the top level (a write goes on the job that needs it, and no job takes a shorthand), every workflow triggered on `pull_request` declares a top-level `concurrency:`, and every declared group varies per run, is unique to its workflow unless it names `github.workflow`, and never cancels in progress on a `push` except through a `github.event_name` expression, every `run:` step (composite actions included) resolves to `shell: bash` (`-eo pipefail`) or opens with a `set` carrying `-e` and `pipefail`, every skill's frontmatter is exactly a matching `name` and a `description`, no `SKILL.md` sits below a skill's top directory and every skill's `description` is printable ASCII, at most 1,024 characters, and free of unquoted values Codex CLI's YAML parser rejects, the Skills table matches `.agents/skills/`, `.swiftlint.yml`'s `no_ui_import_in_core` regex and `ArchitectureBoundaryTests.forbiddenModules` ban the same modules, the gates `just check` runs and the `run:` steps of `.github/workflows/ci.yml` match in both directions apart from the reasoned exception list in `scripts/checks/just-check-matches-ci.sh`, and every label an issue form, a workflow, or `scripts/label-pr.sh`'s type-to-label mapping applies is declared in `.github/labels.yml` and no label is declared there twice |
+| `scripts/checks/run-all.sh` (`just check-harness`, part of `just check` before `just test`) | `just check-harness`, `just check`, CI `lint` | the harness's claims about itself stay true — every `just <recipe>` in this file exists and every `Bash(just <recipe>…)` rule in `.claude/settings.json` names a recipe the justfile defines, every workflow has a top-level `permissions:` and every non-local `uses:` (workflows and composite actions) is pinned to a full SHA with a `# v…` comment, no workflow grants a `write` scope or a `read-all`/`write-all` shorthand at the top level (a write goes on the job that needs it, and no job takes a shorthand), every workflow triggered on `pull_request` declares a top-level `concurrency:`, and every declared group varies per run, is unique to its workflow unless it names `github.workflow`, and never cancels in progress on a `push` except through a `github.event_name` expression, every `run:` step (composite actions included) resolves to `shell: bash` (`-eo pipefail`) or opens with a `set` carrying `-e` and `pipefail`, every skill's frontmatter is exactly a matching `name` and a `description`, no `SKILL.md` sits below a skill's top directory and every skill's `description` is printable ASCII, at most 1,024 characters, and free of unquoted values Codex CLI's YAML parser rejects, the Skills table matches `.agents/skills/`, every required status-check context in `.github/rulesets/main.json` matches a job `name:` (or id) in a workflow triggered on `pull_request`, `.swiftlint.yml`'s `no_ui_import_in_core` regex and `ArchitectureBoundaryTests.forbiddenModules` ban the same modules, the gates `just check` runs and the `run:` steps of `.github/workflows/ci.yml` match in both directions apart from the reasoned exception list in `scripts/checks/just-check-matches-ci.sh`, and every label an issue form, a workflow, or `scripts/label-pr.sh`'s type-to-label mapping applies is declared in `.github/labels.yml` and no label is declared there twice |
 | `.swiftlint.yml`'s `no_ui_import_in_core` + `ArchitectureBoundaryTests` | the hook, `just lint`, CI `lint`; `just test`, CI `test` | Core's import ban; UI and Platform never import each other; no shipped module imports `MyAppTestSupport` |
 | `.swiftlint.yml`'s `no_print_in_sources` | the hook, `just lint`, CI `lint` | no `print`/`debugPrint`/`NSLog` in shipped code |
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
 | `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary. `hooks` holds one `PostToolUse` hook, `scripts/format-edited-file.sh`, that runs `swiftformat` on the one `.swift` file an `Edit`/`Write`/`MultiEdit` touched and reports a failure back to the agent (exit 2) — a convenience on this host only; the git hook is the gate |
 | CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest) |
+| `.github/workflows/check-pr-title.yml` (job `Validate PR title`) | every pull request (opened, reopened, edited, synchronize) | the PR title is a Conventional Commit whose type is in its `types` list |
 
 `git commit --no-verify` bypasses the hook, and a clone where `just install` never ran
 has no hook at all (`scripts/verify-hooks.sh` makes that fail loudly at `just install`
@@ -318,6 +338,15 @@ and `just check` time, but a contributor who runs neither still commits without 
 CI is the backstop for everything except the staged guard, which no CI job re-runs over
 a pull request's diff: a secret committed with `--no-verify` or from a clone without
 `just install` reaches the branch unchecked (#10 adds the history scan).
+
+**Whether `main`'s ruleset is actually in force is invisible from the checkout.** The
+intended ruleset — PR required, checks green, no force-push or deletion — is defined as
+code in `.github/rulesets/main.json`; `just ruleset` (`scripts/apply-ruleset.sh`)
+creates or updates it via the GitHub API for whoever runs it as a repository admin.
+Nothing in the checkout verifies that it was actually applied to the live repository —
+that is visible only via `gh api repos/{owner}/{repo}/rulesets`, never from a git
+checkout. "Use this template" does not copy rulesets, so every repository created from
+this template still needs its own admin to run `just ruleset` once.
 
 **Everything in `.claude/settings.json` applies to Claude Code only.** Its `permissions`
 block decides which commands that host runs without stopping to ask, so it shapes where

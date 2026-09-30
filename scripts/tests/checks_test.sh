@@ -378,7 +378,7 @@ case_run_all_passes() {
     root=$(make_fixture)
     capture "${BASH}" "${CHECKS}/run-all.sh" --root "${root}"
     assert_exit 0
-    assert_stdout_contains "harness checks: 9 check(s) passed"
+    assert_stdout_contains "harness checks: 10 check(s) passed"
 }
 
 case_run_all_reports_every_failure() {
@@ -391,7 +391,7 @@ case_run_all_reports_every_failure() {
     assert_exit 1
     assert_stderr_contains "ERR_CHECK_RECIPE_MISSING"
     assert_stderr_contains "ERR_CHECK_WORKFLOW_PERMISSIONS"
-    assert_stderr_contains "ERR_CHECKS_FAILED: 2 of 9 harness check(s) failed: just-recipes-exist.sh workflow-pins-and-permissions.sh"
+    assert_stderr_contains "ERR_CHECKS_FAILED: 2 of 10 harness check(s) failed: just-recipes-exist.sh workflow-pins-and-permissions.sh"
     assert_stderr_not_contains "skills-frontmatter.sh" "a passing check named as failed"
     assert_stderr_not_contains "skills-index-complete.sh" "a passing check named as failed"
     assert_stdout_contains "==> scripts/checks/skills-index-complete.sh"
@@ -801,6 +801,92 @@ case_index_no_skills_table() {
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_INDEX
     assert_stderr_contains "no table under a \`## Skills\` heading"
+}
+
+# --- ruleset-contexts.sh ----------------------------------------------------
+
+# add_context ROOT CONTEXT — appends a required status check to the fixture ruleset.
+add_context() {
+    sed "s|^          { \"context\": \"lint\", \"integration_id\": 15368 }$|&,\\
+          { \"context\": \"$2\", \"integration_id\": 15368 }|" "$1/.github/rulesets/main.json" >"${CASE_DIR}/rs"
+    mv "${CASE_DIR}/rs" "$1/.github/rulesets/main.json"
+}
+
+# write_pr_workflow ROOT FILE ON — a pull_request-style workflow with named jobs.
+write_pr_workflow() {
+    cat >"$1/.github/workflows/$2" <<EOF
+name: Extra
+on: $3
+permissions: {}
+jobs:
+  title:
+    name: "Validate PR title" # shown in the checks list
+    runs-on: ubuntu-latest
+    steps: []
+  build:
+    name: Build (\${{ matrix.os }})
+    runs-on: ubuntu-latest
+    steps: []
+EOF
+}
+
+case_contexts_pass_by_id() {
+    local root
+    root=$(make_fixture)
+    capture "${BASH}" "${CHECKS}/ruleset-contexts.sh" --root "${root}"
+    assert_exit 0
+    assert_stdout_contains "ruleset-contexts: every required status check"
+}
+
+case_contexts_pass_by_name_and_expression() {
+    local root
+    root=$(make_fixture)
+    write_pr_workflow "${root}" extra.yml "[push, pull_request]"
+    add_context "${root}" "Validate PR title"
+    add_context "${root}" "Build (macos-15)"
+    capture "${BASH}" "${CHECKS}/ruleset-contexts.sh" --root "${root}"
+    assert_exit 0
+}
+
+case_contexts_missing_job() {
+    local root
+    root=$(make_fixture)
+    add_context "${root}" "Renamed Job"
+    capture "${BASH}" "${CHECKS}/ruleset-contexts.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_RULESET_CONTEXT
+    assert_stderr_contains 'required context "Renamed Job" matches no job'
+    assert_stderr_not_contains 'context "lint"' "a matching context reported"
+}
+
+case_contexts_push_only_workflow() {
+    local root
+    root=$(make_fixture)
+    add_context "${root}" "build"
+    capture "${BASH}" "${CHECKS}/ruleset-contexts.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_RULESET_CONTEXT
+    assert_stderr_contains 'required context "build" matches no job'
+}
+
+case_contexts_pull_request_target_does_not_count() {
+    local root
+    root=$(make_fixture)
+    write_pr_workflow "${root}" extra.yml "pull_request_target"
+    add_context "${root}" "Validate PR title"
+    capture "${BASH}" "${CHECKS}/ruleset-contexts.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_RULESET_CONTEXT
+    assert_stderr_contains 'required context "Validate PR title" matches no job'
+}
+
+case_contexts_missing_ruleset() {
+    local root
+    root=$(make_fixture)
+    mv "${root}/.github/rulesets/main.json" "${CASE_DIR}/main.json"
+    capture "${BASH}" "${CHECKS}/ruleset-contexts.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_INPUT_MISSING
 }
 
 # --- core-ban-lists-agree.sh --------------------------------------------------
@@ -1535,6 +1621,12 @@ run_case "index: passes, and ignores the ### Rules table" case_index_pass_ignore
 run_case "index: a skill directory without a row fails" case_index_directory_without_row
 run_case "index: a row without a directory fails" case_index_row_without_directory
 run_case "index: no Skills table fails" case_index_no_skills_table
+run_case "contexts: passes when a context matches a job id" case_contexts_pass_by_id
+run_case "contexts: passes on a quoted name and a matrix expression" case_contexts_pass_by_name_and_expression
+run_case "contexts: a context matching no job fails" case_contexts_missing_job
+run_case "contexts: a job only in a push workflow does not count" case_contexts_push_only_workflow
+run_case "contexts: a pull_request_target workflow does not count" case_contexts_pull_request_target_does_not_count
+run_case "contexts: a missing main.json fails" case_contexts_missing_ruleset
 run_case "ban: passes, ignoring a later rule's group and quoted modules in comments" case_ban_pass
 run_case "ban: passes on a one-line literal with a repeated module" case_ban_pass_single_line_literal
 run_case "ban: a module only in the lint rule fails" case_ban_lint_has_extra
