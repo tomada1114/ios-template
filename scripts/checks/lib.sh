@@ -213,7 +213,8 @@ check_read() {
     shift
     out=$("$@" 2>/dev/null) || status=$?
     if [ "${status}" -ne 0 ]; then
-        message=$("$@" 2>&1 >/dev/null | head -n 1) || true
+        message=$("$@" 2>&1 >/dev/null) || true
+        message=$(head -n 1 <<<"${message}")
         check_fail ERR_CHECK_READ_FAILED "could not read ${rel}" \
             "the reader of ${rel} to exit 0" \
             "exit ${status}: ${message:-no message}" \

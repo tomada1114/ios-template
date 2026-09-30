@@ -491,6 +491,17 @@ case_recipes_just_missing() {
     assert_contract ERR_CHECK_TOOL_MISSING
 }
 
+case_recipes_justfile_unreadable() {
+    local root
+    root=$(make_fixture)
+    printf '\ndeploy: no-such-recipe\n    echo deploy\n' >>"${root}/justfile"
+    capture "${BASH}" "${CHECKS}/just-recipes-exist.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_JUST_FAILED
+    assert_stderr_contains "Actual: error: recipe \`deploy\` has unknown dependency \`no-such-recipe\`"
+    assert_stderr_not_contains "justfile:" "more than just's first error line reported"
+}
+
 # --- workflow-pins-and-permissions.sh ----------------------------------------
 
 case_workflows_pass() {
@@ -1496,6 +1507,7 @@ run_case "recipes: a bogus recipe in a fenced block fails" case_recipes_bogus_in
 run_case "recipes: a permission rule for a bogus recipe fails" case_recipes_bogus_permission_rule
 run_case "recipes: passes with no .claude/settings.json" case_recipes_pass_without_settings
 run_case "recipes: just missing from PATH fails" case_recipes_just_missing
+run_case "recipes: a justfile just cannot read fails" case_recipes_justfile_unreadable
 run_case "workflows: passes on a conforming tree" case_workflows_pass
 run_case "workflows: passes with no .github/actions/" case_workflows_pass_without_actions_dir
 run_case "workflows: no top-level permissions fails" case_workflows_missing_permissions

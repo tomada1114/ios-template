@@ -62,7 +62,7 @@ fi
 if ! SUMMARY=$(just --summary --justfile "${CHECK_ROOT}/justfile" 2>&1); then
     check_fail ERR_CHECK_JUST_FAILED "\`just --summary\` could not read ${CHECK_ROOT}/justfile" \
         "\`just --summary --justfile ${CHECK_ROOT}/justfile\` to list the recipes" \
-        "$(printf '%s\n' "${SUMMARY}" | head -n 1)" \
+        "$(head -n 1 <<<"${SUMMARY}")" \
         "run \`just --summary --justfile ${CHECK_ROOT}/justfile\` and fix the justfile"
 fi
 RECIPES=" $(printf '%s' "${SUMMARY}" | tr '\n\t' '  ') "
