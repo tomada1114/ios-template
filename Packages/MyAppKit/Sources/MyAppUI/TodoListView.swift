@@ -45,6 +45,7 @@ private struct TodoRow: View {
 /// ``TodoListViewModel/draftTitle``.
 public struct TodoListView: View {
     @Bindable private var model: TodoListViewModel
+    @FocusState private var isDraftFocused: Bool
 
     public var body: some View {
         NavigationStack {
@@ -126,14 +127,23 @@ public struct TodoListView: View {
             }
             // Plain field on a filled, continuous rounded rectangle: the system's
             // `.roundedBorder` field is 34 pt tall and ignores a taller frame, so it
-            // cannot reach the minimum hit target.
+            // cannot reach the minimum hit target. A plain field takes focus only from a
+            // tap on its text line, so the pill behind it is a button that focuses it:
+            // a tap anywhere on the pill lands in the field. VoiceOver skips that button
+            // and reaches the field itself.
             .textFieldStyle(.plain)
+            .focused($isDraftFocused)
             .frame(minHeight: DesignTokens.Size.minimumHitTarget)
             .padding(.horizontal, DesignTokens.Spacing.medium)
-            .background(
-                .fill.tertiary,
-                in: RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous),
-            )
+            .background {
+                Button {
+                    isDraftFocused = true
+                } label: {
+                    draftFieldShape.fill(.fill.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHidden(true)
+            }
             .submitLabel(.done)
             .onSubmit { Task { await model.addDraft() } }
             .accessibilityIdentifier("newItemField")
@@ -148,6 +158,10 @@ public struct TodoListView: View {
         }
         .padding()
         .background(.bar)
+    }
+
+    private var draftFieldShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
     }
 
     /// The alert's presentation, derived from the model: dismissing it (by any route)
