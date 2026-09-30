@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   step, and the `localizing-the-app` skill
 - An `HTTPClient` port with a `URLSession` adapter, a fake, and a contract run against
   both
+- A `PreferencesStoring` port with a `UserDefaults` adapter, and the Hide Completed toggle
 
 ### Fixed
 

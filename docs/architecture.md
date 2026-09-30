@@ -15,6 +15,7 @@ a SwiftData adapter, a fake, a contract test, and a UI test.
 | Presentation pattern | MVVM with `@MainActor @Observable` view models in Core | The view model is plain Swift that `swift test` drives in milliseconds, so every decision a screen makes is unit-tested and coverage-gated; the view stays a thin renderer |
 | Persistence | SwiftData, behind a Core-declared repository port | First-party (no dependency), migrations built in, and the port keeps it replaceable: Core never imports SwiftData |
 | Networking | `URLSession` behind a Core `HTTPClient` port | First-party, no dependency; the port keeps decisions about status codes and failures in Core, where tests see them |
+| Preferences | `UserDefaults` behind a synchronous Core `PreferencesStoring` port | First-party and synchronous; the port keeps key names in one Core file where a test pins them |
 | Module layout | One local Swift package, `MyAppKit`, with `MyAppCore` / `MyAppUI` / `MyAppPlatform` | Module boundaries the compiler enforces, and a package `swift test` can run without a simulator |
 | Project file | XcodeGen (`project.yml`); `MyApp.xcodeproj` is generated and gitignored | No merge conflicts in a `.pbxproj`, and the whole app target is reviewable as text |
 | Language mode | Swift 6, warnings as errors | Data-race safety is checked from the first line; there is never a "migrate later" |
@@ -32,7 +33,7 @@ successor on this OS floor).
 App/                         composition root — @main, builds adapters, hands them to Core
  ├─ MyAppUI                  SwiftUI views: render Core state, forward user intents
  │   └─ MyAppCore            domain values, view models, ports (protocols), wording, logging
- └─ MyAppPlatform            adapters behind Core ports: SwiftData and URLSession today
+ └─ MyAppPlatform            adapters behind Core ports: SwiftData, URLSession, UserDefaults
      └─ MyAppCore
 Tests/MyAppTestSupport       each port's fake and contract function (test code only)
 ```
@@ -197,11 +198,50 @@ public protocol HTTPClient: Sendable {
   first feature that needs one wires `URLSessionHTTPClient()` in the composition root
   and hands it to the Core service it builds.
 
+### Preferences
+
+`PreferencesStoring` is the seam for small user settings — the ones that must survive a
+relaunch but are not the user's data. The port and its keys are in
+`MyAppCore/Preferences`, the `UserDefaultsPreferences` adapter in
+`MyAppPlatform/Preferences`, and `InMemoryPreferences` plus `PreferencesContract` in
+`Tests/MyAppTestSupport`. The worked example is Hide Completed on the to-do list.
+
+```swift
+public protocol PreferencesStoring: Sendable {
+    func value<Value: PreferenceValue>(for key: PreferenceKey<Value>) -> Value
+    func set<Value: PreferenceValue>(_ value: Value, for key: PreferenceKey<Value>)
+}
+```
+
+- **Synchronous, unlike every other port.** `UserDefaults` is synchronous and
+  thread-safe, so an `async` port would only add suspension points — and the reentrancy
+  they bring — to a `@MainActor` view model. Nothing can fail that a caller could act
+  on, so it does not throw either: an unset key, or a stored value of the wrong type,
+  answers the key's default, and the adapter logs the wrong type under
+  `AppLog.preferences`. The adapter stores only its suite's name, so it is a `Sendable`
+  struct; the fake is a final class over a `Mutex`.
+- **A key carries its type and default.** `PreferenceKey<Value>` pairs a name with a
+  default, and `PreferenceValue` admits only `Bool`, `Int`, `Double`, and `String` —
+  types `UserDefaults` stores natively. A richer setting is stored as one of these and
+  converted in Core.
+- **Key names are contract.** Every key is a constant in `PreferenceKeys`, and
+  `PreferenceKeysTests` pins each name and default. A renamed key reads as unset, so a
+  rename silently resets every user's setting: it is a migration in Core, not an edit
+  to that test (What is contract and what is private, below).
+- **Read on load, not in `init`.** `TodoListViewModel` reads `hideCompleted` at the
+  start of `load()`, so constructing a view model still touches no storage.
+- **UI tests start clean.** `UserDefaultsPreferences.scratch(suiteName:)` removes a
+  suite's domain before handing back an adapter over it. Under `-uiTesting`, `App/` uses
+  a scratch suite named after `AppLog.subsystem`, because `just uitest` reuses the
+  simulator and one run's setting would otherwise leak into the next. Unit tests of the
+  adapter each use a scratch suite named with a fresh UUID.
+
 ## Composition root
 
 `App/MyAppApp.swift` is the one place that knows both halves of every port. It picks the
-storage from the launch arguments, opens the SwiftData adapter, falls back to the null
-object on failure, creates the view model in `@State`, and hands it to the root view. A
+storage and the preferences suite from the launch arguments, opens the SwiftData adapter,
+falls back to the null object on failure, creates the view model in `@State` over both
+adapters, and hands it to the root view. A
 second screen or a second port is wired here too; if the wiring grows past a handful of
 lines, it moves into an `AppDependencies` value built in `App/` — still no singletons.
 
@@ -209,7 +249,8 @@ lines, it moves into an `AppDependencies` value built in `App/` — still no sin
 
 - Swift 6 language mode, complete checking, warnings as errors.
 - View models are `@MainActor`; ports are `Sendable` and `async`; adapters and fakes are
-  actors. Values crossing actors are `Sendable` structs and enums.
+  actors. `PreferencesStoring` is the one synchronous port (Preferences, above), so its
+  adapter is a struct and its fake a final class over a `Mutex`. Values crossing actors are `Sendable` structs and enums.
 - `@unchecked Sendable` and `nonisolated(unsafe)` are not used to silence a diagnostic —
   doing so needs human sign-off (`AGENTS.md`).
 - A closure a test injects (`now`, `makeID`, the fake's `onSave`) is `@Sendable`; capture
@@ -271,7 +312,7 @@ device that ran an earlier build, or the user.
 | **Core's public API** | `MyAppUI`, `MyAppPlatform`, `App/`, the tests | Update every caller in the same pull request; a new public declaration carries a `///` saying why; a new port is an ADR |
 | **The bundle identifier** (`PRODUCT_BUNDLE_IDENTIFIER` in `project.yml`) | The app's data container and Keychain items on every device, App Store Connect, push and other capabilities, `AppLog.subsystem`, `just run`/`just logs` | Fixed once a build has left your machine: a new identifier is a new app, and the user's data stays behind. `project.yml` and `AppLog.subsystem` change together (`AppLogTests`) |
 | **The stored schema** (`TodoSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus a `TodoMigrationPlan` stage, with a test that opens a store written by the previous version. Never edit a shipped schema version |
-| **`UserDefaults` keys and file formats** | Saved preferences and files on a user's device | Read the old key or format and migrate it in Core, with a test that starts from the old value. The template ships none |
+| **`UserDefaults` keys and file formats** | Saved preferences and files on a user's device | Read the old key or format and migrate it in Core, with a test that starts from the old value. Every key is a `PreferenceKeys` constant, pinned by `PreferenceKeysTests` |
 
 Everything else is private: `internal` declarations, how an adapter talks to its
 framework, view structure, file and type layout, test helpers, log messages.
