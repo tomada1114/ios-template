@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   SwiftUI screens; `just reset-permissions`
 - `DesignTokens` and the iOS `designing-ui` skill, with the template's design research in
   `docs/design-system.md`
+- `LocalizationTests` keep Core's `LocalizedStringResource` keys and the String Catalog in
+  step, and the `localizing-the-app` skill
 
 ### Fixed
 

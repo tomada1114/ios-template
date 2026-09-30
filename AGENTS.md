@@ -81,7 +81,7 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | How a screen looks (`DesignTokens`, colors, type, the design lock) | `just build`, then screenshots per `designing-ui`'s review pass (light, dark, largest Dynamic Type, Increase Contrast) |
 | Formatting or style of any Swift file | `just lint` (`just fix` for what is auto-fixable) |
 | One Core suite, while iterating | `just test-fast <filter>` — no coverage floor, so finish with `just test` |
-| `Localizable.xcstrings`, or a `LocalizedStringResource` in Core | `just test`; `just build` to compile the catalog into the app |
+| `Localizable.xcstrings`, or a `LocalizedStringResource` in Core | `just test` (`LocalizationTests` scans Core's `LocalizedStringResource(…)` calls and holds their keys and English to the catalog); `just build` to compile the catalog into the app |
 | `project.yml` | `just generate && just build` |
 | A test under `LaunchUITests/`, or launch behavior | `just uitest` |
 | Code behind `#if os(iOS)` in `MyAppKit`, or behavior that differs on the iOS runtime | `just test-ios` |
@@ -203,6 +203,7 @@ into `.claude/skills/`, the only path Claude Code reads:
 | `designing-ui` | how a screen looks: HIG craft rules, `DesignTokens`, Liquid Glass on iOS 26 with an iOS 18 floor, and the app's design lock ADR, researched with `/refero-design` |
 | `building-swiftui-screens` | a view in `MyAppUI`: a thin renderer over a `MyAppCore` `@Observable` view model, navigation, sheets and alerts, size classes, Dynamic Type, safe areas and the keyboard, touch targets, `#Preview` per state, accessibility identifiers and labels, and verifying a screen |
 | `updating-docs` | deciding whether a change owes a documentation update and which surface it lands on: `README.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/architecture.md`, `docs/architecture/`, a skill, or a `///` comment |
+| `localizing-the-app` | a string a person reads: the String Catalog `Localizable.xcstrings` in `MyAppCore`, `defaultLocalization`, Core returning `LocalizedStringResource` (`bundle: .module`), `Text(verbatim:)` in `MyAppUI`, keeping the catalog and `LocalizationTests` in step, `xcodebuild -exportLocalizations`, plurals, `InfoPlist.xcstrings`, and what adding a language involves |
 
 More skills are ported from the macOS template by open issues (see
 [Harness status](#harness-status)).
@@ -370,7 +371,7 @@ libraries are sourced, so they carry no shebang or `set` line of their own):
 This repository is being brought up to the macOS template's harness
 (`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
 in order. What exists today is what the tables above describe. Not yet ported, each owned
-by an open issue: the remaining skills, dependency bots, the localization harness,
+by an open issue: the remaining skills, dependency bots,
 distribution, and the fuller documentation. When an issue lands one
 of these, it updates this section and the tables above in the same pull request.
 
@@ -385,6 +386,7 @@ of these, it updates this section and the tables above in the same pull request.
 | `.swiftlint.yml`'s `no_print_in_sources` | the hook, `just lint`, CI `lint` | no `print`/`debugPrint`/`NSLog` in shipped code |
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
+| `LocalizationTests` | `just test`, CI `test` | every `LocalizedStringResource(…)` in Core has a key, a `defaultValue`, and `bundle: .module`; its keys are exactly the catalog's; the catalog's English is what Core renders |
 | `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary. `hooks` holds one `PostToolUse` hook, `scripts/format-edited-file.sh`, that runs `swiftformat` on the one `.swift` file an `Edit`/`Write`/`MultiEdit` touched and reports a failure back to the agent (exit 2) — a convenience on this host only; the git hook is the gate |
 | CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest, then the Release smoke launch, `just smoke`), `ios-tests` (`Package Tests (iOS Simulator)`: every package test suite on an iOS Simulator, `just test-ios`, no coverage floor), `bootstrap-smoke` (`Template Bootstrap Smoke`: `scripts/bootstrap.sh` renames a clone of the template, which is then linted, tested, and built for the simulator — template-only, so the rename removes it from every app), and the `zizmor` workflow lint (`Workflow Security Lint`) |
 | Security workflows (`codeql.yml`, `gitleaks.yml`, `osv-scan.yml`, `dependency-review.yml`, `scorecard.yml`) | every pull request (OSV, dependency review), push to `main` (CodeQL), a pull request that edits `gitleaks.yml`, and weekly schedules (CodeQL, gitleaks, OSV, Scorecard) | CodeQL for the package's Swift, a checksum-verified full-history gitleaks scan, OSV and dependency-review checks of SwiftPM dependencies, OpenSSF Scorecard |
