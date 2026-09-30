@@ -21,8 +21,9 @@ public enum HTTPClientError: Error, Equatable, Sendable {
     /// Core shows an offline state and may retry once connectivity returns.
     case notConnected
 
-    /// The server did not answer within ``HTTPRequest/timeout``. Core may retry, ideally
-    /// with a backoff, or show a "try again" state.
+    /// The server went silent for longer than ``HTTPRequest/timeout`` — an idle timeout,
+    /// not a total deadline. Core may retry, ideally with a backoff, or show a "try again"
+    /// state.
     case timedOut
 
     /// Any other transport failure (a TLS error, a malformed response), identified only

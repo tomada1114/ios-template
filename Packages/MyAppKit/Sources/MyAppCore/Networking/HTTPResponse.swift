@@ -12,7 +12,10 @@ public struct HTTPResponse: Equatable, Sendable {
 
     /// The HTTP status code, as the server sent it.
     public var statusCode: Int
-    /// The response's header fields, as the server sent them.
+    /// The response's header fields. The values are as the server sent them; the names'
+    /// case is not guaranteed — HTTP field names are case-insensitive, and the transport
+    /// may deliver them in another case (HTTP/2 names arrive lowercase). Look a name up
+    /// case-insensitively: `headers["Retry-After"]` misses `retry-after`.
     public var headers: [String: String]
     /// The response body; empty when the server sent none.
     public var body: Data

@@ -17,8 +17,10 @@
 /// 1. Any HTTP status, including a 4xx or 5xx, is returned as an ``HTTPResponse``, never
 ///    thrown — the decision about a status is the caller's.
 /// 2. The request's method, URL, headers, and body are what the server receives.
-/// 3. The response's status, headers, and body are returned unchanged.
-/// 4. No connection throws ``HTTPClientError/notConnected``; a timeout throws
+/// 3. The response's status, header values, and body are returned unchanged; a header
+///    name may arrive in another case (see ``HTTPResponse/headers``).
+/// 4. No connection throws ``HTTPClientError/notConnected``; a server silent for longer
+///    than ``HTTPRequest/timeout`` — an idle timeout, not a total deadline — throws
 ///    ``HTTPClientError/timedOut``.
 /// 5. Cancelling the calling task throws ``HTTPClientError/cancelled``, promptly — an
 ///    in-flight request is abandoned, not waited out.

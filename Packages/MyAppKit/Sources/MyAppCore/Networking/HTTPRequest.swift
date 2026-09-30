@@ -31,9 +31,12 @@ public struct HTTPRequest: Equatable, Sendable {
     public var headers: [String: String]
     /// The body to send, or `nil` for none.
     public var body: Data?
-    /// How long the request may wait for the server before it fails with
-    /// ``HTTPClientError/timedOut``. A `Duration` rather than a `TimeInterval`, so Core
-    /// speaks the same unit as its `Clock`s.
+    /// An idle timeout, not a total deadline: the request fails with
+    /// ``HTTPClientError/timedOut`` when the server goes silent for longer than this —
+    /// no connection, no response, or no further bytes of the body. A slow server that
+    /// keeps sending never trips it, so a caller that needs a total deadline races the
+    /// ``HTTPClient/send(_:)`` call against its own clock and cancels it. A `Duration`
+    /// rather than a `TimeInterval`, so Core speaks the same unit as its `Clock`s.
     public var timeout: Duration
 
     /// A request with the defaults most calls want: a bodiless `GET` with no headers
