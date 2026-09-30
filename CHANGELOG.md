@@ -27,3 +27,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the edited Swift file
 - Harness self-checks (`just check-harness`)
 - Skills for repository scripts, gate changes, and skill authoring
+- Label sync, PR title check, PR auto-labeling, release-note categories, and the `main`
+  ruleset as code (`just labels`, `just ruleset`)
