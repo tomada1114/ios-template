@@ -59,11 +59,10 @@ The mechanical list — secret-shaped paths (`.env*`, `secrets/`, signing materi
 such as `.p12` or `.p8`, keychains, provisioning profiles, and the rest) and
 credential-shaped content (private-key blocks, GitHub tokens, AWS keys, Anthropic,
 OpenAI, Slack, Google, and Stripe live keys, JWTs) —
-is `AGENTS.md`'s "Never read a secret-shaped file" list. Once the commit-time guard
-is ported, it lives in `scripts/guard/paths.sh` and `scripts/guard/credentials.sh`
-and the pre-commit hook's "Staged guard" section (`scripts/check-staged.sh`) enforces
-it on every commit; until then nothing mechanical stops such a file, so check every
-staged path against that list yourself. Do not keep a second copy of the list here.
+lives in `scripts/guard/paths.sh` and `scripts/guard/credentials.sh`, and the
+pre-commit hook's "Staged guard" section (`scripts/check-staged.sh`) enforces it
+on every commit. Do not keep a second copy of that list here; read those files for
+what exactly is blocked.
 
 What stays with you is the judgment no pattern can make:
 
