@@ -86,6 +86,12 @@ build:
 uitest:
     xcodebuild test -destination "$(scripts/simulator-destination.sh)"
 
+test-ios:
+    cd Packages/MyAppKit && xcodebuild test -destination "$(../../scripts/simulator-destination.sh)"
+
+smoke:
+    mise exec -- scripts/smoke_launch.sh
+
 check: verify-hooks fmt lint build
     echo check
 EOF
@@ -191,6 +197,12 @@ jobs:
           # just check leaves uitest out
           just build
           just uitest
+      - name: Smoke launch
+        run: just smoke
+  ios-tests:
+    runs-on: macos-26
+    steps:
+      - run: just test-ios
   bootstrap-smoke:
     runs-on: macos-26
     steps:

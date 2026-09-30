@@ -35,8 +35,9 @@ job all call it. A new check is therefore added to `scripts/lint.sh`, never inli
 command into `justfile`, `.githooks/pre-commit`, or a workflow `run:` step. The same
 shape holds elsewhere: CI's `test` job calls `scripts/coverage.sh` (what `just test`
 runs), its `lint` job calls `scripts/tests/run.sh` and `scripts/checks/run-all.sh`
-(what `just test-scripts` and `just check-harness` run), and the `app` job calls
-`just build` and `just uitest`. `scripts/checks/just-check-matches-ci.sh` holds the two
+(what `just test-scripts` and `just check-harness` run), the `app` job calls
+`just build`, `just uitest`, and `just smoke`, and the `ios-tests` job calls
+`just test-ios`. `scripts/checks/just-check-matches-ci.sh` holds the two
 sides to the same set of gates, in both directions, apart from its reasoned exception
 list.
 
@@ -181,11 +182,15 @@ exception added to `scripts/checks/just-check-matches-ci.sh` carries its reason.
 `ci.yml` splits into `lint` (ubuntu: `scripts/lint.sh`, `scripts/tests/run.sh`,
 `scripts/checks/run-all.sh`), `test` (macos-26: `scripts/coverage.sh`), `app`
 (macos-26: `just build`, then `just uitest` on an iPhone simulator that
-`scripts/simulator-destination.sh` chooses, with the `.xcresult` bundles uploaded on
-failure), `bootstrap-smoke` (macos-26, the required `Template Bootstrap Smoke`:
-`scripts/bootstrap.sh` renames a clone of the template, then the renamed tree is linted,
-tested, and built for the simulator — template-only, so the rename removes it from every
-app), and `zizmor` (ubuntu: the required `Workflow Security Lint`, zizmor's audit of
+`scripts/simulator-destination.sh` chooses, then the "Smoke launch (Release)" step,
+`just smoke` — `scripts/smoke_launch.sh` builds Release and asserts the app stays alive
+on that simulator for ten seconds — with the `.xcresult` bundles uploaded on failure),
+`ios-tests` (macos-26, the required `Package Tests (iOS Simulator)`: `just test-ios` runs
+every package test suite on that simulator, with no coverage floor, uploading its
+`.xcresult` on failure), `bootstrap-smoke` (macos-26, the required
+`Template Bootstrap Smoke`: `scripts/bootstrap.sh` renames a clone of the template, then
+the renamed tree is linted, tested, and built for the simulator — template-only, so the
+rename removes it from every app), and `zizmor` (ubuntu: the required `Workflow Security Lint`, zizmor's audit of
 every workflow, configured by `.github/zizmor.yml`). Beside it run `check-pr-title.yml`
 (the required `Validate PR title`) and `pr-label.yml`, which labels a pull request from
 its title type with `scripts/label-pr.sh` checked out at the base SHA, and the security
@@ -209,15 +214,16 @@ list and which of it `actionlint`, `zizmor`, and `just check-harness` check.
 
 ## What no gate here sees
 
-Nothing launches a Release build: `just build` and `just uitest` build Debug for the
-simulator, and no smoke check exists yet. The one XCUITest,
+A Release build is only launched, not exercised: `just smoke` asserts that it starts
+and stays alive for ten seconds on a simulator, and nothing more. The one XCUITest,
 `LaunchUITests/LaunchTests.swift`'s `testAddingAnItemShowsItInTheList` (`just uitest`),
 asserts only that the app launches and that one added item appears in the list, on the
 one simulator runtime CI's Xcode ships. Any other UI behavior, and every `MyAppUI` code
 path, is outside the coverage floor and asserted by no gate. Code under `#if os(iOS)` in
-the Swift package compiles only in `just build` and `just uitest` — `swift test`
-builds the package for the host Mac — and no test exercises it. Nothing runs the app on the
-iOS 18 deployment floor or on a physical device. Info.plist usage-description strings,
+the Swift package is tested only by `just test-ios` (CI's `ios-tests` job) — `swift test`
+builds the package for the host Mac — and the coverage floor never sees it. Nothing runs
+the app or the package tests on the iOS 18 deployment floor or on a physical device: CI's
+simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,
 entitlements, and signing settings are unchecked. Each is a place a change can be wrong
 while every gate passes; a gate proposed to close one is a real gate change and belongs
 in the PR as one.

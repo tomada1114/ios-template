@@ -53,6 +53,8 @@ just build         # Build the app (Debug) for the iOS Simulator
 just run           # Build, then install and launch it on an iOS Simulator (SIMULATOR_DEVICE picks one)
 just logs          # Stream this app's log output from the booted simulator (Ctrl-C to stop)
 just uitest        # Run the XCUITest launch test on an iOS Simulator
+just test-ios      # Run the package tests on an iOS Simulator (no coverage floor)
+just smoke         # Build Release and assert the app launches and stays alive on a simulator
 just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → build
 just agents-sync   # Regenerate the .claude/skills/ mirror from .agents/skills/
 just agents-check  # Fail if .claude/skills/ differs from .agents/skills/
@@ -80,6 +82,8 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | `Localizable.xcstrings`, or a `LocalizedStringResource` in Core | `just test`; `just build` to compile the catalog into the app |
 | `project.yml` | `just generate && just build` |
 | A test under `LaunchUITests/`, or launch behavior | `just uitest` |
+| Code behind `#if os(iOS)` in `MyAppKit`, or behavior that differs on the iOS runtime | `just test-ios` |
+| The Release configuration, or anything only a Release launch shows | `just smoke` |
 | Behavior only the running app shows | `just run`, then `just logs` — no gate asserts it, so the PR carries the evidence (a screenshot: `xcrun simctl io booted screenshot shot.png`) |
 | A shell script under `scripts/` (including the sourced `scripts/guard/*.sh`), or `.githooks/pre-commit` | `just lint`, then `just test-scripts` |
 | `scripts/verify-hooks.sh` | `just lint`, then `just test-scripts`; `just verify-hooks` for the check itself |
@@ -374,7 +378,7 @@ of these, it updates this section and the tables above in the same pull request.
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
 | `.claude/settings.json` | every tool call Claude Code makes here | the routine local loop runs without a prompt; `--no-verify`, force pushes, and entitlement edits are denied. A prompt policy for Claude Code only, not a boundary. `hooks` holds one `PostToolUse` hook, `scripts/format-edited-file.sh`, that runs `swiftformat` on the one `.swift` file an `Edit`/`Write`/`MultiEdit` touched and reports a failure back to the agent (exit 2) — a convenience on this host only; the git hook is the gate |
-| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest), `bootstrap-smoke` (`Template Bootstrap Smoke`: `scripts/bootstrap.sh` renames a clone of the template, which is then linted, tested, and built for the simulator — template-only, so the rename removes it from every app), and the `zizmor` workflow lint (`Workflow Security Lint`) |
+| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos, skills mirror; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest, then the Release smoke launch, `just smoke`), `ios-tests` (`Package Tests (iOS Simulator)`: every package test suite on an iOS Simulator, `just test-ios`, no coverage floor), `bootstrap-smoke` (`Template Bootstrap Smoke`: `scripts/bootstrap.sh` renames a clone of the template, which is then linted, tested, and built for the simulator — template-only, so the rename removes it from every app), and the `zizmor` workflow lint (`Workflow Security Lint`) |
 | Security workflows (`codeql.yml`, `gitleaks.yml`, `osv-scan.yml`, `dependency-review.yml`, `scorecard.yml`) | every pull request (OSV, dependency review), push to `main` (CodeQL), a pull request that edits `gitleaks.yml`, and weekly schedules (CodeQL, gitleaks, OSV, Scorecard) | CodeQL for the package's Swift, a checksum-verified full-history gitleaks scan, OSV and dependency-review checks of SwiftPM dependencies, OpenSSF Scorecard |
 | `.github/workflows/check-pr-title.yml` (job `Validate PR title`) | every pull request (opened, reopened, edited, synchronize) | the PR title is a Conventional Commit whose type is in its `types` list |
 
@@ -403,9 +407,8 @@ a human is consulted rather than what is possible, and its format-on-edit hook i
 convenience on that host, not a gate: Codex CLI, another agent, and a human at a shell
 are bound by the instructions in this file and by the gates above, not by that file.
 
-**No gate runs code behind `#if os(iOS)` in `MyAppKit`, or the app on the iOS 18
-deployment floor.** `just test` runs on macOS, and CI's simulators run the Xcode-pinned
-iOS runtime only.
+**No gate runs the app on the iOS 18 deployment floor or on a device: CI's simulators
+run the Xcode-pinned runtime only.**
 
 ## Review Checklist
 

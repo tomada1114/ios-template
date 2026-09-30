@@ -32,7 +32,8 @@ when `dependency-review.yml` was deleted:
 
 Neither Scorecard nor CodeQL is a required context, so deleting them needs no ruleset
 edit. Keep the remaining contexts — `Lint & Format Check`, `Test & Coverage Gate`,
-`App Build & UI Test (iOS Simulator)`, `Workflow Security Lint`, and `Validate PR title`
+`App Build & UI Test (iOS Simulator)`, `Package Tests (iOS Simulator)`,
+`Workflow Security Lint`, and `Validate PR title`
 (`scripts/bootstrap.sh` already removed `Template Bootstrap Smoke`). Mind the commas:
 the entry that ends up last in the array takes none. Then run
 `scripts/tests/apply-ruleset_test.sh`, and `just ruleset` as a repository admin
