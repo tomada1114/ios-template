@@ -159,6 +159,9 @@ into `.claude/skills/`, the only path Claude Code reads:
 | `tdd` | a behavior change in `MyAppCore`: writing a failing Swift Testing test before the implementation |
 | `create-pr` | opening or updating a pull request: the `just check` pre-check, title, template, and checklist |
 | `smart-commit` | committing and pushing changes: grouping them into Conventional Commits, excluding sensitive files |
+| `changing-gates` | a file that enforces rather than implements: `.swiftlint.yml`, `.swiftformat`, `Package.swift`'s `strictSettings`, `mise.toml`, `.githooks/pre-commit`, `scripts/lint.sh`, `scripts/coverage.sh`, the `scripts/guard/` commit-time guard, a `scripts/checks/` harness check, or a workflow — and which gate would catch a change |
+| `authoring-skills` | adding, editing, or reviewing a skill: authoring under `.agents/skills/`, the `just agents-sync` mirror, frontmatter, layout, and size limits |
+| `writing-repo-scripts` | writing or testing a shell script under `scripts/`, `.githooks/pre-commit`, or `scripts/tests/`: why bash, refusing or skipping outside a git checkout, the stderr contract by example, and `scripts/tests/lib.sh` |
 
 More skills are ported from the macOS template by open issues (see
 [Harness status](#harness-status)).
