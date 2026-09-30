@@ -14,6 +14,7 @@ a SwiftData adapter, a fake, a contract test, and a UI test.
 | Minimum OS | iOS 18 (`project.yml`, `Package.swift`) | `@Observable`, SwiftData, `ContentUnavailableView`, and the iOS 18 SwiftData and tab APIs without `#available` branches, while still reaching most devices in use. Raising it is an app's decision; lowering it below 17 loses `@Observable` and SwiftData |
 | Presentation pattern | MVVM with `@MainActor @Observable` view models in Core | The view model is plain Swift that `swift test` drives in milliseconds, so every decision a screen makes is unit-tested and coverage-gated; the view stays a thin renderer |
 | Persistence | SwiftData, behind a Core-declared repository port | First-party (no dependency), migrations built in, and the port keeps it replaceable: Core never imports SwiftData |
+| Networking | `URLSession` behind a Core `HTTPClient` port | First-party, no dependency; the port keeps decisions about status codes and failures in Core, where tests see them |
 | Module layout | One local Swift package, `MyAppKit`, with `MyAppCore` / `MyAppUI` / `MyAppPlatform` | Module boundaries the compiler enforces, and a package `swift test` can run without a simulator |
 | Project file | XcodeGen (`project.yml`); `MyApp.xcodeproj` is generated and gitignored | No merge conflicts in a `.pbxproj`, and the whole app target is reviewable as text |
 | Language mode | Swift 6, warnings as errors | Data-race safety is checked from the first line; there is never a "migrate later" |
@@ -31,7 +32,7 @@ successor on this OS floor).
 App/                         composition root — @main, builds adapters, hands them to Core
  ├─ MyAppUI                  SwiftUI views: render Core state, forward user intents
  │   └─ MyAppCore            domain values, view models, ports (protocols), wording, logging
- └─ MyAppPlatform            adapters behind Core ports: SwiftData today, OS services later
+ └─ MyAppPlatform            adapters behind Core ports: SwiftData and URLSession today
      └─ MyAppCore
 Tests/MyAppTestSupport       each port's fake and contract function (test code only)
 ```
@@ -162,6 +163,40 @@ Every port has exactly one fake and one contract function, both in
 No product exports it and `ArchitectureBoundaryTests` fails if a shipped module imports
 it. Previews use their own small `PreviewTodoRepository` in `MyAppUI` (Debug only).
 
+### The HTTP client port
+
+`HTTPClient` is the networking seam, shaped like the repository: a `Sendable` port in
+`MyAppCore/Networking`, the `URLSessionHTTPClient` adapter in `MyAppPlatform/Networking`,
+and `FakeHTTPClient` plus `HTTPClientContract` in `Tests/MyAppTestSupport`.
+
+```swift
+public protocol HTTPClient: Sendable {
+    func send(_ request: HTTPRequest) async throws(HTTPClientError) -> HTTPResponse
+}
+```
+
+- **Status codes are data.** A 404 or a 503 comes back as an `HTTPResponse`, not an
+  error, so the decision about it ("gone", "retry later", "show the server's message")
+  stays in the Core service that made the request, where a test hands it the status and
+  sees what it does. `isSuccess` answers the one question every caller asks first.
+- **A closed error set.** `HTTPClientError` covers only the ways a request ends without a
+  response: `cancelled`, `notConnected`, `timedOut`, `nonHTTPResponse`, and
+  `transport(code:)` for the rest. The adapter maps each `URLError` code into one of
+  them and logs the detail under `AppLog.network` — method and host `.public`, path and
+  error text `.private` — because the framework's error text can quote a URL that
+  carries user data. Cancellation is not a failure: it maps to `cancelled` and is not
+  logged.
+- **One contract, two runs, no network.** The contract takes a harness — something that
+  makes a client whose server answers as told and reports what that server received —
+  so it is written once over the port. `MyAppCoreTests` runs it against the fake, and
+  against deliberately broken clients it must reject; `MyAppPlatformTests` runs it
+  against `URLSessionHTTPClient` over a `URLProtocol` stub that answers on a `.invalid`
+  host unique to each test. Both run under `just test` and in CI, and no test touches
+  the real network.
+- **Not wired yet.** No feature calls an API, so `App/` does not create a client. The
+  first feature that needs one wires `URLSessionHTTPClient()` in the composition root
+  and hands it to the Core service it builds.
+
 ## Composition root
 
 `App/MyAppApp.swift` is the one place that knows both halves of every port. It picks the
@@ -259,6 +294,10 @@ framework, view structure, file and type layout, test helpers, log messages.
 adapter shape. The framework import lives only in `MyAppPlatform`; the permission's
 usage-description string goes in `project.yml` as an `INFOPLIST_KEY_…` setting; the
 decision of when to ask lives in Core.
+
+**A new remote API**: a Core service over `HTTPClient` — building requests, decoding
+responses, deciding what a status means — tested against `FakeHTTPClient`. Not a new
+port: the transport is already behind one.
 
 **A new stored model**: a new `@Model` in the next schema version, never an edit to a
 shipped one.

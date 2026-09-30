@@ -112,7 +112,7 @@ Packages/MyAppKit/
 │                           #   (enforced by lint and test); coverage-gated
 ├── Sources/MyAppUI/        # SwiftUI views — thin, render Core view models; shared
 │                           #   presentation values in `DesignSystem/DesignTokens.swift`
-├── Sources/MyAppPlatform/  # Adapters behind Core ports (SwiftData today) — translation
+├── Sources/MyAppPlatform/  # Adapters behind Core ports (SwiftData, URLSession) — translation
 │                           #   only, no domain logic, outside the coverage floor
 ├── Tests/MyAppTestSupport/ # Each port's fake and contract function — test code no
 │                           #   shipped module imports (enforced by test)
@@ -126,7 +126,8 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   `MyAppUI` and `MyAppPlatform` are siblings and never import each other.
 - Storage and OS services go in `MyAppPlatform` as an adapter behind a `Sendable` port
   Core declares, with one fake and one contract function in `Tests/MyAppTestSupport`.
-  The worked example is `TodoRepository` / `SwiftDataTodoRepository`.
+  The worked example is `TodoRepository` / `SwiftDataTodoRepository`; networking
+  included: `HTTPClient` / `URLSessionHTTPClient`.
 - `MyAppCore` never imports SwiftUI, UIKit, AppKit, Cocoa, SwiftData, CoreData, CloudKit,
   UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, or WidgetKit — in any
   spelling. Enforced twice: `.swiftlint.yml`'s `no_ui_import_in_core` and
@@ -382,7 +383,7 @@ of these, it updates this section and the tables above in the same pull request.
 | `.githooks/pre-commit` (installed by `just install`) | `git commit` | `scripts/lint.sh --staged-tree` on the staged Swift files; the skills-mirror check when a staged path is under `.agents/skills/` or `.claude/skills/`; the staged guard (`scripts/check-staged.sh`, rules in `scripts/guard/`) on every commit that stages a change — no secret-shaped path or credential-shaped content lands in a commit, and a staged deletion is never inspected |
 | `scripts/verify-hooks.sh` (`just install`'s last step, and `just check`'s first) | `just install`, `just check` | git resolves the hooks directory to `.githooks/` and `.githooks/pre-commit` is executable — skips under CI or the `ALLOW_MISSING_GIT_HOOKS` opt-out |
 | `scripts/checks/run-all.sh` (`just check-harness`, part of `just check` before `just test`) | `just check-harness`, `just check`, CI `lint` | the harness's claims about itself stay true — every `just <recipe>` in this file exists and every `Bash(just <recipe>…)` rule in `.claude/settings.json` names a recipe the justfile defines, every workflow has a top-level `permissions:` and every non-local `uses:` (workflows and composite actions) is pinned to a full SHA with a `# v…` comment, no workflow grants a `write` scope or a `read-all`/`write-all` shorthand at the top level (a write goes on the job that needs it, and no job takes a shorthand), every workflow triggered on `pull_request` declares a top-level `concurrency:`, and every declared group varies per run, is unique to its workflow unless it names `github.workflow`, and never cancels in progress on a `push` except through a `github.event_name` expression, every `run:` step (composite actions included) resolves to `shell: bash` (`-eo pipefail`) or opens with a `set` carrying `-e` and `pipefail`, every skill's frontmatter is exactly a matching `name` and a `description`, no `SKILL.md` sits below a skill's top directory and every skill's `description` is printable ASCII, at most 1,024 characters, and free of unquoted values Codex CLI's YAML parser rejects, the Skills table matches `.agents/skills/`, every required status-check context in `.github/rulesets/main.json` matches a job `name:` (or id) in a workflow triggered on `pull_request`, `.swiftlint.yml`'s `no_ui_import_in_core` regex and `ArchitectureBoundaryTests.forbiddenModules` ban the same modules, the gates `just check` runs and the `run:` steps of `.github/workflows/ci.yml` match in both directions apart from the reasoned exception list in `scripts/checks/just-check-matches-ci.sh`, and every label an issue form, a workflow, or `scripts/label-pr.sh`'s type-to-label mapping applies is declared in `.github/labels.yml` and no label is declared there twice, and the `## Product` section above stays a `TODO:` skeleton here while `project.yml` still names the template's app-name placeholder and holds no `TODO:` marker once `scripts/bootstrap.sh` has renamed this into an app |
-| `.swiftlint.yml`'s `no_ui_import_in_core` + `ArchitectureBoundaryTests` | the hook, `just lint`, CI `lint`; `just test`, CI `test` | Core's import ban; UI and Platform never import each other; no shipped module imports `MyAppTestSupport` |
+| `.swiftlint.yml`'s `no_ui_import_in_core` + `ArchitectureBoundaryTests` | the hook, `just lint`, CI `lint`; `just test`, CI `test` | Core's import ban; Core never names `URLSession` (a Foundation type no import ban sees); UI and Platform never import each other; no shipped module imports `MyAppTestSupport` |
 | `.swiftlint.yml`'s `no_print_in_sources` | the hook, `just lint`, CI `lint` | no `print`/`debugPrint`/`NSLog` in shipped code |
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
