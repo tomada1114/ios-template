@@ -29,3 +29,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Skills for repository scripts, gate changes, and skill authoring
 - Label sync, PR title check, PR auto-labeling, release-note categories, and the `main`
   ruleset as code (`just labels`, `just ruleset`)
+- Skills for errors, Core logic, ADRs, the roadmap, and documentation, and the empty ADR
+  tree under `docs/architecture/`
