@@ -6,17 +6,26 @@ import SwiftUI
 /// Application entry point — wiring only. All real code lives in Packages/MyAppKit.
 ///
 /// This is also the composition root: the one place that knows both halves of a port.
-/// It opens the SwiftData store through the `MyAppPlatform` adapter and hands it to a
-/// `MyAppCore` view model, so nothing below `App/` — not the view model, not the view —
-/// depends on which store answers (`docs/architecture.md` › Layers).
+/// It opens the SwiftData store and the `UserDefaults` preferences through their
+/// `MyAppPlatform` adapters and hands them to a `MyAppCore` view model, so nothing below
+/// `App/` — not the view model, not the view — depends on which store answers
+/// (`docs/architecture.md` › Layers).
 @main
 struct MyAppApp: App {
-    /// The launch argument `LaunchUITests` passes: an in-memory store, so every UI test
-    /// run starts empty and leaves nothing behind on the simulator.
+    /// The launch argument `LaunchUITests` passes: an in-memory store and a scratch
+    /// preferences suite, so every UI test run starts empty and at every setting's
+    /// default, and leaves nothing behind that the app's own data would see.
     private static let uiTestingArgument = "-uiTesting"
 
+    private static var isUITesting: Bool {
+        ProcessInfo.processInfo.arguments.contains(uiTestingArgument)
+    }
+
     /// Owned here, in `@State`, so the model outlives any one scene's view tree.
-    @State private var todoList = TodoListViewModel(repository: Self.makeRepository())
+    @State private var todoList = TodoListViewModel(
+        repository: Self.makeRepository(),
+        preferences: Self.makePreferences(),
+    )
 
     var body: some Scene {
         WindowGroup {
@@ -28,12 +37,21 @@ struct MyAppApp: App {
     /// launches — over a repository that reports every call as failed — rather than
     /// crashing, or quietly keeping edits in memory that would vanish on the next launch.
     private static func makeRepository() -> any TodoRepository {
-        let storage: SwiftDataTodoRepository.Storage =
-            ProcessInfo.processInfo.arguments.contains(uiTestingArgument) ? .inMemory : .onDisk
+        let storage: SwiftDataTodoRepository.Storage = isUITesting ? .inMemory : .onDisk
         do {
             return try SwiftDataTodoRepository.make(storage: storage)
         } catch {
             return UnavailableTodoRepository()
         }
+    }
+
+    /// The preferences the app runs on: the standard defaults, or — under UI testing — a
+    /// suite of its own, cleared at launch. `just uitest` reuses the simulator, so without
+    /// the scratch suite one run's Hide Completed would still be on in the next.
+    private static func makePreferences() -> any PreferencesStoring {
+        if isUITesting {
+            return UserDefaultsPreferences.scratch(suiteName: "\(AppLog.subsystem).uiTesting")
+        }
+        return UserDefaultsPreferences()
     }
 }
