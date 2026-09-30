@@ -112,10 +112,11 @@ architecture").
 
 It pins every CLI tool the gates call; scripts call those tools by bare name and the
 caller provides PATH. A pin is an exact version, never `latest`, and is not bumped by
-hand; `.claude/rules/project.md`'s Toolchain Pinning is the one statement of that
-policy, including why `.xcode-version` is the exception that is hand-bumped. No bot
-opens pin-bump pull requests here yet; an open issue adds one (`AGENTS.md`'s "Harness
-status"). A SwiftLint or SwiftFormat bump is a gate change in its own right: new rules or
+hand: it is bumped by Renovate (`.github/renovate.json`), which opens a `deps:` pull
+request after a 7-day cooldown. `.claude/rules/project.md`'s Toolchain Pinning is the
+one statement of that policy, including why `.xcode-version` is the exception that is
+hand-bumped; landing the bot's pull requests is the `merging-dependency-prs` skill. A
+SwiftLint or SwiftFormat bump is a gate change in its own right: new rules or
 formatting may fire, and the fix is to the code or a reasoned `disabled_rules` entry on
 that PR, never to skip the bump silently. The Xcode pin lives in `.xcode-version`, which
 every macOS job reads through `.github/actions/select-xcode`.
@@ -203,6 +204,10 @@ Scorecard, weekly). A job added later is added to this paragraph by the change t
 it.
 Which layer holds what is `AGENTS.md`'s "Enforcement layers" table; read it rather than
 re-deriving it.
+
+Dependabot (`.github/dependabot.yml`) bumps the pinned `uses:` SHAs and their `# v…`
+comments in `ci:`-prefixed pull requests (Toolchain Pinning's prefix and cooldown, held
+by `scripts/checks/dependency-bots-agree.sh`).
 
 Every workflow follows a set of conventions — remote `uses:` pinned to a full SHA, a
 narrow top-level `permissions:`, `persist-credentials: false`, a `pull_request`
