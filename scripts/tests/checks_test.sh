@@ -416,7 +416,7 @@ case_run_all_passes() {
     root=$(make_fixture)
     capture "${BASH}" "${CHECKS}/run-all.sh" --root "${root}"
     assert_exit 0
-    assert_stdout_contains "harness checks: 11 check(s) passed"
+    assert_stdout_contains "harness checks: 12 check(s) passed"
 }
 
 case_run_all_reports_every_failure() {
@@ -429,7 +429,7 @@ case_run_all_reports_every_failure() {
     assert_exit 1
     assert_stderr_contains "ERR_CHECK_RECIPE_MISSING"
     assert_stderr_contains "ERR_CHECK_WORKFLOW_PERMISSIONS"
-    assert_stderr_contains "ERR_CHECKS_FAILED: 2 of 11 harness check(s) failed: just-recipes-exist.sh workflow-pins-and-permissions.sh"
+    assert_stderr_contains "ERR_CHECKS_FAILED: 2 of 12 harness check(s) failed: just-recipes-exist.sh workflow-pins-and-permissions.sh"
     assert_stderr_not_contains "skills-frontmatter.sh" "a passing check named as failed"
     assert_stderr_not_contains "skills-index-complete.sh" "a passing check named as failed"
     assert_stdout_contains "==> scripts/checks/skills-index-complete.sh"
@@ -1569,6 +1569,127 @@ case_hygiene_reports_every_rule() {
     assert_stderr_contains "ERR_CHECK_WORKFLOW_SHELL: "
 }
 
+# --- dependency-bots-agree.sh -------------------------------------------------
+
+case_bots_pass() {
+    local root
+    root=$(make_fixture)
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 0
+    assert_stdout_contains "dependency-bots-agree: "
+}
+
+case_bots_pass_without_bots() {
+    local root
+    root=$(make_fixture)
+    mv "${root}/.github/dependabot.yml" "${CASE_DIR}/dependabot.yml"
+    mv "${root}/.github/renovate.json" "${CASE_DIR}/renovate.json"
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 0
+    assert_stdout_contains "nothing to compare"
+    assert_stdout_not_contains "every bot prefix" "a success line printed after nothing was compared"
+}
+
+case_bots_dependabot_prefix_not_a_type() {
+    local root
+    root=$(make_fixture)
+    replace_in "${root}" .github/dependabot.yml 'prefix: "deps:"' 'prefix: "bump(swift):"'
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_PREFIX
+    assert_stderr_contains ".github/dependabot.yml:$(line_of "${root}" .github/dependabot.yml "bump(swift)"): Dependabot \`swift\` commit-message.prefix \`bump(swift):\` has type \`bump\`, which the title check at .github/workflows/title.yml:$(line_of "${root}" .github/workflows/title.yml "amannn/") does not accept"
+    assert_stderr_not_contains "github-actions" "the entry whose prefix is a listed type reported"
+}
+
+case_bots_renovate_prefix_not_a_type() {
+    local root
+    root=$(make_fixture)
+    replace_in "${root}" .github/renovate.json '"commitMessagePrefix": "deps:"' '"commitMessagePrefix": "tooling:"'
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_PREFIX
+    assert_stderr_contains ".github/renovate.json:$(line_of "${root}" .github/renovate.json "tooling:"): Renovate commitMessagePrefix \`tooling:\` has type \`tooling\`"
+}
+
+case_bots_dependabot_prefix_missing() {
+    local root
+    root=$(make_fixture)
+    sed '/^    commit-message:$/{N;/deps:/d;}' "${root}/.github/dependabot.yml" >"${CASE_DIR}/dependabot.yml"
+    mv "${CASE_DIR}/dependabot.yml" "${root}/.github/dependabot.yml"
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_PREFIX
+    assert_stderr_contains ".github/dependabot.yml:3: Dependabot \`swift\` commit-message.prefix is not set"
+}
+
+case_bots_renovate_prefix_missing() {
+    local root
+    root=$(make_fixture)
+    sed '/"commitMessagePrefix"/d' "${root}/.github/renovate.json" >"${CASE_DIR}/renovate.json"
+    mv "${CASE_DIR}/renovate.json" "${root}/.github/renovate.json"
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_PREFIX
+    assert_stderr_contains ".github/renovate.json: Renovate commitMessagePrefix is not set"
+}
+
+case_bots_default_types() {
+    local root
+    root=$(make_fixture)
+    sed '/^        with:$/,$d' "${root}/.github/workflows/title.yml" >"${CASE_DIR}/title.yml"
+    mv "${CASE_DIR}/title.yml" "${root}/.github/workflows/title.yml"
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_PREFIX
+    assert_stderr_contains "Dependabot \`swift\` commit-message.prefix \`deps:\` has type \`deps\`"
+    assert_stderr_contains "Renovate commitMessagePrefix \`deps:\` has type \`deps\`"
+    assert_stderr_not_contains "github-actions" "ci, one of the action's default types, reported"
+}
+
+case_bots_no_title_check() {
+    local root
+    root=$(make_fixture)
+    mv "${root}/.github/workflows/title.yml" "${CASE_DIR}/title.yml"
+    replace_in "${root}" .github/dependabot.yml 'prefix: "deps:"' 'prefix: "bump:"'
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 0
+    assert_stdout_contains "not comparing commit prefixes"
+}
+
+case_bots_cooldowns_disagree() {
+    local root
+    root=$(make_fixture)
+    replace_in "${root}" .github/renovate.json '"1 week"' '"3 days"'
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_COOLDOWN
+    assert_stderr_contains ".github/renovate.json:$(line_of "${root}" .github/renovate.json "3 days"): Renovate minimumReleaseAge is 3 day(s)"
+    assert_stderr_contains "Dependabot \`github-actions\` cooldown.default-days is 7 day(s)"
+}
+
+case_bots_cooldown_missing() {
+    local root
+    root=$(make_fixture)
+    awk '/^  - package-ecosystem: "github-actions"/ { second = 1 } second && /cooldown:|default-days:/ { next } { print }' \
+        "${root}/.github/dependabot.yml" >"${CASE_DIR}/dependabot.yml"
+    mv "${CASE_DIR}/dependabot.yml" "${root}/.github/dependabot.yml"
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_COOLDOWN
+    assert_stderr_contains ".github/dependabot.yml:$(line_of "${root}" .github/dependabot.yml '"github-actions"'): Dependabot \`github-actions\` cooldown.default-days is not set"
+    assert_stderr_not_contains "day(s)" "agreeing values listed as a disagreement"
+}
+
+case_bots_cooldown_unreadable() {
+    local root
+    root=$(make_fixture)
+    replace_in "${root}" .github/renovate.json '"1 week"' '"a fortnight"'
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_COOLDOWN
+    assert_stderr_contains "Renovate minimumReleaseAge \`a fortnight\` is not a whole number of days"
+}
+
 # write_mixed_workflow ROOT GROUP [CANCEL] — .github/workflows/mixed.yml, triggered on
 # push and pull_request, with the given concurrency group and cancel-in-progress.
 write_mixed_workflow() {
@@ -1698,6 +1819,59 @@ case_hygiene_unreadable_file() {
     assert_stderr_contains "could not read .github/workflows/label.yml"
 }
 
+case_bots_prefix_without_type() {
+    local root
+    root=$(make_fixture)
+    replace_in "${root}" .github/dependabot.yml 'prefix: "deps:"' 'prefix: "[deps]"'
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_PREFIX
+    assert_stderr_contains "Dependabot \`swift\` commit-message.prefix \`[deps]\` has no type"
+}
+
+case_bots_flow_mapping_settings() {
+    local root
+    root=$(make_fixture)
+    cat >"${root}/.github/dependabot.yml" <<'EOF'
+version: 2
+updates:
+  - package-ecosystem: "swift"
+    directory: "/"
+    commit-message: { prefix: "deps:" }
+    cooldown: { default-days: 7 }
+EOF
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 0
+    replace_in "${root}" .github/dependabot.yml "default-days: 7" "default-days: 5"
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_COOLDOWN
+    assert_stderr_contains ".github/dependabot.yml:6: Dependabot \`swift\` cooldown.default-days is 5 day(s)"
+}
+
+case_bots_json5_notice() {
+    local root
+    root=$(make_fixture)
+    mv "${root}/.github/renovate.json" "${root}/renovate.json5"
+    mv "${root}/.github/dependabot.yml" "${CASE_DIR}/dependabot.yml"
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 0
+    assert_stdout_contains "notice: renovate.json5 is JSON5, which this check does not read"
+    assert_stdout_contains "nothing to compare"
+    assert_stdout_not_contains "every bot prefix" "a success line printed after nothing was compared"
+}
+
+case_bots_other_json_config_name() {
+    local root
+    root=$(make_fixture)
+    mv "${root}/.github/renovate.json" "${root}/.renovaterc.json"
+    replace_in "${root}" .renovaterc.json '"1 week"' '"2 days"'
+    capture "${BASH}" "${CHECKS}/dependency-bots-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_BOT_COOLDOWN
+    assert_stderr_contains ".renovaterc.json:$(line_of "${root}" .renovaterc.json "2 days"): Renovate minimumReleaseAge is 2 day(s)"
+}
+
 run_case "run-all: passes on a conforming tree" case_run_all_passes
 run_case "run-all: two broken checks are both reported" case_run_all_reports_every_failure
 run_case "run-all: rejects an unknown argument" case_run_all_rejects_unknown_argument
@@ -1800,6 +1974,17 @@ run_case "hygiene: a shell that is not fail-closed fails" case_hygiene_shell_not
 run_case "hygiene: a custom bash template with -e and pipefail passes" case_hygiene_custom_fail_closed_shell_passes
 run_case "hygiene: a composite step's non-bash shell fails" case_hygiene_composite_shell
 run_case "hygiene: all three rules report in one run" case_hygiene_reports_every_rule
+run_case "bots: passes on a conforming tree" case_bots_pass
+run_case "bots: passes with no bot configured" case_bots_pass_without_bots
+run_case "bots: a Dependabot prefix outside the title types fails" case_bots_dependabot_prefix_not_a_type
+run_case "bots: a Renovate prefix outside the title types fails" case_bots_renovate_prefix_not_a_type
+run_case "bots: a Dependabot entry without a prefix fails" case_bots_dependabot_prefix_missing
+run_case "bots: a Renovate config without a prefix fails" case_bots_renovate_prefix_missing
+run_case "bots: a title check without types uses the action's defaults" case_bots_default_types
+run_case "bots: no title check skips the prefix comparison" case_bots_no_title_check
+run_case "bots: disagreeing cooldowns fail" case_bots_cooldowns_disagree
+run_case "bots: a Dependabot entry without a cooldown fails" case_bots_cooldown_missing
+run_case "bots: an unreadable Renovate age fails" case_bots_cooldown_unreadable
 run_case "hygiene: a pull request key on a workflow with other triggers fails" case_hygiene_pr_key_on_mixed_triggers
 run_case "hygiene: a pull request key with a run_id fallback passes" case_hygiene_pr_key_with_run_id_fallback_passes
 run_case "hygiene: github.ref_type is not a per-run key" case_hygiene_ref_type_is_not_ref
@@ -1810,4 +1995,8 @@ run_case "hygiene: a set that turns errexit off fails" case_hygiene_set_errexit_
 run_case "hygiene: a bash template with -o errexit -o pipefail passes" case_hygiene_long_option_shell_passes
 run_case "hygiene: pwsh and python shells are outside the rule" case_hygiene_other_interpreters_pass
 run_case "hygiene: an unreadable workflow fails under the contract" case_hygiene_unreadable_file
+run_case "bots: a prefix with no leading type fails" case_bots_prefix_without_type
+run_case "bots: one-level flow mappings are read" case_bots_flow_mapping_settings
+run_case "bots: a JSON5 Renovate config gets a notice, and no success line" case_bots_json5_notice
+run_case "bots: .renovaterc.json is read" case_bots_other_json_config_name
 finish

@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tree under `docs/architecture/`
 - CodeQL, gitleaks, OSV, dependency review, Scorecard, and zizmor workflows; SECURITY.md
   and CODE_OF_CONDUCT.md
+- Dependabot (SwiftPM, GitHub Actions) and Renovate (mise.toml, gitleaks) with a 7-day
+  cooldown, kept in agreement by `scripts/checks/dependency-bots-agree.sh`, and the
+  `merging-dependency-prs` skill
 - `scripts/bootstrap.sh` renames the template into an app, checked by CI's Template
   Bootstrap Smoke job
 - `just test-ios` (package tests on the iOS Simulator) and `just smoke` (Release launch on
