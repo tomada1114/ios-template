@@ -48,7 +48,8 @@ just logs                                  # stream this app's log output; Ctrl-
 just reset-permissions                     # forget this app's privacy grants on the booted simulator
 ```
 
-`just run` boots the simulator, brings Simulator.app to the front, and replaces any
+`just run` boots the simulator, brings Device Hub (Xcode 27's
+replacement for Simulator.app) to the front, and replaces any
 running copy of the app with the fresh build. `just logs` follows the subsystem the
 app logs under (`AppLog`, which is the bundle identifier). After `just reset-permissions`
 the next request for a permission prompts again, as on a fresh install.

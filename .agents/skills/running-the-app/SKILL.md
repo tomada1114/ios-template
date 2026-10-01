@@ -37,7 +37,8 @@ just run      # just build, then scripts/run-simulator.sh
 ```
 
 `scripts/run-simulator.sh` boots the device `scripts/simulator-destination.sh` picks
-(`SIMULATOR_DEVICE="iPhone 17" just run` picks another), opens Simulator.app, installs
+(`SIMULATOR_DEVICE="iPhone 17" just run` picks another), opens Device Hub (Xcode 27's
+replacement for Simulator.app), installs
 the Debug build, and launches it with `--terminate-running-process`: launching an app
 that is already running only foregrounds the old process, so you would be watching the
 previous build. The bundle identifier comes from `project.yml` through

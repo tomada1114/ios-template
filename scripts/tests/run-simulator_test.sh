@@ -47,7 +47,8 @@ EOF
 
 # stub_simctl [FAILING_SUBCOMMAND] — xcrun answers `simctl list` with a one-iPhone
 # fixture, and every other simctl call with success, except FAILING_SUBCOMMAND
-# (bootstatus, install, or launch), which prints an error and exits 1.
+# (bootstatus, install, or launch), which prints an error and exits 1. FAILING_SUBCOMMAND
+# `open` makes the stubbed `open` fail instead, the way it does on a Mac without the app.
 stub_simctl() {
     cat >"${CASE_DIR}/devices.json" <<EOF
 {"devices": {"com.apple.CoreSimulator.SimRuntime.iOS-26-1": [
@@ -70,7 +71,11 @@ EOF
         exit 64
         ;;
 esac'
-    stub_command open 'exit 0'
+    if [ "${1:-}" = open ]; then
+        stub_command open 'echo "Unable to find application with bundle identifier com.apple.dt.Devices" >&2; exit 1'
+    else
+        stub_command open 'exit 0'
+    fi
 }
 
 # The simctl calls after the device pick, one per line, in the order they were made.
@@ -95,8 +100,20 @@ simctl install ${UDID} ${root}/${APP_RELATIVE_PATH}
 simctl launch --terminate-running-process ${UDID} com.example.MyApp"
     [ "$(simctl_calls_after_list)" = "${expected}" ] ||
         _fail "the simctl calls were not bootstatus, install, launch, in that order: $(cat "${STUB_BIN}/xcrun.log")"
-    grep -qxF -- "-a Simulator --args -CurrentDeviceUDID ${UDID}" "${STUB_BIN}/open.log" ||
-        _fail "Simulator.app was not opened on ${UDID}"
+    grep -qxF -- "-b com.apple.dt.Devices" "${STUB_BIN}/open.log" ||
+        _fail "Device Hub was not opened"
+    assert_stdout_contains "run: com.example.MyApp launched on simulator ${UDID}"
+}
+
+case_device_hub_unavailable_still_launches() {
+    local root
+    root=$(make_fixture_root)
+    stub_simctl open
+    capture "${BASH}" "${root}/scripts/run-simulator.sh" --root "${root}"
+    assert_exit 0
+    assert_stderr_contains "run: could not open Device Hub"
+    grep -q '^simctl launch ' "${STUB_BIN}/xcrun.log" ||
+        _fail "simctl launch did not run after Device Hub failed to open"
     assert_stdout_contains "run: com.example.MyApp launched on simulator ${UDID}"
 }
 
@@ -132,7 +149,7 @@ case_app_missing() {
     assert_stderr_contains "${root}/${APP_RELATIVE_PATH}"
     assert_stderr_contains "just build"
     [ ! -e "${STUB_BIN}/xcrun.log" ] || _fail "xcrun ran without a build to install"
-    [ ! -e "${STUB_BIN}/open.log" ] || _fail "Simulator.app was opened without a build to install"
+    [ ! -e "${STUB_BIN}/open.log" ] || _fail "Device Hub was opened without a build to install"
 }
 
 case_boot_failure() {
@@ -145,7 +162,7 @@ case_boot_failure() {
     assert_stderr_contains "simctl bootstatus: stubbed failure"
     [ "$(simctl_calls_after_list)" = "simctl bootstatus ${UDID} -b" ] ||
         _fail "simctl went on past a failed boot: $(cat "${STUB_BIN}/xcrun.log")"
-    [ ! -e "${STUB_BIN}/open.log" ] || _fail "Simulator.app was opened after a failed boot"
+    [ ! -e "${STUB_BIN}/open.log" ] || _fail "Device Hub was opened after a failed boot"
 }
 
 case_install_failure() {
@@ -174,6 +191,7 @@ case_launch_failure() {
 }
 
 run_case "boots, installs, then launches the build, in that order" case_boots_installs_then_launches
+run_case "a Device Hub that cannot be opened still installs and launches" case_device_hub_unavailable_still_launches
 run_case "an unknown argument fails ERR_RUN_USAGE" case_unknown_argument
 run_case "a --root that does not exist fails ERR_RUN_USAGE" case_root_missing
 run_case "no Debug simulator build fails ERR_RUN_APP_MISSING" case_app_missing
