@@ -215,7 +215,7 @@ into `.claude/skills/`, the only path Claude Code reads:
 | `starting-an-app` | turning this template into a new app: `scripts/bootstrap.sh`'s rename, the template-only passages it removes, what the new repository keeps, its `just labels` and `just ruleset` setup, choosing the device family (iPhone only or iPhone and iPad), and deciding which capabilities and entitlements it takes |
 | `running-the-app` | seeing a change work on the iOS Simulator: `just run` and confirming the installed app is the fresh build, reading `just logs`, `simctl` screenshots in dark mode and at large Dynamic Type sizes, deep links, simulated pushes, launch arguments, a throwaway XCUITest, `just reset-permissions`, and the evidence a PR then carries |
 | `integrating-system-apis` | reaching an iOS system API through a Core port: the adapter in `MyAppPlatform`, a permission as a Core enum, usage descriptions and `Info.plist` keys in `project.yml`, `PrivacyInfo.xcprivacy`, notifications, PhotosPicker, background tasks, `simctl privacy`, `#if os(iOS)`, and what `just test`, `just test-ios`, and a device each prove |
-| `designing-ui` | how a screen looks: HIG craft rules, `DesignTokens`, Liquid Glass on iOS 26 with an iOS 18 floor, and the app's design lock ADR, researched with `/refero-design` |
+| `designing-ui` | how a screen looks: HIG craft rules, `DesignTokens`, Liquid Glass with an iOS 27 floor, and the app's design lock ADR, researched with `/refero-design` |
 | `building-swiftui-screens` | a view in `MyAppUI`: a thin renderer over a `MyAppCore` `@Observable` view model, navigation, sheets and alerts, size classes, Dynamic Type, safe areas and the keyboard, touch targets, `#Preview` per state, accessibility identifiers and labels, and verifying a screen |
 | `updating-docs` | deciding whether a change owes a documentation update and which surface it lands on: `README.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/architecture.md`, `docs/architecture/`, a skill, or a `///` comment |
 | `localizing-the-app` | a string a person reads: the String Catalog `Localizable.xcstrings` in `MyAppCore`, `defaultLocalization`, Core returning `LocalizedStringResource` (`bundle: .module`), `Text(verbatim:)` in `MyAppUI`, keeping the catalog and `LocalizationTests` in step, `xcodebuild -exportLocalizations`, plurals, `InfoPlist.xcstrings`, and what adding a language involves |
@@ -423,8 +423,8 @@ as a `PostToolUse` hook on `Edit|Write|MultiEdit`
 agent (exit 2) — a convenience on that host, not a gate. Codex CLI, another agent, and a
 human at a shell are bound by the instructions in this file and by the gates above.
 
-**No gate runs the app on the iOS 18 deployment floor or on a device: CI's simulators
-run the Xcode-pinned runtime only.**
+**No gate runs the app on a device, or on any iOS release but the one the pinned Xcode
+ships: CI's simulators run the Xcode-pinned runtime only.**
 
 ## Review Checklist
 

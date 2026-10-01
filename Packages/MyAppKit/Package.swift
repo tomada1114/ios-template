@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.4
 import PackageDescription
 
 /// Strictness from day one: Swift 6 language mode (data-race safety as errors)
@@ -18,7 +18,7 @@ let package = Package(
     // scripts/coverage.sh can read coverage. Every target therefore has to compile for
     // both; an iOS-only API in MyAppUI or MyAppPlatform sits behind `#if os(iOS)`
     // (docs/architecture.md › Why the package also builds for macOS).
-    platforms: [.iOS(.v18), .macOS(.v15)],
+    platforms: [.iOS(.v27), .macOS(.v27)],
     products: [
         .library(name: "MyAppCore", targets: ["MyAppCore"]),
         .library(name: "MyAppUI", targets: ["MyAppUI"]),

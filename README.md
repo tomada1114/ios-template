@@ -3,7 +3,7 @@
 [![CI][ci-badge]][ci-workflow]
 [![License: MIT][license-mit]](LICENSE)
 
-An iOS 18+ SwiftUI app built with XcodeGen and a local Swift package, with SwiftData
+An iOS 27+ SwiftUI app built with XcodeGen and a local Swift package, with SwiftData
 behind a repository port, and quality gates and an agent harness (Claude Code, Codex
 CLI) from the first commit. It ships a small to-do list that exercises every seam an
 app needs: `@Observable` view models, a port with a SwiftData adapter, a fake and a
@@ -31,8 +31,8 @@ just check     # verify-hooks → fmt → lint → test-scripts → check-harnes
 just run       # build, then install and launch the app in the iOS Simulator
 ```
 
-`just run` boots an iOS Simulator (`SIMULATOR_DEVICE` picks which) and opens the
-Simulator app with the fresh build running. [docs/getting-started.md](docs/getting-started.md)
+`just run` boots an iOS Simulator (`SIMULATOR_DEVICE` picks which) and opens
+Device Hub with the fresh build running. [docs/getting-started.md](docs/getting-started.md)
 walks through the rest.
 
 ## Design Philosophy
@@ -105,8 +105,7 @@ The template must not impose a brand, so its default is neutral:
 [`DesignTokens`](Packages/MyAppKit/Sources/MyAppUI/DesignSystem/DesignTokens.swift) is a
 small spacing and size scale, while color and type come from the system — semantic
 colors and text styles that are right in light, dark, every Dynamic Type size, and
-Increase Contrast. Liquid Glass arrives through standard components on iOS 26 with no
-custom glass. Brand belongs to each app's own design lock, an ADR
+Increase Contrast. Liquid Glass arrives through standard components with no custom glass. Brand belongs to each app's own design lock, an ADR
 ([docs/design-system.md](docs/design-system.md)).
 
 ### Why zero dependencies?

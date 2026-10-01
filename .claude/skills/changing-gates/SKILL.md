@@ -197,8 +197,8 @@ one simulator runtime CI's Xcode ships. Any other UI behavior, and every `MyAppU
 path, is outside the coverage floor and asserted by no gate. Code under `#if os(iOS)` in
 the Swift package is tested only by `just test-ios` (CI's `ios-tests` job) — `swift test`
 builds the package for the host Mac — and the coverage floor never sees it. Nothing runs
-the app or the package tests on the iOS 18 deployment floor or on a physical device: CI's
-simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,
+the app or the package tests on a physical device, or on any iOS release but the one the
+pinned Xcode ships: CI's simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,
 entitlements, and signing settings are unchecked. Each is a place a change can be wrong
 while every gate passes; a gate proposed to close one is a real gate change and belongs
 in the PR as one.

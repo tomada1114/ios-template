@@ -37,7 +37,7 @@ only when the answer really comes from a framework Core may not import.
 ## Inject time
 
 - **Waiting** (a delay, a debounce, a timeout, a periodic tick): take a clock, not
-  `Task.sleep(for:)` against the real one. `platforms: [.iOS(.v18), .macOS(.v15)]` in
+  `Task.sleep(for:)` against the real one. `platforms: [.iOS(.v27), .macOS(.v27)]` in
   the local package's `Package.swift` makes `Clock`, `ContinuousClock`, and
   `SuspendingClock` available without an availability check: they arrived in iOS 16.0
   and macOS 13.0 (<https://developer.apple.com/documentation/swift/clock>, checked

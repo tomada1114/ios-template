@@ -57,7 +57,7 @@ jobs:
   # just recipes itself.
   test:
     name: Test & Coverage Gate
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -118,7 +118,7 @@ jobs:
     # A pull request with nothing for this job to do skips every step, so it takes a
     # cheap Ubuntu runner instead of waiting for a macOS one; any other output
     # (true, or empty after a failed `changes`) keeps macOS.
-    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'macos-26' }}
+    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'xcode-27' }}
     # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
     # failed, and its steps skip only on the exact output 'false' — a failed `changes`
     # leaves the output empty, so everything runs. A job skipped outright would report
@@ -179,7 +179,7 @@ jobs:
     # A pull request with nothing for this job to do skips every step, so it takes a
     # cheap Ubuntu runner instead of waiting for a macOS one; any other output
     # (true, or empty after a failed `changes`) keeps macOS.
-    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'macos-26' }}
+    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'xcode-27' }}
     # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
     # failed, and its steps skip only on the exact output 'false' — a failed `changes`
     # leaves the output empty, so everything runs. A job skipped outright would report
@@ -236,7 +236,7 @@ jobs:
     # A pull request with nothing for this job to do skips every step, so it takes a
     # cheap Ubuntu runner instead of waiting for a macOS one; any other output
     # (true, or empty after a failed `changes`) keeps macOS.
-    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'macos-26' }}
+    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'xcode-27' }}
     # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
     # failed, and its steps skip only on the exact output 'false' — a failed `changes`
     # leaves the output empty, so everything runs. A job skipped outright would report
@@ -288,7 +288,7 @@ jobs:
     # Template-only: scripts/bootstrap.sh removes this job, and its required context in
     # .github/rulesets/main.json, from every app it renames.
     name: Template Bootstrap Smoke
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 30
     env:
       # 19 characters: long enough to push lines past SwiftFormat's width, so the lint

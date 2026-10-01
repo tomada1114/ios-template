@@ -16,11 +16,11 @@ checked the same day against the pages under [Sources](#sources).
 
 ```text
 Designing the default design system of an iOS app template (a SwiftUI to-do list is the example screen) for developers who will cut their own apps from it, on iOS (iPhone first; iPad must not break).
-Goal: every screen built from the template is correct by default — light/dark, Dynamic Type to AX5, Increase Contrast, 44 pt targets — and looks native on iOS 18 and iOS 26 (Liquid Glass).
+Goal: every screen built from the template is correct by default — light/dark, Dynamic Type to AX5, Increase Contrast, 44 pt targets — and looks native on iOS 27 (Liquid Glass).
 Tone: neutral, native, unbranded. The template must not impose a brand; brand belongs to each app's design lock.
 Main objection/risk: a template default that fights the platform, or a brand look every app then has to undo.
 Must remember: system first, custom by exception — tokens are a scale, not a style.
-Constraints: SwiftUI only; iOS 18 deployment floor built with the Xcode 26 SDK; no custom fonts; semantic system colors only; MyAppUI also compiles for macOS.
+Constraints: SwiftUI only; iOS 27 deployment floor built with the Xcode 27 SDK; no custom fonts; semantic system colors only; MyAppUI also compiles for macOS.
 Research needed: screens and flows (platform ios); styles only as a secondary check.
 Path: direct build.
 ```
@@ -155,8 +155,8 @@ Token commitments: background — system (List default); type — system text st
 | Accent: `AccentColor` with no value (system blue) | HIG Color; build setting `ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME` (set in `project.yml`) | Tint of controls app-wide | The template does not brand |
 | Type: text styles, system font, Dynamic Type; `@ScaledMetric` for text-bound sizes | HIG Typography; LookUp `f2da9d79` (34/17 pt system styles) | `.font(.body)` and siblings | Verified to AX5 in the screenshots |
 | Symbols: SF Symbols, default rendering | HIG SF Symbols; every reviewed screen uses glyphs, not images | `Image(systemName:)`, `Label` | Rendering mode per context is an app's lock |
-| Liquid Glass by standard components; no `UIDesignRequiresCompatibility` | Adopting Liquid Glass; `UIDesignRequiresCompatibility` docs | `NavigationStack`, `List`, bars, sheets | Built with the Xcode 26 SDK they take Liquid Glass on iOS 26 and the older look on iOS 18 |
-| No iOS 26-only API in template code; custom glass only via the documented `ViewModifier` pattern | `glassEffect(_:in:)` docs (iOS 26.0, macOS 26.0) | `designing-ui` › Materials and Liquid Glass | The floor is iOS 18 and `MyAppUI` builds for macOS 15 |
+| Liquid Glass by standard components; no `UIDesignRequiresCompatibility` | Adopting Liquid Glass; `UIDesignRequiresCompatibility` docs | `NavigationStack`, `List`, bars, sheets | Built with the Xcode 27 SDK they take Liquid Glass |
+| Custom glass only via the documented `ViewModifier` pattern | `glassEffect(_:in:)` docs (iOS 26.0, macOS 26.0) | `designing-ui` › Materials and Liquid Glass | The floor is iOS 27 and `MyAppUI` builds for macOS 27, so no `#available` branch is needed; one modifier keeps the surface defined once |
 | Draft field: plain style on `.fill.tertiary` in `Radius.medium` | Rise `c0c13aa0`; measured: `.roundedBorder` stays 34 pt tall under a taller frame | The one custom-drawn container in `TodoListView`; the pill is a button that focuses the field | A plain field takes focus only from its text line, so taps 4 pt inside the pill's edges did not focus it until the pill forwarded them; with the forwarding, all five probe taps (corners, edges, center) focus it |
 | Add button: `.borderedProminent` at `.controlSize(.large)` | HIG Buttons (44 pt); measured 50 pt tall | The primary action | The regular size falls under 44 pt |
 | App icon: placeholder stays | HIG App Icons; Icon Composer docs | `App/Assets.xcassets/AppIcon.appiconset` | Icon Composer `.icon` versus an asset catalog is an app decision |

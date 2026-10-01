@@ -4,7 +4,7 @@ description: >
   Covers how this iOS app looks - craft rules grounded in Apple's Human Interface
   Guidelines (semantic and accent colors, text styles and Dynamic Type, light and dark
   appearance, Increase Contrast, SF Symbols, safe areas, size classes, 44-point targets,
-  toolbars, haptics, swipe actions, Liquid Glass on iOS 26 with an iOS 18 floor), the
+  toolbars, haptics, swipe actions, Liquid Glass with an iOS 27 floor), the
   DesignTokens scale in MyAppUI/DesignSystem, and the per-app design lock, an ADR under
   docs/architecture/ researched with /refero-design. Use when choosing a color, font,
   spacing, radius, symbol, material, or animation, adding or changing a DesignTokens
@@ -107,19 +107,17 @@ per-screen one.
 
 ## Materials and Liquid Glass
 
-Built with the Xcode 26 SDK, standard components — `NavigationStack`, `List`, toolbars,
-sheets, `TabView` — take Liquid Glass on iOS 26 and the earlier appearance on iOS 18.
-That is the template's whole adoption.
+Built with the Xcode 27 SDK, standard components — `NavigationStack`, `List`, toolbars,
+sheets, `TabView` — take Liquid Glass. That is the template's whole adoption.
 
-- Never set `UIDesignRequiresCompatibility`: it opts the app out, and the system ignores
-  it once the app builds for iOS 27.
-- Ship no iOS 26-only API in shared code: the floor is iOS 18, and `MyAppUI` also builds
-  for macOS 15.
-- An app whose lock asks for custom glass uses one pattern, inside a `ViewModifier` in
-  `MyAppUI`:
-  `if #available(iOS 26, macOS 26, *) { content.glassEffect(.regular, in: shape) } else { content.background(.regularMaterial, in: shape) }`.
-  Glass belongs to controls and navigation that float above content, never to the
-  content itself.
+- Never set `UIDesignRequiresCompatibility`: the system ignores it once the app builds
+  for iOS 27, which this template always does.
+- The floor is iOS 27 and `MyAppUI` builds for macOS 27, so `glassEffect(_:in:)` and
+  every other API the SDK ships needs no `#available` branch.
+- An app whose lock asks for custom glass puts it in one `ViewModifier` in `MyAppUI`
+  (`content.glassEffect(.regular, in: shape)`), so the surface is defined once. Glass
+  belongs to controls and navigation that float above content, never to the content
+  itself.
 
 ## Copy
 
@@ -201,8 +199,6 @@ All checked 2026-09-30.
   — compatibility mode, iOS 26.0; ignored when building for iOS 27.
 - <https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)> — iOS 26.0,
   macOS 26.0.
-- <https://developer.apple.com/documentation/swiftui/shapestyle/regularmaterial> — the
-  pre-iOS 26 fallback.
 - <https://developer.apple.com/documentation/swiftui/view/sensoryfeedback(_:trigger:)> —
   iOS 17.0.
 - <https://developer.apple.com/documentation/swiftui/environmentvalues/colorschemecontrast>

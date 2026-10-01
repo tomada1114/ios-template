@@ -47,7 +47,7 @@ public enum TodoRepositoryError: Error, Equatable, Sendable {
 Typed throws (`throws(TodoRepositoryError)`, SE-0413) needs Swift 6.0
 (<https://github.com/swiftlang/swift-evolution/blob/main/proposals/0413-typed-throws.md>,
 "Implemented (Swift 6.0)", checked 2026-09-30); this package is
-`swift-tools-version: 6.2` in Swift 6 language mode, so it is available everywhere.
+`swift-tools-version: 6.4` in Swift 6 language mode, so it is available everywhere.
 
 - **Use `throws(E)`** when the caller decides by `E`'s cases: a port method, a
   view-model action whose UI shows per-case recovery. The `catch` then binds `error` as

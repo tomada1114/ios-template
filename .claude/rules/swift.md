@@ -36,7 +36,7 @@ paths:
 
 ## Two platforms at compile time
 
-- `Package.swift` lists `.macOS(.v15)` beside `.iOS(.v18)` so `swift test` runs the
+- `Package.swift` lists `.macOS(.v27)` beside `.iOS(.v27)` so `swift test` runs the
   package on the host. `MyAppUI` and `MyAppPlatform` therefore also compile for macOS
   under `swift build`/`swift test`, not only for the iOS Simulator
 - An iOS-only API (`.navigationBarTitleDisplayMode`, `UIApplication`, a `UIKit` type)
@@ -61,7 +61,7 @@ paths:
 
 - Narrowest first: `private`, then internal (the default, unwritten), then `package`,
   then `public`
-- `package` (Swift 5.9+; `Packages/MyAppKit/Package.swift` is tools-version 6.2) is for
+- `package` (Swift 5.9+; `Packages/MyAppKit/Package.swift` is tools-version 6.4) is for
   a declaration another target *in* `Packages/MyAppKit` needs — a sibling module or a
   test target — that is not app API. It replaces `@testable import` in a Core test
   (`testing.md` › Framework and Structure). `App/` is an Xcode target outside the

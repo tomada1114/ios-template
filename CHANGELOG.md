@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The deployment floor is iOS 27 (`project.yml`) with `.iOS(.v27)` and `.macOS(.v27)`
+  in `Package.swift` (now `swift-tools-version: 6.4`), and the pinned Xcode is 27.0
+  (`.xcode-version`); CI's macOS jobs run on the `xcode-27` runner image, since
+  `macos-26` ships no Xcode 27
+
+- `just run` opens Device Hub instead of Simulator.app, which Xcode 27 no longer ships,
+  and still installs and launches the build when Device Hub cannot be opened (#64)
+
 - `just uitest` is now `just uitest-build` (`xcodebuild build-for-testing`) followed by
   `just uitest-run` (`test-without-building`), and CI's `app` job runs the two halves
   instead of `just build` plus `just uitest`, so it compiles the Debug app once
