@@ -71,26 +71,79 @@ jobs:
       - name: Run tests with coverage floor
         run: scripts/coverage.sh
 
+  # Decides whether a pull request touches anything the simulator jobs (app, smoke,
+  # ios-tests) exercise. Those jobs are required checks, so they always run and report
+  # under their own names; they only skip their steps when this job says
+  # `simulator=false`. A push (main) always says true.
+  changes:
+    name: Detect Simulator-Relevant Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      simulator: ${{ steps.detect.outputs.simulator }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          persist-credentials: false
+          # Full history so the merge base of the pull request's base and head exists.
+          fetch-depth: 0
+
+      - name: Decide whether the simulator jobs have work
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "${EVENT_NAME}" != "pull_request" ]]; then
+            echo "simulator=true" >>"${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          # The paths the simulator jobs exercise, as one extended regex: anything
+          # matching sends them through in full. Keep this the only copy of the list.
+          relevant='^(App/|Packages/|LaunchUITests/|Config/|scripts/|\.github/actions/|project\.yml$|justfile$|mise\.toml$|\.xcode-version$|\.github/workflows/ci\.yml$)'
+          # The pull request's own change set (three dots: from the merge base). A
+          # failed diff fails this step, and the simulator jobs then run (see below).
+          files="$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")"
+          printf 'Changed files:\n%s\n' "${files}"
+          if [[ -n "${files}" ]] && ! grep -qE -- "${relevant}" <<<"${files}"; then
+            echo "simulator=false" >>"${GITHUB_OUTPUT}"
+          else
+            echo "simulator=true" >>"${GITHUB_OUTPUT}"
+          fi
+
   app:
     name: App Build & UI Test (iOS Simulator)
     runs-on: macos-26
+    # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
+    # failed, and its steps skip only on the exact output 'false' — a failed `changes`
+    # leaves the output empty, so everything runs. A job skipped outright would report
+    # as passing.
+    needs: changes
+    if: ${{ !cancelled() }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.simulator != 'false'
         with:
           persist-credentials: false
 
       - uses: ./.github/actions/select-xcode
+        if: needs.changes.outputs.simulator != 'false'
 
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        if: needs.changes.outputs.simulator != 'false'
 
       - name: Show the simulator the UI test will use
+        if: needs.changes.outputs.simulator != 'false'
         run: scripts/simulator-destination.sh
 
       # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
       # it overlaps the build; the later `bootstatus -b` waits then return at once.
       # Same device the recipes pick; a device already booted is left as it is.
       - name: Boot the simulator in the background
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           udid="$(scripts/simulator-destination.sh --udid)"
           devices="$(xcrun simctl list devices)"
@@ -102,9 +155,11 @@ jobs:
           fi
 
       - name: Build app and UI tests (Debug, iOS Simulator)
+        if: needs.changes.outputs.simulator != 'false'
         run: just uitest-build
 
       - name: Run launch UI test
+        if: needs.changes.outputs.simulator != 'false'
         run: just uitest-run
 
       - name: Upload result bundles on failure
@@ -119,20 +174,30 @@ jobs:
   smoke:
     name: Release Smoke Launch (iOS Simulator)
     runs-on: macos-26
+    # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
+    # failed, and its steps skip only on the exact output 'false' — a failed `changes`
+    # leaves the output empty, so everything runs. A job skipped outright would report
+    # as passing.
+    needs: changes
+    if: ${{ !cancelled() }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.simulator != 'false'
         with:
           persist-credentials: false
 
       - uses: ./.github/actions/select-xcode
+        if: needs.changes.outputs.simulator != 'false'
 
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        if: needs.changes.outputs.simulator != 'false'
 
       # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
       # it overlaps the build; the later `bootstatus -b` waits then return at once.
       # Same device the recipes pick; a device already booted is left as it is.
       - name: Boot the simulator in the background
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           udid="$(scripts/simulator-destination.sh --udid)"
           devices="$(xcrun simctl list devices)"
@@ -144,6 +209,7 @@ jobs:
           fi
 
       - name: Smoke launch (Release)
+        if: needs.changes.outputs.simulator != 'false'
         run: just smoke
 
       # smoke_launch.sh writes no result bundle: what is left after a failure is the
@@ -162,20 +228,30 @@ jobs:
   ios-tests:
     name: Package Tests (iOS Simulator)
     runs-on: macos-26
+    # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
+    # failed, and its steps skip only on the exact output 'false' — a failed `changes`
+    # leaves the output empty, so everything runs. A job skipped outright would report
+    # as passing.
+    needs: changes
+    if: ${{ !cancelled() }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.simulator != 'false'
         with:
           persist-credentials: false
 
       - uses: ./.github/actions/select-xcode
+        if: needs.changes.outputs.simulator != 'false'
 
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        if: needs.changes.outputs.simulator != 'false'
 
       # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
       # it overlaps the build; the later `bootstatus -b` waits then return at once.
       # Same device the recipes pick; a device already booted is left as it is.
       - name: Boot the simulator in the background
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           udid="$(scripts/simulator-destination.sh --udid)"
           devices="$(xcrun simctl list devices)"
@@ -187,6 +263,7 @@ jobs:
           fi
 
       - name: Run the package tests on an iOS Simulator
+        if: needs.changes.outputs.simulator != 'false'
         run: just test-ios
 
       - name: Upload result bundles on failure

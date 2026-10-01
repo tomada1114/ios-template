@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and is a new required status check in `.github/rulesets/main.json` (re-run
   `just ruleset` to apply it)
 
+- CI's simulator jobs (`app`, `smoke`, `ios-tests`) still report under their required
+  names on every pull request but skip their steps when a new `changes` job finds no
+  simulator-relevant path in the diff (a Markdown-only change, say); pushes to `main`
+  and a failed detection run them in full
+
 - The committed `.claude/settings.json` is removed: Claude Code permissions and the
   format-on-edit hook now live in each person's user-level or gitignored
   `.claude/settings.local.json` settings (see `AGENTS.md`)

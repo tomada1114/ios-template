@@ -171,8 +171,8 @@ exception added to `scripts/checks/just-check-matches-ci.sh` carries its reason.
 
 ## `.github/workflows/`
 
-`ci.yml` runs the jobs `lint`, `test`, `app`, `smoke`, `ios-tests`, `bootstrap-smoke`, and
-`zizmor`; the PR-title, labeling, and security workflows run beside it, and Dependabot
+`ci.yml` runs the jobs `lint`, `test`, `changes`, `app`, `smoke`, `ios-tests`,
+`bootstrap-smoke`, and `zizmor`; the PR-title, labeling, and security workflows run beside it, and Dependabot
 bumps the pinned `uses:` SHAs. A job or workflow added later is added to
 [references/ci-jobs.md](references/ci-jobs.md) — what each runs, which contexts are
 required, and when each fires — by the change that adds it.

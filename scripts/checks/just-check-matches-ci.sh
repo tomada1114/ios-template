@@ -81,7 +81,10 @@ CI_ONLY="uitest-build uitest-run smoke test-ios"
 #   bootstrap-smoke  renames a throwaway clone of the template and builds it; it is a
 #                    test of scripts/bootstrap.sh, not a gate on this tree, and
 #                    bootstrap removes the job from every app cut from the template.
-CI_ONLY_JOBS="bootstrap-smoke"
+#   changes          diffs a pull request's files to decide whether the simulator
+#                    jobs have work (#54); a CI scheduling decision, not a gate on
+#                    this tree, so no local recipe could run it.
+CI_ONLY_JOBS="bootstrap-smoke changes"
 
 in_list() { # in_list WORD LIST
     case " $2 " in
