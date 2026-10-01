@@ -83,8 +83,13 @@ lint:
 build:
     echo build
 
-uitest:
-    xcodebuild test -destination "$(scripts/simulator-destination.sh)"
+uitest: uitest-build uitest-run
+
+uitest-build:
+    xcodebuild build-for-testing -destination "$(scripts/simulator-destination.sh)"
+
+uitest-run:
+    xcodebuild test-without-building -destination "$(scripts/simulator-destination.sh)"
 
 test-ios:
     cd Packages/MyAppKit && xcodebuild test -destination "$(../../scripts/simulator-destination.sh)"
@@ -196,7 +201,8 @@ jobs:
         run: |
           # just check leaves uitest out
           just build
-          just uitest
+          just uitest-build
+          just uitest-run
       - name: Smoke launch
         run: just smoke
   ios-tests:
@@ -1156,21 +1162,33 @@ case_ci_stale_local_only() {
 case_ci_stale_ci_only() {
     local root
     root=$(make_fixture)
-    sed '/^          just uitest$/d; /^      - run: scripts\/simulator-destination.sh$/d' \
+    sed '/^          just uitest-run$/d; /^      - run: scripts\/simulator-destination.sh$/d' \
         "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
     mv "${CASE_DIR}/ci.yml" "${root}/.github/workflows/ci.yml"
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_JUST_CI_STALE
-    assert_stderr_contains "CI_ONLY names \`uitest\`, which no .github/workflows/ci.yml step runs any more"
+    assert_stderr_contains "CI_ONLY names \`uitest-run\`, which no .github/workflows/ci.yml step runs any more"
 }
 
-# The shape of ios-template's app job: a step that calls only the script the uitest
-# recipe calls still counts as running uitest.
+# A step that calls only the script the uitest-run recipe calls still counts as
+# running uitest-run.
 case_ci_only_reached_through_its_script() {
     local root
     root=$(make_fixture)
-    sed '/^          just uitest$/d' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
+    sed '/^          just uitest-run$/d' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
+    mv "${CASE_DIR}/ci.yml" "${root}/.github/workflows/ci.yml"
+    capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
+    assert_exit 0
+    assert_stdout_contains "just-check-matches-ci: "
+}
+
+# ios-template's app job compiles the Debug app once, through uitest-build, so CI
+# never runs `just build` itself (#58).
+case_ci_build_is_local_only() {
+    local root
+    root=$(make_fixture)
+    sed '/^          just build$/d' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
     mv "${CASE_DIR}/ci.yml" "${root}/.github/workflows/ci.yml"
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 0
@@ -1939,6 +1957,7 @@ run_case "ci: a CI step running no recipe or script fails" case_ci_step_runs_not
 run_case "ci: a stale LOCAL_ONLY exception fails" case_ci_stale_local_only
 run_case "ci: a stale CI_ONLY exception fails" case_ci_stale_ci_only
 run_case "ci: a CI_ONLY recipe reached only through its script is not stale" case_ci_only_reached_through_its_script
+run_case "ci: CI may leave the LOCAL_ONLY build gate to uitest-build" case_ci_build_is_local_only
 run_case "ci: no check recipe fails" case_ci_no_check_recipe
 run_case "ci: a missing ci.yml fails" case_ci_missing_workflow
 run_case "labels: passes on a conforming tree" case_labels_pass

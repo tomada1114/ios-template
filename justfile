@@ -93,15 +93,25 @@ reset-permissions:
     scripts/reset-permissions.sh
 
 # Run the XCUITest launch test on an iOS Simulator (scripts/simulator-destination.sh
-# picks the device; SIMULATOR_DEVICE overrides it)
+# picks the device; SIMULATOR_DEVICE overrides it): uitest-build, then uitest-run
 [doc("Run the XCUITest launch test on an iOS Simulator")]
-uitest:
+uitest: uitest-build uitest-run
+
+# Compile the app (Debug) and the launch UI test for the simulator uitest runs on,
+# without running it. CI's app job runs this as its one Debug compile (#58).
+[doc("Build the app and the launch UI test for an iOS Simulator, without running it")]
+uitest-build:
     mise exec -- xcodegen generate
+    set -o pipefail && xcodebuild build-for-testing -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data | mise exec -- xcbeautify
+
+# Run the launch UI test that uitest-build compiled, without building it again
+[doc("Run the launch UI test uitest-build compiled, without rebuilding")]
+uitest-run:
     rm -rf build/LaunchUITests.xcresult
     # Boot the simulator and wait for it to finish first: a cold boot inside
     # xcodebuild's launch window is what timed out on CI (#32).
     xcrun simctl bootstatus "$(scripts/simulator-destination.sh --udid)" -b
-    set -o pipefail && xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult | mise exec -- xcbeautify
+    set -o pipefail && xcodebuild test-without-building -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult | mise exec -- xcbeautify
 
 # Run every MyAppKit test suite on an iOS Simulator, with no coverage floor (`just test`
 # holds the floor on the host). Exercises code behind `#if os(iOS)` and the iOS runtime.
