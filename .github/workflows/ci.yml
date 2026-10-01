@@ -107,15 +107,55 @@ jobs:
       - name: Run launch UI test
         run: just uitest-run
 
-      - name: Smoke launch (Release)
-        run: just smoke
-
       - name: Upload result bundles on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: xcresult-bundles
           path: build/*.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
+
+  smoke:
+    name: Release Smoke Launch (iOS Simulator)
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/select-xcode
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
+      # it overlaps the build; the later `bootstatus -b` waits then return at once.
+      # Same device the recipes pick; a device already booted is left as it is.
+      - name: Boot the simulator in the background
+        run: |
+          udid="$(scripts/simulator-destination.sh --udid)"
+          devices="$(xcrun simctl list devices)"
+          line="$(grep -F -- "${udid}" <<<"${devices}")"
+          if [[ "${line}" == *"(Booted)"* ]]; then
+            echo "Simulator ${udid} is already booted."
+          else
+            xcrun simctl boot "${udid}"
+          fi
+
+      - name: Smoke launch (Release)
+        run: just smoke
+
+      # smoke_launch.sh writes no result bundle: what is left after a failure is the
+      # Release build's logs and, for a crash, the simulator app's crash report.
+      - name: Upload smoke logs on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: xcresult-bundles-smoke
+          path: |
+            build/smoke-derived-data/Logs
+            ~/Library/Logs/DiagnosticReports/*.ips
           if-no-files-found: ignore
           retention-days: 7
 

@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `just uitest-run` (`test-without-building`), and CI's `app` job runs the two halves
   instead of `just build` plus `just uitest`, so it compiles the Debug app once
 
+- CI's Release smoke launch (`just smoke`) moved out of the `app` job into its own
+  `smoke` job, `Release Smoke Launch (iOS Simulator)`, which runs in parallel with `app`
+  and is a new required status check in `.github/rulesets/main.json` (re-run
+  `just ruleset` to apply it)
+
 - The committed `.claude/settings.json` is removed: Claude Code permissions and the
   format-on-edit hook now live in each person's user-level or gitignored
   `.claude/settings.local.json` settings (see `AGENTS.md`)

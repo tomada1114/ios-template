@@ -33,6 +33,7 @@
           { "context": "Lint & Format Check", "integration_id": 15368 },
           { "context": "Test & Coverage Gate", "integration_id": 15368 },
           { "context": "App Build & UI Test (iOS Simulator)", "integration_id": 15368 },
+          { "context": "Release Smoke Launch (iOS Simulator)", "integration_id": 15368 },
           { "context": "Package Tests (iOS Simulator)", "integration_id": 15368 },
           { "context": "Template Bootstrap Smoke", "integration_id": 15368 },
           { "context": "Workflow Security Lint", "integration_id": 15368 },
