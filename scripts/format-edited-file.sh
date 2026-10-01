@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Format the one Swift file a Claude Code Edit/Write/MultiEdit just touched.
-# Registered as .claude/settings.json's PostToolUse hook:
+# Meant to be registered as a Claude Code PostToolUse hook in a personal settings file
+# (~/.claude/settings.json or the gitignored .claude/settings.local.json; see AGENTS.md):
 #
 #   <hook JSON on stdin> | scripts/format-edited-file.sh [--root DIR]
 #
