@@ -70,8 +70,9 @@ LOCAL_ONLY="verify-hooks fmt build"
 #                 break locally.
 #   uitest-run    drives the app on an iOS Simulator through XCUITest (`just uitest`'s
 #                 second half); slow.
-#   smoke     builds Release and launches it on an iOS Simulator; slow, and `just build`
-#             already covers a compile break locally.
+#   smoke     builds Release and launches it on an iOS Simulator (CI's own `smoke` job,
+#             parallel to `app`); slow, and `just build` already covers a compile
+#             break locally.
 #   test-ios  runs the package tests on an iOS Simulator; `just test` already runs the
 #             same suites on the host, so a local `just check` catches everything but
 #             iOS-only behavior.

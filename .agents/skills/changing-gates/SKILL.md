@@ -36,8 +36,8 @@ command into `justfile`, `.githooks/pre-commit`, or a workflow `run:` step. The 
 shape holds elsewhere: CI's `test` job calls `scripts/coverage.sh` (what `just test`
 runs), its `lint` job calls `scripts/tests/run.sh` and `scripts/checks/run-all.sh`
 (what `just test-scripts` and `just check-harness` run), the `app` job calls
-`just build`, `just uitest`, and `just smoke`, and the `ios-tests` job calls
-`just test-ios`. `scripts/checks/just-check-matches-ci.sh` holds the two
+`just uitest-build` and `just uitest-run`, the `smoke` job calls `just smoke`, and the
+`ios-tests` job calls `just test-ios`. `scripts/checks/just-check-matches-ci.sh` holds the two
 sides to the same set of gates, in both directions, apart from its reasoned exception
 list.
 
@@ -171,7 +171,7 @@ exception added to `scripts/checks/just-check-matches-ci.sh` carries its reason.
 
 ## `.github/workflows/`
 
-`ci.yml` runs the jobs `lint`, `test`, `app`, `ios-tests`, `bootstrap-smoke`, and
+`ci.yml` runs the jobs `lint`, `test`, `app`, `smoke`, `ios-tests`, `bootstrap-smoke`, and
 `zizmor`; the PR-title, labeling, and security workflows run beside it, and Dependabot
 bumps the pinned `uses:` SHAs. A job or workflow added later is added to
 [references/ci-jobs.md](references/ci-jobs.md) — what each runs, which contexts are

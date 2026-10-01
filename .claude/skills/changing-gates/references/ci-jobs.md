@@ -5,10 +5,12 @@ before adding, removing, or renaming a job or a workflow.
 
 `ci.yml` splits into `lint` (ubuntu: `scripts/lint.sh`, `scripts/tests/run.sh`,
 `scripts/checks/run-all.sh`), `test` (macos-26: `scripts/coverage.sh`), `app`
-(macos-26: `just build`, then `just uitest` on an iPhone simulator that
-`scripts/simulator-destination.sh` chooses, then the "Smoke launch (Release)" step,
-`just smoke` — `scripts/smoke_launch.sh` builds Release and asserts the app stays alive
-on that simulator for ten seconds — with the `.xcresult` bundles uploaded on failure),
+(macos-26, the required `App Build & UI Test (iOS Simulator)`: `just uitest-build`, then
+`just uitest-run` on an iPhone simulator that `scripts/simulator-destination.sh` chooses,
+with the `.xcresult` bundles uploaded on failure), `smoke` (macos-26, the required
+`Release Smoke Launch (iOS Simulator)`, in parallel with `app`: `just smoke` —
+`scripts/smoke_launch.sh` builds Release and asserts the app stays alive on that
+simulator for ten seconds — uploading the build logs and crash reports on failure),
 `ios-tests` (macos-26, the required `Package Tests (iOS Simulator)`: `just test-ios` runs
 every package test suite on that simulator, with no coverage floor, uploading its
 `.xcresult` on failure), `bootstrap-smoke` (macos-26, the required
