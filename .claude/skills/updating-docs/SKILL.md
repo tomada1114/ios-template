@@ -32,7 +32,8 @@ rejects, and how the template is turned into a new app (README's "Using This
 Template"). A change to any of those owes a document; a change behind them does not.
 
 - `README.md` changes when the first ten minutes with a checkout change — the
-  Requirements, the Quick start commands, or what "Using This Template" asks you to do.
+  Quickstart commands, a "Why …?" design decision, or what "Using This Template" asks
+  you to do.
 - It does not change for a refactor, a test, a gate or rule that `AGENTS.md` owns, or an
   edit to a skill.
 
@@ -41,13 +42,23 @@ Template"). A change to any of those owes a document; a change behind them does 
 Each surface has one job; do not blur them, and do not let one grow a second copy of
 another's content. An issue that creates a new document adds its line here.
 
-- `README.md` — the tour: what this template is, its Requirements, the Quick start, and
-  "Using This Template" (turning it into a new app). It links to `docs/architecture.md`
-  and `AGENTS.md` instead of repeating them.
+- `README.md` — the tour: what the app is, the Quickstart, the Design Philosophy (one
+  "Why …?" section per template decision, each linking the file that enforces it),
+  "Using This Template" (turning it into a new app), the everyday-recipe Development
+  table, and the Documentation list. It links to `docs/architecture.md`, `AGENTS.md`,
+  and `CONTRIBUTING.md` instead of repeating them.
+- `CONTRIBUTING.md` — for a human contributor: the prerequisites, every `just` recipe in
+  `justfile` order with the commands it runs without Just, the pull request process,
+  code standards, commit messages, and the changelog policy. The full recipe list lives
+  here and in `AGENTS.md`'s Quick Reference only; a renamed or added recipe updates both.
+- `docs/getting-started.md` — the first run: setup, everyday commands, the simulator
+  and your own iPhone, removing the example code (every to-do file and wiring point,
+  what to keep, and an order that stays green), opening the project in Xcode, and the
+  app icon. A file the example adds, moves, or wires in updates its removal list.
 - `AGENTS.md` — the agent-facing guide: the Quick Reference command index, "Validating a
   change", the Architecture, "Before changing the architecture", the Skills and Rules
-  tables, "Security and human approval", "Repository scripts", "Harness status",
-  "Enforcement layers", and the Review Checklist. A changed boundary, gate, `just`
+  tables, "Security and human approval", "Repository scripts", "Enforcement
+  layers", and the Review Checklist. A changed boundary, gate, `just`
   recipe, or script rule lands here.
 - `CHANGELOG.md` — the canonical, human-curated record of user-facing changes, in the
   Keep a Changelog format its header links. A user-facing change gets an entry under
