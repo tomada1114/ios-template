@@ -87,6 +87,20 @@ jobs:
       - name: Show the simulator the UI test will use
         run: scripts/simulator-destination.sh
 
+      # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
+      # it overlaps the build; the later `bootstatus -b` waits then return at once.
+      # Same device the recipes pick; a device already booted is left as it is.
+      - name: Boot the simulator in the background
+        run: |
+          udid="$(scripts/simulator-destination.sh --udid)"
+          devices="$(xcrun simctl list devices)"
+          line="$(grep -F -- "${udid}" <<<"${devices}")"
+          if [[ "${line}" == *"(Booted)"* ]]; then
+            echo "Simulator ${udid} is already booted."
+          else
+            xcrun simctl boot "${udid}"
+          fi
+
       - name: Build app and UI tests (Debug, iOS Simulator)
         run: just uitest-build
 
@@ -117,6 +131,20 @@ jobs:
       - uses: ./.github/actions/select-xcode
 
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
+      # it overlaps the build; the later `bootstatus -b` waits then return at once.
+      # Same device the recipes pick; a device already booted is left as it is.
+      - name: Boot the simulator in the background
+        run: |
+          udid="$(scripts/simulator-destination.sh --udid)"
+          devices="$(xcrun simctl list devices)"
+          line="$(grep -F -- "${udid}" <<<"${devices}")"
+          if [[ "${line}" == *"(Booted)"* ]]; then
+            echo "Simulator ${udid} is already booted."
+          else
+            xcrun simctl boot "${udid}"
+          fi
 
       - name: Run the package tests on an iOS Simulator
         run: just test-ios
