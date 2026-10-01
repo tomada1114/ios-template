@@ -31,7 +31,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           # XcodeGen/xcbeautify are macOS-only; install just the Linux-capable linters here.
           # just: scripts/checks/just-recipes-exist.sh (and its tests) call it.
@@ -66,7 +66,7 @@ jobs:
 
       - uses: ./.github/actions/select-xcode
 
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
 
       - name: Run tests with coverage floor
         run: scripts/coverage.sh
@@ -82,7 +82,7 @@ jobs:
 
       - uses: ./.github/actions/select-xcode
 
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
 
       - name: Show the simulator the UI test will use
         run: scripts/simulator-destination.sh
@@ -116,7 +116,7 @@ jobs:
 
       - uses: ./.github/actions/select-xcode
 
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
 
       - name: Run the package tests on an iOS Simulator
         run: just test-ios
@@ -149,7 +149,7 @@ jobs:
 
       - uses: ./.github/actions/select-xcode
 
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
 
       - name: Bootstrap a pristine copy as the demo app
         run: |
