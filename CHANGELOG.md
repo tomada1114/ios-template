@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The committed `.claude/settings.json` is removed: Claude Code permissions and the
+  format-on-edit hook now live in each person's user-level or gitignored
+  `.claude/settings.local.json` settings (see `AGENTS.md`)
+
 ### Added
 
 - README design rationale, CONTRIBUTING.md, and docs/getting-started.md (including how to
