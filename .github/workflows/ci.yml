@@ -115,7 +115,10 @@ jobs:
 
   app:
     name: App Build & UI Test (iOS Simulator)
-    runs-on: macos-26
+    # A pull request with nothing for this job to do skips every step, so it takes a
+    # cheap Ubuntu runner instead of waiting for a macOS one; any other output
+    # (true, or empty after a failed `changes`) keeps macOS.
+    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'macos-26' }}
     # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
     # failed, and its steps skip only on the exact output 'false' — a failed `changes`
     # leaves the output empty, so everything runs. A job skipped outright would report
@@ -173,7 +176,10 @@ jobs:
 
   smoke:
     name: Release Smoke Launch (iOS Simulator)
-    runs-on: macos-26
+    # A pull request with nothing for this job to do skips every step, so it takes a
+    # cheap Ubuntu runner instead of waiting for a macOS one; any other output
+    # (true, or empty after a failed `changes`) keeps macOS.
+    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'macos-26' }}
     # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
     # failed, and its steps skip only on the exact output 'false' — a failed `changes`
     # leaves the output empty, so everything runs. A job skipped outright would report
@@ -227,7 +233,10 @@ jobs:
 
   ios-tests:
     name: Package Tests (iOS Simulator)
-    runs-on: macos-26
+    # A pull request with nothing for this job to do skips every step, so it takes a
+    # cheap Ubuntu runner instead of waiting for a macOS one; any other output
+    # (true, or empty after a failed `changes`) keeps macOS.
+    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'macos-26' }}
     # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
     # failed, and its steps skip only on the exact output 'false' — a failed `changes`
     # leaves the output empty, so everything runs. A job skipped outright would report
