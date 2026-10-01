@@ -43,7 +43,7 @@ installable package.
 CodeQL (`.github/workflows/codeql.yml`) builds the Swift package with
 `swift build --package-path Packages/MyAppKit`. It analyzes `MyAppCore`,
 `MyAppUI`, and `MyAppPlatform` as compiled for the macOS host (`Package.swift`
-declares `.macOS(.v15)`); `App/` (the thin composition root) and code under
+declares `.macOS(.v27)`); `App/` (the thin composition root) and code under
 `#if os(iOS)` are not analyzed.
 
 `main`'s intended branch protection is defined as code in

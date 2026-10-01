@@ -23,7 +23,7 @@ it under Open questions until it is decided.
 | Corner radius | "Template scale", or the values for tags, controls, and cards | `DesignTokens.Radius`, always `.continuous` |
 | Density | Regular or compact; list style (`.insetGrouped`, `.plain`) and control size if not the default | A modifier on the root view in `App/`, so every screen inherits it |
 | Symbols | SF Symbols only, or where custom images are allowed; the rendering mode (monochrome, hierarchical, palette, multicolor) per context | `Image(systemName:)`, `Label`, `.symbolRenderingMode(...)` |
-| Materials and Liquid Glass | "Standard components only", or where a custom glass or material surface appears, and what it falls back to on iOS 18 | One `ViewModifier` in `MyAppUI` following `designing-ui`'s availability pattern |
+| Materials and Liquid Glass | "Standard components only", or where a custom glass or material surface appears | One `ViewModifier` in `MyAppUI`, as `designing-ui` › Materials and Liquid Glass sets out |
 | Navigation structure | A single `NavigationStack`, or a `TabView` with its tabs named; where the primary action lives (toolbar, bottom bar, inline) | The root view in `MyAppUI`, handed its models by `App/` |
 | iPad layout | "Same as iPhone, readable width", or a `NavigationSplitView` at regular width — or "iPhone only" when the device family is | The root view, switching on `horizontalSizeClass`; `TARGETED_DEVICE_FAMILY` in `project.yml` |
 | Haptics | "None", or which actions play which system pattern | `.sensoryFeedback(_:trigger:)` at those call sites only |

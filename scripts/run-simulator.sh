@@ -5,10 +5,15 @@
 #   scripts/run-simulator.sh [--root DIR]
 #
 # Boots the device scripts/simulator-destination.sh picks (SIMULATOR_DEVICE chooses
-# another), brings Simulator.app to the front, installs the bundle `just build` just
+# another), brings Device Hub to the front, installs the bundle `just build` just
 # produced, and launches it with --terminate-running-process: launching an app that is
 # already running only foregrounds the old process, so the freshly built binary would
 # never start and whoever is checking a change would watch stale behavior.
+#
+# Device Hub (bundle ID com.apple.dt.Devices) is the app that shows simulators since
+# Xcode 27, which ships no Simulator.app. Opening it is only so a person sees the
+# device: when it cannot be opened, a one-line notice goes to stderr and the install
+# and launch still run.
 #
 # The app is identified by the bundle identifier project.yml declares
 # (scripts/bundle-id.sh), so a rename by scripts/bootstrap.sh needs no edit here.
@@ -64,9 +69,11 @@ UDID=$("${SCRIPTS}/simulator-destination.sh" --udid)
 if ! BOOT_OUTPUT=$(xcrun simctl bootstatus "${UDID}" -b 2>&1); then
     fail ERR_RUN_BOOT_FAILED "simulator ${UDID} did not boot" \
         "\`xcrun simctl bootstatus ${UDID} -b\` to succeed" "${BOOT_OUTPUT}" \
-        "open Simulator.app and boot the device by hand, then rerun \`just run\`"
+        "open Device Hub and boot the device by hand, then rerun \`just run\`"
 fi
-open -a Simulator --args -CurrentDeviceUDID "${UDID}"
+if ! OPEN_OUTPUT=$(open -b com.apple.dt.Devices 2>&1); then
+    echo "run: could not open Device Hub (${OPEN_OUTPUT}); installing and launching on ${UDID} anyway" >&2
+fi
 
 if ! INSTALL_OUTPUT=$(xcrun simctl install "${UDID}" "${APP_PATH}" 2>&1); then
     fail ERR_RUN_INSTALL_FAILED "simctl could not install ${APP_PATH}" \

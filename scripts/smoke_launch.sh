@@ -132,7 +132,7 @@ fi
 if ! BOOT_OUTPUT=$(xcrun simctl bootstatus "${UDID}" -b 2>&1); then
     fail ERR_SMOKE_NO_SIMULATOR "simulator ${UDID} did not boot" \
         "\`xcrun simctl bootstatus ${UDID} -b\` to succeed" "${BOOT_OUTPUT}" \
-        "open Simulator.app and boot the device by hand, then rerun \`just smoke\`"
+        "open Device Hub and boot the device by hand, then rerun \`just smoke\`"
 fi
 DEVICE_NAME=$(xcrun simctl getenv "${UDID}" SIMULATOR_DEVICE_NAME 2>/dev/null) || DEVICE_NAME=""
 [ -n "${DEVICE_NAME}" ] || DEVICE_NAME="simulator ${UDID}"

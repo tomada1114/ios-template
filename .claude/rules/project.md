@@ -24,7 +24,7 @@ paths:
   - **Build-time code** — whether it ships a binary target or a build/command plugin (code
     that runs at build time); either needs explicit human approval
   - **Platforms** — its platform floor is at or below **both** of this package's
-    `.iOS(.v18)` and `.macOS(.v15)` (`platforms:` in `Packages/MyAppKit/Package.swift`):
+    `.iOS(.v27)` and `.macOS(.v27)` (`platforms:` in `Packages/MyAppKit/Package.swift`):
     the package also builds on the host for `swift test`
     (`docs/architecture.md` › Why the package also builds for macOS)
   - **Advisories** — no open security advisory against the version being added
@@ -94,7 +94,9 @@ paths:
   the value must name an Xcode that GitHub's macOS runner image actually installs
   (`/Applications/Xcode_<version>.app`), which no release feed tracks. Bump it by hand in
   a `ci:` PR once the runner image ships the new Xcode, and let the PR's macOS jobs prove
-  the path exists
+  the path exists. A new Xcode major can arrive on its own image label before the
+  `macos-<N>` label carries it (Xcode 27 ships on `xcode-27`, `macos-26` stops at 26.x),
+  so the bump also moves every macOS job's `runs-on:` to the label that installs it
 - `.github/workflows/check-pr-title.yml` accepts the bots' prefixes (`deps`, `ci`); a
   prefix change in either bot config changes that list in the same PR.
   `scripts/checks/dependency-bots-agree.sh` (`just check-harness`) fails while a bot's

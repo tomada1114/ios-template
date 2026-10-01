@@ -11,7 +11,7 @@ a SwiftData adapter, a fake, a contract test, and a UI test.
 
 | Decision | Choice | Why |
 |---|---|---|
-| Minimum OS | iOS 18 (`project.yml`, `Package.swift`) | `@Observable`, SwiftData, `ContentUnavailableView`, and the iOS 18 SwiftData and tab APIs without `#available` branches, while still reaching most devices in use. Raising it is an app's decision; lowering it below 17 loses `@Observable` and SwiftData |
+| Minimum OS | iOS 27 (`project.yml`, `Package.swift`), built with Xcode 27 (`.xcode-version`) | Apps cut from this template are built for their owner's own devices, which run the current iOS, so the floor is the current major release: every API the SDK ships, Liquid Glass included, is usable without an `#available` branch, and the one simulator runtime CI's Xcode ships is the floor itself. Lowering it is an app's decision, and owes an ADR |
 | Presentation pattern | MVVM with `@MainActor @Observable` view models in Core | The view model is plain Swift that `swift test` drives in milliseconds, so every decision a screen makes is unit-tested and coverage-gated; the view stays a thin renderer |
 | Persistence | SwiftData, behind a Core-declared repository port | First-party (no dependency), migrations built in, and the port keeps it replaceable: Core never imports SwiftData |
 | Networking | `URLSession` behind a Core `HTTPClient` port | First-party, no dependency; the port keeps decisions about status codes and failures in Core, where tests see them |
@@ -54,7 +54,7 @@ Tests/MyAppTestSupport       each port's fake and contract function (test code o
 
 ### Why the package also builds for macOS
 
-`Package.swift` lists `.macOS(.v15)` next to `.iOS(.v18)` so `swift test` runs the whole
+`Package.swift` lists `.macOS(.v27)` next to `.iOS(.v27)` so `swift test` runs the whole
 package on the host Mac: seconds instead of a simulator boot, and the only way
 `scripts/coverage.sh` can read coverage from `swift test`. The cost is that every target
 must compile for macOS too. Core does by construction; in `MyAppUI` and `MyAppPlatform`
