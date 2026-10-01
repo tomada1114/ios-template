@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `just uitest` is now `just uitest-build` (`xcodebuild build-for-testing`) followed by
+  `just uitest-run` (`test-without-building`), and CI's `app` job runs the two halves
+  instead of `just build` plus `just uitest`, so it compiles the Debug app once
+
 - The committed `.claude/settings.json` is removed: Claude Code permissions and the
   format-on-edit hook now live in each person's user-level or gitignored
   `.claude/settings.local.json` settings (see `AGENTS.md`)

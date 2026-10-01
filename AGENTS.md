@@ -54,7 +54,9 @@ just run           # Build, then install and launch it on an iOS Simulator (SIMU
 just run-device    # Build (Debug), then install and launch it on a connected iPhone (Config/Local.xcconfig; IOS_DEVICE picks one)
 just logs          # Stream this app's log output from the booted simulator (Ctrl-C to stop)
 just reset-permissions  # Make the booted simulator forget this app's privacy grants
-just uitest        # Run the XCUITest launch test on an iOS Simulator
+just uitest        # Run the XCUITest launch test on an iOS Simulator (uitest-build, then uitest-run)
+just uitest-build  # Build the app and the launch UI test for an iOS Simulator, without running it
+just uitest-run    # Run the launch UI test uitest-build compiled, without rebuilding
 just test-ios      # Run the package tests on an iOS Simulator (no coverage floor)
 just smoke         # Build Release and assert the app launches and stays alive on a simulator
 just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → build

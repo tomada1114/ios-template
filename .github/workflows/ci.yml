@@ -87,11 +87,11 @@ jobs:
       - name: Show the simulator the UI test will use
         run: scripts/simulator-destination.sh
 
-      - name: Build app (Debug, iOS Simulator)
-        run: just build
+      - name: Build app and UI tests (Debug, iOS Simulator)
+        run: just uitest-build
 
       - name: Run launch UI test
-        run: just uitest
+        run: just uitest-run
 
       - name: Smoke launch (Release)
         run: just smoke
