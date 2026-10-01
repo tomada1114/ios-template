@@ -65,6 +65,9 @@ just labels        # Create/update GitHub labels from .github/labels.yml (never 
 just ruleset       # Create/update the "main" branch ruleset from .github/rulesets/main.json (admin-only)
 ```
 
+Without Just: run the underlying commands listed in each `justfile` recipe (see
+CONTRIBUTING.md).
+
 Building the app needs Xcode (`.xcode-version`) **with its iOS platform installed**
 (Xcode › Settings › Components); `just test` needs only the Swift toolchain.
 
@@ -372,14 +375,6 @@ libraries are sourced, so they carry no shebang or `set` line of their own):
   `coverage.sh`'s below-the-line-floor failure also predates the failure contract and
   does not follow it yet (its function-floor failure,
   `ERR_COVERAGE_FUNCTIONS_BELOW_FLOOR`, does).
-
-## Harness status
-
-This repository is being brought up to the macOS template's harness
-(`tomada1114/macos-app-template`) one issue at a time; the tracking issue, #1, lists them
-in order. What exists today is what the tables above describe. Not yet ported, each owned
-by an open issue: the fuller documentation. When an issue lands one
-of these, it updates this section and the tables above in the same pull request.
 
 ## Enforcement layers
 
