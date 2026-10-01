@@ -137,8 +137,10 @@ once it has run).
 **Preferences:**
 
 - [ ] `PreferenceKeys.hideCompleted` in
-      `Packages/MyAppKit/Sources/MyAppCore/Preferences/PreferenceKeys.swift`, and its
-      line in `Packages/MyAppKit/Tests/MyAppCoreTests/PreferenceKeysTests.swift`
+      `Packages/MyAppKit/Sources/MyAppCore/Preferences/PreferenceKeys.swift`, its
+      line in `Packages/MyAppKit/Tests/MyAppCoreTests/PreferenceKeysTests.swift`, and
+      the `init(hideCompleted:)` that reads it in
+      `Packages/MyAppKit/Sources/MyAppUI/PreviewPreferences.swift`
 
 **Keep, as the pattern your own code copies:**
 
@@ -162,13 +164,16 @@ once it has run).
 3. Delete the UI files and the previews' repository.
 4. Replace `AppRoute.todoDetail` and the `todo` deep link with a route of your own,
    updating `DeepLinkTests` and `NavigationModelTests` in the same step.
-5. Delete `PreferenceKeys.hideCompleted` with its `PreferenceKeysTests` line — a stored
-   key's removal is a migration for any app already installed, so do it before you ship.
-6. Delete `TodoListViewModel`, the two strings files, their catalog keys, and their
-   `LocalizationTests` cases together.
-7. Delete the Platform persistence files and their test, then the fake and the
-   contract, then `TodoRepository`, `UnavailableTodoRepository`, `TodoItem`, the Core
-   tests, and `AppLog.todos`.
+5. Delete `TodoListViewModel` with its tests (the four `TodoListViewModel*Tests.swift`
+   files and `TodoListViewModelFixture.swift`), the two strings files, their catalog
+   keys, and their `LocalizationTests` cases together.
+6. Delete `PreferenceKeys.hideCompleted` with its `PreferenceKeysTests` line and
+   `PreviewPreferences`' `init(hideCompleted:)` in
+   `Packages/MyAppKit/Sources/MyAppUI/PreviewPreferences.swift` — a stored key's
+   removal is a migration for any app already installed, so do it before you ship.
+7. Delete the Platform persistence files and their test, then the fake, the contract,
+   and `TodoRepositoryContractTests`, then `TodoRepository`,
+   `UnavailableTodoRepository`, `TodoItem` with `TodoItemTests`, and `AppLog.todos`.
 
 `rg -i 'todo'` then lists anything left — including the mentions in `AGENTS.md`,
 `docs/architecture.md`, `.claude/rules/`, and the skills that cite the to-do list as
