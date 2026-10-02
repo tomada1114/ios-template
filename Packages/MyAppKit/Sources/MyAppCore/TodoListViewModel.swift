@@ -1,14 +1,20 @@
 import Foundation
 import Observation
 
-/// A failure the list presents. Which store failed, and why, stays in the log.
-public enum TodoListFailure: Equatable, Sendable {
+/// A failure the list reports, from whichever screen caused it — the detail screen's
+/// toggle is the list's. Which store failed, and why, stays in the log.
+public enum TodoListFailure: Equatable, PresentableFailure {
     /// A delete could not be completed.
     case deleteFailed
     /// ``TodoListViewModel/load()`` could not read the repository.
     case loadFailed
     /// An add or a toggle could not be saved.
     case saveFailed
+
+    /// Every case shares one headline; ``message`` says what did not happen.
+    public var title: LocalizedStringResource {
+        TodoListStrings.failureTitle
+    }
 
     /// The sentence the alert shows for this failure.
     public var message: LocalizedStringResource {

@@ -89,6 +89,10 @@ SIMCTL_CHILD_PROBE_STATE=known-state \
   `App/MyAppApp.swift` reads `-uiTesting` and opens an in-memory store, so the list
   starts empty and nothing touches the on-disk store; `LaunchTests` passes the same
   argument through `XCUIApplication.launchArguments`.
+- `-failUpdates` (Debug builds only) wraps the store so every save that replaces a
+  stored item — a toggle — fails, while adds still succeed: add an item, toggle it, and
+  the failure alert shows over whichever screen is on top. `LaunchTests` uses it to
+  prove exactly that; a Release build ignores it.
 - An environment variable reaches the app only with the `SIMCTL_CHILD_` prefix, which
   `simctl` strips: the line above starts the app with `PROBE_STATE=known-state`, which
   `ProcessInfo` reads. Nothing in the template reads it; it proves the channel.

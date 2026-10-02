@@ -2,7 +2,8 @@ import MyAppCore
 import SwiftUI
 
 /// One window's navigation root: the stack every screen is pushed onto, its root screen,
-/// and the one place a route becomes a screen.
+/// the one place a route becomes a screen, and the one place a failure is presented
+/// (`failureAlert(_:dismiss:)`).
 ///
 /// The app's only `NavigationStack(path:)` and its only
 /// `navigationDestination(for: AppRoute.self)` live here, so a new screen adds an
@@ -30,6 +31,9 @@ public struct RootView: View {
                     destination(for: route).id(route)
                 }
         }
+        // Outside the stack, so a failure presents over whichever screen is on top: a
+        // toggle on the pushed detail screen is the list's, and fails as the list's.
+        .failureAlert(app.todoList.failure) { app.todoList.dismissFailure() }
     }
 
     /// Creates the root over `app` and `navigation`, which the caller owns.

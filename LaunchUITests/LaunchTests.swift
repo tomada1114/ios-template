@@ -81,6 +81,59 @@ final class LaunchTests: XCTestCase {
             }
     }
 
+    /// A failure presents over whichever screen is on top (#78): a toggle that fails on
+    /// the pushed detail screen shows its alert there, and dismissing it leaves the
+    /// detail screen showing the item unchanged.
+    ///
+    /// A launch of its own, because `-failUpdates` (Debug-only, `App/MyAppApp.swift`)
+    /// fails every toggle for the whole launch, and the walk above needs one to succeed.
+    @MainActor
+    func testAFailedToggleOnTheDetailScreenPresentsTheFailureThere() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-uiTesting", "-failUpdates",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+        ]
+        app.launch()
+
+        XCTContext.runActivity(named: "Add an item") { _ in addAnItem(in: app) }
+        XCTContext.runActivity(named: "Fail a toggle on the item's detail") { _ in
+            failATogglePresentsTheFailureOnTheDetail(in: app)
+        }
+    }
+
+    @MainActor
+    private func failATogglePresentsTheFailureOnTheDetail(in app: XCUIApplication) {
+        app.staticTexts["Buy milk"].tap()
+        let detail = app.collectionViews["todoDetail"]
+        XCTAssertTrue(
+            detail.waitForExistence(timeout: Timeout.elementAppears),
+            "tapping a row's title should push that item's detail screen",
+        )
+        let toggle = app.buttons["detailToggle"]
+        XCTAssertEqual(toggle.label, "Mark as Done", "the item should start open")
+        toggle.tap()
+
+        let alert = app.alerts["Something Went Wrong"]
+        XCTAssertTrue(
+            alert.waitForExistence(timeout: Timeout.elementAppears),
+            "a toggle that fails on the detail screen should present the failure there",
+        )
+        XCTAssertTrue(
+            alert.staticTexts["Your change could not be saved."].exists,
+            "the alert should say the change was not saved",
+        )
+        alert.buttons["OK"].tap()
+        XCTAssertTrue(waitForDisappearance(of: alert), "OK should dismiss the alert")
+        XCTAssertTrue(detail.exists, "dismissing the alert should leave the detail on top")
+        XCTAssertEqual(
+            toggle.label,
+            "Mark as Done",
+            "the item should stay open after its save failed",
+        )
+    }
+
     @MainActor
     private func addAnItem(in app: XCUIApplication) {
         let item = app.staticTexts["Buy milk"]

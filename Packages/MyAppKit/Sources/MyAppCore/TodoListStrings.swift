@@ -86,23 +86,14 @@ public enum TodoListStrings {
         )
     }
 
-    /// The failure alert's title.
+    /// The headline of every ``TodoListFailure`` — the failure alert's title, and the
+    /// load-failure state's.
     public static var failureTitle: LocalizedStringResource {
         LocalizedStringResource(
             "todoList.failure.title",
             defaultValue: "Something Went Wrong",
             bundle: .module,
             comment: "Title of the alert shown when loading or saving to-do items fails.",
-        )
-    }
-
-    /// The button that dismisses the failure alert.
-    public static var dismiss: LocalizedStringResource {
-        LocalizedStringResource(
-            "todoList.failure.dismiss",
-            defaultValue: "OK",
-            bundle: .module,
-            comment: "Button that dismisses the failure alert.",
         )
     }
 

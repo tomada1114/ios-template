@@ -125,6 +125,19 @@ struct TodoListViewModelEditingTests {
         #expect(failure.message.english == english)
     }
 
+    @Test(arguments: [TodoListFailure.loadFailed, .saveFailed, .deleteFailed])
+    func `every failure presents under one title`(failure: TodoListFailure) {
+        // Through the protocol, as the shared failure alert reads it.
+        let presented: any PresentableFailure = failure
+        #expect(presented.title.english == "Something Went Wrong")
+        #expect(presented.message.english == failure.message.english)
+    }
+
+    @Test
+    func `the failure alert is dismissed with OK`() {
+        #expect(FailureStrings.dismiss.english == "OK")
+    }
+
     @Test
     func `an unavailable store fails every operation`() async throws {
         let model = Fixture.model(over: UnavailableTodoRepository())

@@ -72,7 +72,7 @@ struct LocalizationTests {
         let strings: [LocalizedStringResource] = [
             TodoListStrings.title, TodoListStrings.draftPlaceholder, TodoListStrings.add,
             TodoListStrings.emptyTitle, TodoListStrings.emptyDescription,
-            TodoListStrings.failureTitle, TodoListStrings.dismiss, TodoListStrings.retry,
+            TodoListStrings.failureTitle, FailureStrings.dismiss, TodoListStrings.retry,
             TodoListStrings.markDone, TodoListStrings.markNotDone,
             TodoListStrings.hideCompleted, TodoListStrings.allDoneTitle,
             TodoListStrings.allDoneDescription,
