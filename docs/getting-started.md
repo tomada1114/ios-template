@@ -104,12 +104,20 @@ once it has run).
 
 **Platform:**
 
-- [ ] `Packages/MyAppKit/Sources/MyAppPlatform/Persistence/` — the adapter
+- [ ] The adapter
       `Packages/MyAppKit/Sources/MyAppPlatform/Persistence/SwiftDataTodoRepository.swift`,
-      the schema `Packages/MyAppKit/Sources/MyAppPlatform/Persistence/TodoSchemaV1.swift`,
-      and the migration plan
-      `Packages/MyAppKit/Sources/MyAppPlatform/Persistence/TodoMigrationPlan.swift`
-- [ ] Its test: `Packages/MyAppKit/Tests/MyAppPlatformTests/SwiftDataTodoRepositoryTests.swift`
+      and `TodoRecord` in the schema
+      `Packages/MyAppKit/Sources/MyAppPlatform/Persistence/AppSchemaV1.swift` with its
+      typealias in
+      `Packages/MyAppKit/Sources/MyAppPlatform/Persistence/AppMigrationPlan.swift` — keep
+      the schema, the plan, and
+      `Packages/MyAppKit/Sources/MyAppPlatform/Persistence/PersistenceStore.swift` for
+      your own `@Model` types (editing V1 is safe only while no build has shipped), or
+      remove the whole `Persistence/` directory, and the container in `App/`, if the app
+      keeps no SwiftData store
+- [ ] Its tests: `Packages/MyAppKit/Tests/MyAppPlatformTests/SwiftDataTodoRepositoryTests.swift`,
+      `Packages/MyAppKit/Tests/MyAppPlatformTests/PersistenceStoreTests.swift`, and the
+      frozen schema copy `Packages/MyAppKit/Tests/MyAppPlatformTests/PreRenameSchemaV1.swift`
 
 **Test support:**
 

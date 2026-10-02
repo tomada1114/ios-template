@@ -2,14 +2,17 @@ import Foundation
 import MyAppCore
 import SwiftData
 
-/// The first version of the stored schema.
+/// The first version of the app's stored schema: every `@Model` the app keeps, in one
+/// store that ``PersistenceStore`` opens once.
 ///
 /// Versioned from day one because the stored shape is contract (`docs/architecture.md`
 /// › What is contract): an installed app's store outlives every build, so a change to a
 /// `@Model` class that the shipped schema does not describe is a migration, not an
-/// edit. The next change adds `TodoSchemaV2` beside this one and a stage to
-/// ``TodoMigrationPlan``; this enum is then never edited again.
-enum TodoSchemaV1: VersionedSchema {
+/// edit. The next change — a changed record or a second entity — adds `AppSchemaV2`
+/// beside this one and a stage to ``AppMigrationPlan``; this enum is then never edited
+/// again. Only the Swift names of the schema and the plan are free to change: the store
+/// records the model's entities, attributes, and version identifier, never these names.
+enum AppSchemaV1: VersionedSchema {
     /// SwiftData's stored shape of a ``MyAppCore/TodoItem``. Internal to this module: no
     /// `@Model` object ever crosses the port, which speaks only Core's value types.
     ///
