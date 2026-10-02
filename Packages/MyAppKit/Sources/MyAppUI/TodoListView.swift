@@ -23,55 +23,44 @@ private struct TodoRow: View {
     }
 }
 
-/// The app's root screen: the to-do list, with a quick-add bar pinned to the bottom, and
-/// the navigation stack every other screen is pushed onto.
+/// The to-do list screen, with a quick-add bar pinned to the bottom: the root screen of
+/// `RootView`'s navigation stack, which a row's link pushes onto.
 ///
 /// Deliberately thin — every behavior it renders is owned and unit-tested by
 /// `TodoListViewModel` in MyAppCore, and so is every word: the view has no localizable
 /// literal of its own. It turns each user intent into one view-model call and reads
 /// back the state to draw.
 ///
-/// It owns neither model: the app shell creates the view model once for the app and the
-/// navigation model once per scene (both in `@State`), and hands them down. `@Bindable`
-/// is only what lets the text field bind to
-/// ``TodoListViewModel/draftTitle`` and the stack bind to ``NavigationModel/path``, so a
-/// row's link, the back button, and a deep link all move the same Core state.
+/// It does not own its model: `App/` creates it once for the app, inside `AppModel`, and
+/// `RootView` hands it down. `@Bindable` is only what lets the text field bind to
+/// ``TodoListViewModel/draftTitle``.
 public struct TodoListView: View {
     @Bindable private var model: TodoListViewModel
-    @Bindable private var navigation: NavigationModel
     @FocusState private var isDraftFocused: Bool
 
     public var body: some View {
-        NavigationStack(path: $navigation.path) {
-            list
-                .overlay { placeholder }
-                .navigationTitle(Text(TodoListStrings.title))
-                .toolbar { toolbar }
-                .safeAreaInset(edge: .bottom) { addBar }
-                .refreshable { await model.load() }
-                .task {
-                    // Only the first appearance loads; a return to this screen keeps what
-                    // is shown, and pull-to-refresh is the explicit way to reload.
-                    if model.phase == .idle {
-                        await model.load()
-                    }
+        list
+            .overlay { placeholder }
+            .navigationTitle(Text(TodoListStrings.title))
+            .toolbar { toolbar }
+            .safeAreaInset(edge: .bottom) { addBar }
+            .refreshable { await model.load() }
+            .task {
+                // Only the first appearance loads; a return to this screen keeps what
+                // is shown, and pull-to-refresh is the explicit way to reload.
+                if model.phase == .idle {
+                    await model.load()
                 }
-                .alert(
-                    Text(TodoListStrings.failureTitle),
-                    isPresented: isFailurePresented,
-                    presenting: model.failure,
-                ) { _ in
-                    Button(TodoListStrings.dismiss) { model.dismissFailure() }
-                } message: { failure in
-                    Text(failure.message)
-                }
-                .navigationDestination(for: AppRoute.self) { route in
-                    switch route {
-                    case let .todoDetail(id):
-                        TodoDetailView(model: model, id: id)
-                    }
-                }
-        }
+            }
+            .alert(
+                Text(TodoListStrings.failureTitle),
+                isPresented: isFailurePresented,
+                presenting: model.failure,
+            ) { _ in
+                Button(TodoListStrings.dismiss) { model.dismissFailure() }
+            } message: { failure in
+                Text(failure.message)
+            }
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
@@ -229,56 +218,50 @@ public struct TodoListView: View {
         )
     }
 
-    /// Creates the view over `model` and `navigation`, which the caller owns.
-    public init(model: TodoListViewModel, navigation: NavigationModel) {
+    /// Creates the view over `model`, which the caller owns. The caller also provides the
+    /// navigation stack a row's link pushes onto (`RootView`).
+    public init(model: TodoListViewModel) {
         self.model = model
-        self.navigation = navigation
     }
 }
 
 #if DEBUG
+    /// The list over `repository` and `preferences`, inside a plain stack for its title
+    /// and toolbar — the stack `RootView` gives it in the app.
+    @MainActor
+    private func listPreview(
+        over repository: any TodoRepository,
+        preferences: PreviewPreferences,
+    ) -> some View {
+        NavigationStack {
+            TodoListView(model: TodoListViewModel(repository: repository, preferences: preferences))
+        }
+    }
+
     #Preview("Items") {
-        TodoListView(
-            model: TodoListViewModel(
-                repository: PreviewTodoRepository(titles: [
-                    "Buy milk",
-                    "Call the bank",
-                    "Water plants",
-                ]),
-                preferences: PreviewPreferences(),
-            ),
-            navigation: NavigationModel(),
+        listPreview(
+            over: PreviewTodoRepository(titles: [
+                "Buy milk",
+                "Call the bank",
+                "Water plants",
+            ]),
+            preferences: PreviewPreferences(),
         )
     }
 
     #Preview("Empty") {
-        TodoListView(
-            model: TodoListViewModel(
-                repository: PreviewTodoRepository(titles: []),
-                preferences: PreviewPreferences(),
-            ),
-            navigation: NavigationModel(),
-        )
+        listPreview(over: PreviewTodoRepository(titles: []), preferences: PreviewPreferences())
     }
 
     #Preview("Load failed") {
-        TodoListView(
-            model: TodoListViewModel(
-                repository: UnavailableTodoRepository(),
-                preferences: PreviewPreferences(),
-            ),
-            navigation: NavigationModel(),
-        )
+        listPreview(over: UnavailableTodoRepository(), preferences: PreviewPreferences())
     }
 
     #Preview("All done hidden") {
         // PreviewTodoRepository checks off its first item, so one title is all done.
-        TodoListView(
-            model: TodoListViewModel(
-                repository: PreviewTodoRepository(titles: ["Buy milk"]),
-                preferences: PreviewPreferences(hideCompleted: true),
-            ),
-            navigation: NavigationModel(),
+        listPreview(
+            over: PreviewTodoRepository(titles: ["Buy milk"]),
+            preferences: PreviewPreferences(hideCompleted: true),
         )
     }
 #endif
