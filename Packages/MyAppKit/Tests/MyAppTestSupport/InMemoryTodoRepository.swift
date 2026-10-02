@@ -24,6 +24,7 @@ package actor InMemoryTodoRepository: TodoRepository {
     private var stored: [TodoItem.ID: TodoItem]
     private var failures: [Operation: TodoRepositoryError] = [:]
     private var beforeSave: (@Sendable (TodoItem) async -> Void)?
+    private var beforeReturningFetch: (@Sendable ([TodoItem]) async -> Void)?
 
     /// What the fake holds right now, in display order — read without recording a call.
     package var snapshot: [TodoItem] {
@@ -56,9 +57,20 @@ package actor InMemoryTodoRepository: TodoRepository {
         beforeSave = hook
     }
 
-    package func fetchAll() throws(TodoRepositoryError) -> [TodoItem] {
+    /// Runs `hook` inside every later ``fetchAll()``, after the items are read and before
+    /// they are returned — the seam a test uses to act while a fetch is in flight. The
+    /// hook is handed what the fetch will return, which is what the fake held when the
+    /// fetch was called, so whatever the hook changes makes that answer stale: a slow
+    /// fetch, delivered late. A fetch that ``fail(_:with:)`` makes throw never runs it.
+    package func onFetch(_ hook: @escaping @Sendable ([TodoItem]) async -> Void) {
+        beforeReturningFetch = hook
+    }
+
+    package func fetchAll() async throws(TodoRepositoryError) -> [TodoItem] {
         try record(.fetchAll)
-        return snapshot
+        let items = snapshot
+        await beforeReturningFetch?(items)
+        return items
     }
 
     package func save(_ item: TodoItem) async throws(TodoRepositoryError) {

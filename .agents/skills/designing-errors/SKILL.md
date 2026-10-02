@@ -115,6 +115,15 @@ do {
   `throws(E)` cannot throw `CancellationError`. Keep such functions on plain `throws`,
   or give `E` an explicit `.cancelled` case the caller treats as a no-op — never drop
   the cancellation on the floor.
+- A port that cannot observe cancellation gets no `.cancelled` case. A local store does
+  its work on its own actor without checking for cancellation, so
+  `TodoRepositoryError` has none. A `@MainActor` view-model action that awaits such a
+  port reads `Task.isCancelled` after the `await`, whatever the call returned or threw,
+  and treats it as a no-op — no failure reported, no error state, nothing logged — since
+  a store that saw its caller cancel can only answer with a failure case.
+  `TodoListViewModel.load()` is the worked example, and puts `phase` back to what it
+  was before the load. A port that can observe it (`HTTPClient`) declares the case
+  instead, and its caller switches on it.
 - A test asserts cancellation with `#expect(throws: CancellationError.self)`.
 
 ## Mapping framework errors in an adapter

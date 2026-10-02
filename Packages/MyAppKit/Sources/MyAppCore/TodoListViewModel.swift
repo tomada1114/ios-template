@@ -62,16 +62,25 @@ public enum TodoListFailure: Equatable, PresentableFailure {
 @MainActor
 @Observable
 public final class TodoListViewModel {
-    /// Where the first load stands. A later action never moves it back to `loading`.
+    /// Where loading stands. An edit never moves it; only ``load()`` does.
     public enum Phase: Equatable, Sendable {
         /// The last ``load()`` failed; ``items`` is whatever was shown before it.
         case failed
-        /// Nothing has asked the repository yet.
+        /// No load has finished: nothing has asked the repository yet, or the only load
+        /// was cancelled — so the screen's next appearance asks again.
         case idle
         /// ``items`` reflects the repository.
         case loaded
         /// ``load()`` is waiting on the repository.
         case loading
+    }
+
+    /// A write the repository acknowledged while the newest ``load()`` was in flight. That
+    /// load's fetch may have read the store before the write landed, so the write is
+    /// replayed over its result rather than lost until the next load.
+    private enum AcknowledgedWrite {
+        case deleted(TodoItem.ID)
+        case saved(TodoItem)
     }
 
     /// Every item the repository holds, in ``TodoItem/isOrderedBefore(_:_:)`` order —
@@ -88,6 +97,18 @@ public final class TodoListViewModel {
     /// Whether done items are hidden: ``PreferenceKeys/hideCompleted``, read by
     /// ``load()`` and written by ``setHideCompleted(_:)``. Off until the first load.
     public private(set) var hideCompleted = false
+
+    /// How many loads have started. A load that returns after a newer one started is
+    /// superseded, and drops its result: the newest load is the only one that applies.
+    private var loadGeneration = 0
+    /// What ``phase`` was before the in-flight loads set `.loading` — what a cancelled
+    /// load puts back.
+    private var phaseBeforeLoading = Phase.idle
+    /// Whether a load is in flight, so an acknowledged write is recorded for it.
+    private var isRecordingWrites = false
+    /// Writes acknowledged since the newest load started, in order. An edit outside a load
+    /// records nothing.
+    private var writesDuringLoad: [AcknowledgedWrite] = []
 
     private let repository: any TodoRepository
     private let preferences: any PreferencesStoring
@@ -157,17 +178,55 @@ public final class TodoListViewModel {
     /// Reads ``hideCompleted`` from the preferences, then replaces ``items`` with what the
     /// repository holds. The preference is read first, so it is current even when the
     /// repository fails.
+    ///
+    /// Safe to call while another load is in flight — `.task`, pull-to-refresh, Retry, and
+    /// the detail screen can all ask at once (`docs/architecture.md` › Reentrancy):
+    /// - The newest load wins. An older one that returns later drops its result, success
+    ///   or failure, so a slow, stale fetch never overwrites a newer one.
+    /// - An add, toggle, or delete the repository acknowledged while the load was in
+    ///   flight is replayed over the loaded items, so it does not vanish from the screen.
+    /// - A cancelled load is a no-op: no failure, ``items`` untouched, and ``phase`` back
+    ///   to what it was before the load. Cancellation is read from `Task.isCancelled`
+    ///   after the fetch, not from the port, because ``TodoRepositoryError`` has no
+    ///   cancellation case — a store that sees its caller cancel reports a failure, which
+    ///   the cancelled caller no longer wants (the `designing-errors` skill).
     public func load() async {
         hideCompleted = preferences.value(for: PreferenceKeys.hideCompleted)
+        if phase != .loading {
+            phaseBeforeLoading = phase
+        }
         phase = .loading
+        loadGeneration += 1
+        let generation = loadGeneration
+        writesDuringLoad = []
+        isRecordingWrites = true
+        let outcome: Result<[TodoItem], TodoRepositoryError>
         do {
             let loaded = try await repository.fetchAll()
-            items = loaded
+            outcome = .success(loaded)
+        } catch {
+            outcome = .failure(error)
+        }
+        guard generation == loadGeneration else {
+            // Superseded: the newer load owns `items`, `phase`, and the write log.
+            return
+        }
+        let writes = writesDuringLoad
+        writesDuringLoad = []
+        isRecordingWrites = false
+        guard !Task.isCancelled else {
+            phase = phaseBeforeLoading
+            return
+        }
+        switch outcome {
+        case let .success(loaded):
+            items = replaying(writes, over: loaded)
             phase = .loaded
             // A local, not `self.items`: the message is an autoclosure that needs an
             // explicit `self`, which SwiftFormat's redundantSelf rule would strip.
             AppLog.todos.debug("load: \(loaded.count, privacy: .public) items")
-        } catch {
+
+        case let .failure(error):
             phase = .failed
             report(.loadFailed, error)
         }
@@ -198,6 +257,7 @@ public final class TodoListViewModel {
             report(.saveFailed, error)
             return
         }
+        recordWrite(.saved(item))
         items.append(item)
         items.sort(by: TodoItem.isOrderedBefore)
         if draftTitle == submitted {
@@ -219,6 +279,7 @@ public final class TodoListViewModel {
             report(.saveFailed, error)
             return
         }
+        recordWrite(.saved(updated))
         // Found again by identifier: the list may have changed while the save was in flight.
         if let index = items.firstIndex(where: { $0.id == id }) {
             items[index] = updated
@@ -247,6 +308,7 @@ public final class TodoListViewModel {
                 report(.deleteFailed, error)
                 return
             }
+            recordWrite(.deleted(id))
             items.removeAll { $0.id == id }
         }
     }
@@ -272,6 +334,36 @@ public final class TodoListViewModel {
     /// What VoiceOver reads for the done toggle of `item`, which is otherwise a glyph.
     public func toggleLabel(for item: TodoItem) -> LocalizedStringResource {
         item.isDone ? TodoListStrings.markNotDone : TodoListStrings.markDone
+    }
+
+    /// `loaded` with `writes` applied in order: a save replaces the item with its
+    /// identifier or adds it, a delete removes it. Replaying a write the fetch already saw
+    /// changes nothing, so it is safe whether the fetch read the store before or after it.
+    private func replaying(
+        _ writes: [AcknowledgedWrite],
+        over loaded: [TodoItem],
+    ) -> [TodoItem] {
+        var result = loaded
+        for write in writes {
+            switch write {
+            case let .deleted(id):
+                result.removeAll { $0.id == id }
+
+            case let .saved(item):
+                if let index = result.firstIndex(where: { $0.id == item.id }) {
+                    result[index] = item
+                } else {
+                    result.append(item)
+                }
+            }
+        }
+        return result.sorted(by: TodoItem.isOrderedBefore)
+    }
+
+    private func recordWrite(_ write: AcknowledgedWrite) {
+        if isRecordingWrites {
+            writesDuringLoad.append(write)
+        }
     }
 
     private func report(_ failure: TodoListFailure, _ error: TodoRepositoryError) {

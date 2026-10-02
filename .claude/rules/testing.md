@@ -87,8 +87,9 @@ from data the test hands it, and records what it was asked in a plain value — 
 it received — which the test reads afterwards with `#expect`. It declares no
 expectations up front, verifies nothing itself, and needs no framework:
 `InMemoryTodoRepository` is the worked example to copy — `fail(_:with:)` to make an
-operation throw, `calls` and `snapshot` to read what happened, `onSave(_:)` to act while
-a save is in flight. It is `package`, not `public`, and matches its port's shape — an
+operation throw, `calls` and `snapshot` to read what happened, `onSave(_:)` and
+`onFetch(_:)` to act while a save or a fetch is in flight. It is `package`, not
+`public`, and matches its port's shape — an
 actor for an async port (`InMemoryTodoRepository`), a final class over a `Mutex` for a
 synchronous one (`InMemoryPreferences`) — so it is `Sendable` the honest way, never
 `@unchecked Sendable`. Every test of a given port
@@ -131,7 +132,7 @@ protocol, not over either implementation, and every clause it checks is one the 
   failed load, then a retry)
 - **Reentrancy**: a `@MainActor` method that `await`s can be re-entered before it
   resumes — drive the interleaving through the fake's `onSave(_:)`
-  (`docs/architecture.md` › View models)
+  or `onFetch(_:)` (`docs/architecture.md` › View models)
 - **Both branches** of every conditional in Core (the coverage floors measure lines and functions, not branches, so they will not notice a missed one — write the test for each branch yourself)
 
 ## Hygiene
