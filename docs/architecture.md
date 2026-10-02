@@ -98,9 +98,27 @@ The view model is written for that:
   the list may have changed in between (`toggle(_:)`).
 - The draft is cleared only if it still holds what was submitted, so text typed while a
   save was in flight survives (`addDraft()`).
+- Loads overlap — the list's `.task`, pull-to-refresh, Retry, and the detail screen's
+  `.task` all call `load()` — and the newest one wins. Each load takes a generation
+  number; one that returns after a newer load started drops its result, success or
+  failure, so a slow, stale fetch never overwrites a newer one.
+- A load replaces `items` wholesale, so a write that finished while it was in flight
+  could vanish: the fetch may have read the store before the write landed. Every add,
+  toggle, and delete the repository acknowledges during the newest load is recorded and
+  replayed over the loaded items — a save replaces or adds by identifier, a delete
+  removes — which changes nothing when the fetch already saw the write. Replaying, rather
+  than loading again after the edit, costs no second fetch and cannot loop.
+- A cancelled load is a no-op: no failure, `items` untouched, and `phase` back to what it
+  was before the load, so a first load cancelled when its screen left leaves the list
+  `idle` and the next appearance asks again. The view model reads `Task.isCancelled`
+  after the fetch rather than a port case: `TodoRepositoryError` has no cancellation
+  case, so a store that sees its caller cancel can only report a failure, which the
+  cancelled caller no longer wants (the `designing-errors` skill, Cancellation
+  propagates).
 
 Each of these has a test in `TodoListViewModelTests` that drives the interleaving through
-the fake's `onSave` hook.
+the fake's `onSave` hook, or its `onFetch` hook, which runs after a fetch has read the
+store and before it returns — the window in which a fetch's answer goes stale.
 
 ## Navigation
 
@@ -400,8 +418,8 @@ class` in Core that does the rest of the wiring:
   adapter is a struct and its fake a final class over a `Mutex`. Values crossing actors are `Sendable` structs and enums.
 - `@unchecked Sendable` and `nonisolated(unsafe)` are not used to silence a diagnostic —
   doing so needs human sign-off (`AGENTS.md`).
-- A closure a test injects (`now`, `makeID`, the fake's `onSave`) is `@Sendable`; capture
-  values, not a `@MainActor` static.
+- A closure a test injects (`now`, `makeID`, the fake's `onSave` and `onFetch`) is
+  `@Sendable`; capture values, not a `@MainActor` static.
 
 ## Logging
 

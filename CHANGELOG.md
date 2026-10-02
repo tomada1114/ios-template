@@ -113,6 +113,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `TodoListViewModel.load()` is safe to call while another load is in flight: the
+  newest load wins and an older one that returns later drops its result, an add,
+  toggle, or delete that finishes during a load is kept rather than overwritten by the
+  load's stale answer, and a cancelled load (a `.task` cancelled as its screen leaves)
+  reports no failure and puts `phase` back to what it was, so the next appearance loads
+  again. The test fake `InMemoryTodoRepository` gains an `onFetch(_:)` hook (#72)
+
 - A failure on a pushed screen now presents there: a toggle that could not be saved on
   the detail screen showed no alert until the user went back to the list. The failure
   alert is now one shared `MyAppUI` modifier, `.failureAlert(_:dismiss:)`, applied once

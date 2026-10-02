@@ -78,6 +78,100 @@ struct TodoListViewModelTests {
         #expect(!model.showsProgress)
     }
 
+    // MARK: - Overlapping loads and cancellation
+
+    @Test
+    func `a refresh during a load applies only the newest result`() async throws {
+        let old = try Fixture.item("Old", minute: 1)
+        let new = try Fixture.item("New", minute: 2)
+        let repository = InMemoryTodoRepository(items: [old])
+        let model = Fixture.model(over: repository)
+        await repository.onFetch { fetched in
+            // Only the first fetch acts; its answer, `[old]`, is already stale once the
+            // store gains `new` and a refresh loads that.
+            guard fetched == [old] else {
+                return
+            }
+            do {
+                try await repository.save(new)
+            } catch {
+                Issue.record(error)
+            }
+            await model.load()
+        }
+        await model.load()
+        #expect(model.items == [old, new])
+        #expect(model.phase == .loaded)
+        #expect(await repository.calls == [.fetchAll, .save, .fetchAll])
+    }
+
+    @Test
+    func `an edit that finishes during a load survives it`() async throws {
+        let stored = try Fixture.item("Stored", minute: 1)
+        let repository = InMemoryTodoRepository(items: [stored])
+        let model = Fixture.model(over: repository)
+        await model.load()
+        await repository.onFetch { _ in
+            await MainActor.run { model.draftTitle = "Added" }
+            await model.addDraft()
+        }
+        await model.load()
+        let added = try TodoItem(id: Fixture.fixedID, title: "Added", createdAt: Fixture.now)
+        #expect(model.items == [stored, added])
+        #expect(await repository.snapshot == [stored, added])
+        #expect(model.phase == .loaded)
+    }
+
+    @Test
+    func `a toggle and a delete that finish during a load survive it`() async throws {
+        let kept = try Fixture.item("Kept", minute: 1)
+        let deleted = try Fixture.item("Deleted", minute: 2)
+        let repository = InMemoryTodoRepository(items: [kept, deleted])
+        let model = Fixture.model(over: repository)
+        await model.load()
+        await repository.onFetch { _ in
+            await model.toggle(kept.id)
+            await model.delete([deleted.id])
+        }
+        await model.load()
+        var done = kept
+        done.isDone = true
+        #expect(model.items == [done])
+        #expect(await repository.snapshot == [done])
+    }
+
+    @Test
+    func `a cancelled load reports no failure`() async {
+        let repository = InMemoryTodoRepository()
+        // What a store that maps cancellation into its general failure answers.
+        await repository.fail(.fetchAll, with: .storageFailure)
+        let model = Fixture.model(over: repository)
+        // Cancelled before it starts: the task cannot run until this test suspends.
+        let loading = Task { await model.load() }
+        loading.cancel()
+        await loading.value
+        #expect(model.failure == nil)
+        #expect(!model.showsLoadFailure)
+        // Back to idle, so the screen's next appearance asks again.
+        #expect(model.phase == .idle)
+    }
+
+    @Test
+    func `a cancelled reload keeps what was shown`() async throws {
+        let shown = try Fixture.item("Shown", minute: 1)
+        let arrived = try Fixture.item("Arrived", minute: 2)
+        let repository = InMemoryTodoRepository(items: [shown])
+        let model = Fixture.model(over: repository)
+        await model.load()
+        try await repository.save(arrived)
+        let reloading = Task { await model.load() }
+        reloading.cancel()
+        await reloading.value
+        #expect(model.items == [shown])
+        #expect(model.phase == .loaded)
+        #expect(model.failure == nil)
+    }
+
     // MARK: - Adding
 
     @Test
