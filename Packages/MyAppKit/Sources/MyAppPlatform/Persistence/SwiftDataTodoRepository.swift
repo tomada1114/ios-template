@@ -14,7 +14,10 @@ import SwiftData
 ///
 /// `@ModelActor` gives the adapter its own serial executor and a `ModelContext` bound to
 /// it, so no `@Model` object ever leaves this actor and the main actor never waits on a
-/// disk write it did not ask for.
+/// disk write it did not ask for. Its `init(modelContainer:)` takes the app's one shared
+/// container from ``PersistenceStore/makeContainer(storage:)``; this type never opens a
+/// container of its own, so a second repository over the same store is another actor
+/// over that container, not a second schema over the same file.
 @ModelActor
 public actor SwiftDataTodoRepository: TodoRepository {
     /// Logs the framework error — the only place its detail survives — and answers
@@ -86,43 +89,5 @@ public actor SwiftDataTodoRepository: TodoRepository {
         var descriptor = FetchDescriptor<TodoRecord>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
         return try modelContext.fetch(descriptor).first
-    }
-}
-
-extension SwiftDataTodoRepository {
-    /// Where the store keeps its data.
-    public enum Storage: Sendable {
-        /// A store that lives and dies with the container — UI tests and previews.
-        case inMemory
-        /// SwiftData's default store file in the app's Application Support directory.
-        case onDisk
-    }
-
-    /// Opens a store and returns an adapter over it, or
-    /// ``MyAppCore/TodoRepositoryError/storageFailure`` when the container cannot be
-    /// created (an unreadable file, or a migration that failed).
-    public static func make(storage: Storage) throws(TodoRepositoryError) -> Self {
-        do {
-            return try Self(modelContainer: makeContainer(storage: storage))
-        } catch {
-            AppLog.persistence.fault(
-                "opening the store failed: \(String(describing: error), privacy: .private)",
-            )
-            throw .storageFailure
-        }
-    }
-
-    /// The container for the current schema, migrating an older store on the way.
-    static func makeContainer(storage: Storage) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: TodoSchemaV1.self)
-        let configuration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: storage == .inMemory,
-        )
-        return try ModelContainer(
-            for: schema,
-            migrationPlan: TodoMigrationPlan.self,
-            configurations: configuration,
-        )
     }
 }

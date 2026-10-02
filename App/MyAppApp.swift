@@ -52,14 +52,19 @@ struct MyAppApp: App {
         }
     }
 
-    /// The store the app runs on. When the on-disk store cannot be opened, the app still
-    /// launches — over a repository that reports every call as failed — rather than
-    /// crashing, or quietly keeping edits in memory that would vanish on the next launch.
+    /// The store the app runs on, opened once: every SwiftData repository is built over
+    /// this one container (a second one joins `SwiftDataTodoRepository` here, over the
+    /// same `container`), never over a container of its own. When the on-disk store
+    /// cannot be opened, the app still launches — over a repository that reports every
+    /// call as failed — rather than crashing, or quietly keeping edits in memory that
+    /// would vanish on the next launch.
     private static func makeRepository() -> any TodoRepository {
-        let storage: SwiftDataTodoRepository.Storage = isUITesting ? .inMemory : .onDisk
+        let storage: PersistenceStore.Storage = isUITesting ? .inMemory : .onDisk
         do {
-            return try SwiftDataTodoRepository.make(storage: storage)
+            let container = try PersistenceStore.makeContainer(storage: storage)
+            return SwiftDataTodoRepository(modelContainer: container)
         } catch {
+            // `makeContainer` has logged the failure; the null object is the handling.
             return UnavailableTodoRepository()
         }
     }
