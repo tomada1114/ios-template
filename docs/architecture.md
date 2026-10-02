@@ -249,8 +249,61 @@ public protocol HTTPClient: Sendable {
   host unique to each test. Both run under `just test` and in CI, and no test touches
   the real network.
 - **Not wired yet.** No feature calls an API, so `App/` does not create a client. The
-  first feature that needs one wires `URLSessionHTTPClient()` in the composition root
-  and hands it to the Core service it builds.
+  first feature that needs one follows "A worked API service", below.
+
+#### A worked API service
+
+`APIClient` in `MyAppCore/Networking` is the Core service every JSON API goes through —
+not a port, since the transport is already behind one. A feature describes each call
+as an `Endpoint<Response>` value (method, path, query items, an optional `Encodable`
+body, extra headers) and sends it; the client resolves the path below its base URL,
+encodes, decodes, and answers with the 2xx body or a closed `APIError`:
+
+```swift
+struct Item: Decodable, Sendable {
+    var id: Int
+    var title: String
+    var createdAt: Date
+}
+
+enum ItemsAPI {
+    static func item(id: Int) -> Endpoint<Item> {
+        Endpoint(method: .get, path: "items/\(id)")
+    }
+}
+
+func loadItem(using client: APIClient) async {
+    do {
+        let item = try await client.send(ItemsAPI.item(id: 42))
+        // Show `item`.
+    } catch .cancelled {
+        // Not a failure: the caller no longer wants the answer.
+    } catch {
+        // `error` is an `APIError`: `.offline`, `.unauthorized`, `.rateLimited(retryAfter:)`…
+    }
+}
+```
+
+- **One set of coders.** The client configures its `JSONDecoder` and `JSONEncoder` once:
+  ISO 8601 dates both ways, and keys as the type spells them (`useDefaultKeys`). A wire
+  name that differs — `created_at` for `createdAt` — goes in that type's `CodingKeys`,
+  where the mapping is visible and exact; `convertFromSnakeCase` would read `image_url`
+  as `imageUrl`, never `imageURL`. Encoded keys are sorted, so a body is the same bytes
+  every time and a test compares it with a literal.
+- **Every outcome is a case.** 401, 403, 404, and 429 have cases of their own; a 5xx is
+  `server(status:)`, any other status `unexpectedStatus(_:)`. A body that does not decode
+  is `decoding` — logged under `AppLog.network` by the response type's name, never the
+  body — and one that cannot be encoded is `encoding`, sent nowhere. `HTTPClientError`
+  maps across: `notConnected` to `offline`, `timedOut`, `cancelled`, and the rest to
+  `transport`. A 429's `Retry-After` is read as delta-seconds or an HTTP-date, the date
+  measured from the `now` the client is handed so a test pins it.
+- **Cancellation is a no-op.** A cancelled task ends the call with `cancelled`, which the
+  caller drops quietly, as it would the port's own `cancelled`.
+- **Wiring.** The composition root makes the client —
+  `APIClient(httpClient: URLSessionHTTPClient(), baseURL: …)` — and hands it to the Core
+  services it builds; a test makes one over `FakeHTTPClient` (`APIClientTests`).
+  Auth, retries, caching, and pagination are services or decisions over this one, not
+  options inside it.
 
 ### Preferences
 
@@ -418,8 +471,9 @@ adapter shape. The framework import lives only in `MyAppPlatform`; the permissio
 usage-description string goes in `project.yml` as an `INFOPLIST_KEY_…` setting; the
 decision of when to ask lives in Core.
 
-**A new remote API**: a Core service over `HTTPClient` — building requests, decoding
-responses, deciding what a status means — tested against `FakeHTTPClient`. Not a new
+**A new remote API**: its calls as `Endpoint` values, sent through an `APIClient`, and a
+Core service over that client deciding what each `APIError` case means for the feature —
+tested against `FakeHTTPClient` (The HTTP client port › A worked API service). Not a new
 port: the transport is already behind one.
 
 **A new stored model**: a new `@Model` in the next schema version, never an edit to a

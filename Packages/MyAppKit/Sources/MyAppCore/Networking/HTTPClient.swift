@@ -7,8 +7,9 @@
 /// service gets. A Core service that calls a remote API takes an `HTTPClient`, so it is
 /// tested against the fake, never against the real network.
 ///
-/// Deliberately small: one request in, one response out. Decoding, retries, auth, and
-/// caching are Core services built over it, not features of the port.
+/// Deliberately small: one request in, one response out. JSON encoding, decoding, and
+/// the meaning of a status are ``APIClient``'s, built over it; retries, auth, and
+/// caching are Core services built over that, not features of the port.
 ///
 /// `HTTPClientContract` in `MyAppTestSupport` checks the promises below against the fake
 /// and against the adapter, both under `just test`; a new promise is stated here first,
