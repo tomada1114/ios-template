@@ -39,6 +39,13 @@ struct MyAppApp: App {
         ProcessInfo.processInfo.arguments.contains(uiTestingArgument)
     }
 
+    #if DEBUG
+        /// Debug-only fault injection: every save that replaces a stored item — a toggle —
+        /// fails (`UpdateFailingTodoRepository`), so a failure alert can be seen and
+        /// UI-tested. Release builds neither read the argument nor contain the type.
+        private static let failUpdatesArgument = "-failUpdates"
+    #endif
+
     /// Owned here, in `@State`, so the model outlives any one scene's view tree and every
     /// window shows the same items. Navigation is per window (`SceneRoot`).
     @State private var app = AppModel(
@@ -62,7 +69,13 @@ struct MyAppApp: App {
         let storage: PersistenceStore.Storage = isUITesting ? .inMemory : .onDisk
         do {
             let container = try PersistenceStore.makeContainer(storage: storage)
-            return SwiftDataTodoRepository(modelContainer: container)
+            let repository = SwiftDataTodoRepository(modelContainer: container)
+            #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains(failUpdatesArgument) {
+                    return UpdateFailingTodoRepository(wrapping: repository)
+                }
+            #endif
+            return repository
         } catch {
             // `makeContainer` has logged the failure; the null object is the handling.
             return UnavailableTodoRepository()
