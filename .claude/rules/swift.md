@@ -22,7 +22,8 @@ paths:
   (that belongs in Core, where the coverage floor sees it)
 - Views in `MyAppUI` stay thin: no business logic, delegate everything to Core view models
 - `MyAppUI` and `MyAppPlatform` are siblings and never import each other; `App/` is the
-  composition root that hands a `MyAppPlatform` adapter to a Core view model
+  composition root that hands a `MyAppPlatform` adapter, as a port, to Core's `AppModel`,
+  which builds the view models over it
 - How Core logic is shaped (injected time, locale, and randomness; action-shaped view
   models) is the `designing-core-logic` skill; the reasoning is
   `docs/architecture.md` › View models

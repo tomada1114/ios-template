@@ -117,7 +117,7 @@ Config/                     # Debug.xcconfig; optionally includes the gitignored
                             #   Local.xcconfig holding DEVELOPMENT_TEAM (`just run-device`)
 App/                        # Thin shell: @main entry point + resources, NO logic.
                             #   The composition root: opens the SwiftData adapter and
-                            #   hands it to Core view models
+                            #   hands it, as a port, to Core's AppModel
 Packages/MyAppKit/
 ├── Sources/MyAppCore/      # Domain values, view models, ports (protocols), wording,
 │                           #   logging — no UI, persistence, or OS-integration import

@@ -3,8 +3,9 @@
 /// A route carries an identifier, never the item itself: the destination looks the item
 /// up in its view model when it renders, so a pushed screen shows the current state
 /// rather than a copy taken when the link was tapped, and a route parsed from a deep link
-/// (``DeepLink``) is the same value as one a row pushed. A new screen adds a case here and
-/// its destination in the root view's `navigationDestination(for:)`.
+/// (``DeepLink``) is the same value as one a row pushed. A new screen adds a case here,
+/// its branch in `RootView`'s `navigationDestination(for:)` switch, and — when the
+/// screen needs a view model of its own — an ``AppModel`` factory that builds it.
 public enum AppRoute: Hashable, Sendable {
     /// The detail screen of one to-do item.
     case todoDetail(TodoItem.ID)

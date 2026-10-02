@@ -16,7 +16,7 @@ a SwiftData adapter, a fake, a contract test, and a UI test.
 | Persistence | SwiftData, behind a Core-declared repository port | First-party (no dependency), migrations built in, and the port keeps it replaceable: Core never imports SwiftData |
 | Networking | `URLSession` behind a Core `HTTPClient` port | First-party, no dependency; the port keeps decisions about status codes and failures in Core, where tests see them |
 | Preferences | `UserDefaults` behind a synchronous Core `PreferencesStoring` port | First-party and synchronous; the port keeps key names in one Core file where a test pins them |
-| Navigation | One `NavigationStack(path:)` bound to a Core `NavigationModel`; a custom URL scheme (`my-app`, `project.yml`'s `info:` block) parsed by Core's `DeepLink` | Which screen shows is Core state a test drives, so a deep link and state restoration have something to hold on to. A custom scheme is an `Info.plist` entry, not an entitlement; universal links (Associated Domains) are an app's decision |
+| Navigation | One `NavigationStack(path:)`, in `MyAppUI`'s `RootView`, bound to a Core `NavigationModel`; a custom URL scheme (`my-app`, `project.yml`'s `info:` block) parsed by Core's `DeepLink` | Which screen shows is Core state a test drives, so a deep link and state restoration have something to hold on to. A custom scheme is an `Info.plist` entry, not an entitlement; universal links (Associated Domains) are an app's decision |
 | Module layout | One local Swift package, `MyAppKit`, with `MyAppCore` / `MyAppUI` / `MyAppPlatform` | Module boundaries the compiler enforces, and a package `swift test` can run without a simulator |
 | Project file | XcodeGen (`project.yml`); `MyApp.xcodeproj` is generated and gitignored | No merge conflicts in a `.pbxproj`, and the whole app target is reviewable as text |
 | Language mode | Swift 6, warnings as errors | Data-race safety is checked from the first line; there is never a "migrate later" |
@@ -81,8 +81,12 @@ A view model is a `@MainActor @Observable final class` in Core. The template's i
   `Locale`, a random number generator.
 - **Construction has no side effects.** Nothing is read until `load()`; the view calls it
   from `.task` on first appearance.
-- **Ownership.** `App/` creates the view model in `@State` (so it outlives any one view
-  tree) and passes it down; the view holds it with `@Bindable` only to bind controls.
+- **Ownership.** A view model every scene shares (`TodoListViewModel`) is built once by
+  Core's `AppModel`, which `App/` creates in `@State` (so it outlives any one view tree);
+  the view holds it with `@Bindable` only to bind controls. A pushed screen's own view
+  model (`TodoDetailViewModel`) is built by an `AppModel` factory when the route is
+  pushed, and the screen keeps it in `@State` for as long as it is shown (Composition
+  root, below).
 
 ### Reentrancy
 
@@ -105,22 +109,33 @@ restoration have something to hold on to and a test can drive navigation without
 
 - **Routes are a Core enum.** `AppRoute` (`Sources/MyAppCore/Navigation/`) has one case
   per pushable screen, carrying an identifier rather than the value it shows:
-  `.todoDetail(TodoItem.ID)`. The destination looks the item up in its view model when
-  it renders (`TodoListViewModel.item(withID:)`, which searches every item, not only the
-  visible ones), so a pushed screen shows the current state, and an identifier nothing
-  holds shows a not-found state.
+  `.todoDetail(TodoItem.ID)`. The destination's view model looks the item up when the
+  screen renders (`TodoDetailViewModel.content`, through
+  `TodoListViewModel.item(withID:)`, which searches every item, not only the visible
+  ones), so a pushed screen shows the current state, and an identifier nothing holds
+  shows a not-found state.
 - **The path is a Core view model.** `NavigationModel` is a `@MainActor @Observable`
   class holding `path: [AppRoute]`, with one action per intent: `show(_:)` pushes,
   `popToRoot()` returns, `open(_:)` handles a deep link. It is owned per scene: `App/`'s
-  scene root holds it in `@State` and hands it to the root view, while the view models
-  it routes between stay app-level and shared. The app supports multiple scenes (two
-  windows on iPad), so an app-level path would move every window in lockstep and a deep
-  link would move them all.
-- **One `NavigationStack(path:)` at the root.** `TodoListView` binds the stack to
-  `NavigationModel.path` and declares every destination in one
-  `navigationDestination(for: AppRoute.self)`; a row's `NavigationLink(value:)` pushes a
-  route. The back button writes the path back, which is why `path` is the one settable
-  property.
+  scene root holds it in `@State` and hands it to the root view, while the shared view
+  models it routes between stay app-level, in `AppModel`. It never moves into
+  `AppModel`: the app supports multiple scenes (two windows on iPad), so an app-level
+  path would move every window in lockstep and a deep link would move them all.
+- **One `NavigationStack(path:)`, in `RootView`.** `MyAppUI`'s `RootView` binds the
+  stack to `NavigationModel.path`, shows the root screen (`TodoListView`, a plain screen
+  with no stack of its own), and declares every destination in one
+  `navigationDestination(for: AppRoute.self)` switch; a row's `NavigationLink(value:)`
+  pushes a route. The back button writes the path back, which is why `path` is the one
+  settable property. A new screen therefore adds an `AppRoute` case and a branch of that
+  switch, and edits no other screen.
+- **A pushed screen with a view model of its own gets it from `AppModel`.** The switch
+  cannot build one over a port itself — `MyAppUI` may not import `MyAppPlatform` — so it
+  calls the route's factory: `.todoDetail(id)` renders
+  `TodoDetailView(model: app.makeTodoDetailViewModel(id: id))`. The screen keeps the
+  first model it is handed in `@State`, so the fresh model a later re-render builds is
+  discarded unused (which is why construction has no side effects), and each
+  destination is identified by its route, so a deep link that swaps one pushed item for
+  another gets a fresh screen and model.
 - **Deep links are parsed in Core.** `DeepLink.route(for:)` accepts exactly
   `my-app://todo/<uuid>` — the scheme in any case, the host `todo`, one `UUID` path
   component — and rejects every other shape rather than guessing; `DeepLink.url(for:)`
@@ -279,11 +294,31 @@ public protocol PreferencesStoring: Sendable {
 
 `App/MyAppApp.swift` is the one place that knows both halves of every port. It picks the
 storage and the preferences suite from the launch arguments, opens the SwiftData adapter,
-falls back to the null object on failure, creates the view model in `@State` over both
-adapters, and hands it to each scene's root view. That scene root owns the scene's own
-`NavigationModel` and forwards opened URLs to it (`.onOpenURL`). A second screen or a
-second port is wired here too; if the wiring grows past a handful of lines, it moves into
-an `AppDependencies` value built in `App/` — still no singletons.
+falls back to the null object on failure, and builds one `AppModel` in `@State`, handing
+it the adapters as ports through its initializer. Each scene's root (`SceneRoot`) owns
+that scene's `NavigationModel`, forwards opened URLs to it (`.onOpenURL`), and renders
+`MyAppUI`'s `RootView` over the app model and the navigation model. `App/` chooses
+adapters and nothing else.
+
+`AppModel` (`Sources/MyAppCore/AppModel.swift`) is a `@MainActor @Observable final
+class` in Core that does the rest of the wiring:
+
+- **It holds the view models every scene shares** — today `todoList`, the one
+  `TodoListViewModel` every window shows — built once over the ports it was handed.
+- **It has one `make…ViewModel(…)` factory per route whose screen needs a view model of
+  its own** — today `makeTodoDetailViewModel(id:)`, which builds a
+  `TodoDetailViewModel` over the shared list. A factory whose model needs a port builds
+  it over a port `AppModel`'s initializer was handed and keeps as a named stored
+  property.
+- **It is not a service locator.** There is no registry, no lookup by type, and no
+  global: every dependency is a named initializer parameter `App/` passes, and every
+  model is built by a named method. A second port is a new initializer parameter.
+- **It is in Core, not `App/`,** so `AppModelTests` builds a route's view model over the
+  fakes in `MyAppTestSupport` and the coverage floor sees the wiring. Factory closures
+  assembled in `App/` were the alternative: they would leave the wiring where no
+  coverage-gated test reaches it.
+- **It is app-level, never per scene.** Per-window state — the navigation path — stays
+  in the scene's own `NavigationModel` (Navigation, above).
 
 ## Concurrency
 
@@ -365,14 +400,18 @@ framework, view structure, file and type layout, test helpers, log messages.
 1. Domain values and their invariants in `MyAppCore` (TDD — the `tdd` skill).
 2. A port in `MyAppCore` if the feature needs storage or an OS service; its fake and
    contract in `Tests/MyAppTestSupport`.
-3. A `@MainActor @Observable` view model in `MyAppCore`, tested against the fake.
+3. A `@MainActor @Observable` view model in `MyAppCore`, tested against the fake. A
+   model every scene shares is a stored property of `AppModel`; a pushed screen's own
+   model gets a `make…ViewModel(…)` factory on `AppModel`, tested in `AppModelTests`.
 4. The adapter in `MyAppPlatform`, with the contract run against it in
    `Tests/MyAppPlatformTests`.
 5. The view in `MyAppUI`, rendering the view model; `#Preview` per state; accessibility
    identifiers on what a UI test touches.
-6. A case in `AppRoute`, and its destination in the root `navigationDestination`
-   (Navigation, above).
-7. The wiring in `App/`.
+6. A case in `AppRoute`, and its branch in `RootView`'s `navigationDestination`
+   switch, which builds the screen's model through its `AppModel` factory (Navigation,
+   above).
+7. The wiring in `App/` — only when the feature brings a new port: its adapter, passed
+   to `AppModel`'s initializer (Composition root, above).
 
 **A new OS integration** (notifications, location, photos, purchases): the same port and
 adapter shape. The framework import lives only in `MyAppPlatform`; the permission's

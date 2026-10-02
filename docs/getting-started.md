@@ -78,7 +78,11 @@ once it has run).
 - [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoRepository.swift` — the port and its
       error type, and its null object
       `Packages/MyAppKit/Sources/MyAppCore/UnavailableTodoRepository.swift`
-- [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoListViewModel.swift` — the view model
+- [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoListViewModel.swift` and
+      `Packages/MyAppKit/Sources/MyAppCore/TodoDetailViewModel.swift` — the view models
+- [ ] `AppModel.todoList` and `AppModel.makeTodoDetailViewModel(id:)` in
+      `Packages/MyAppKit/Sources/MyAppCore/AppModel.swift` — put your own shared view
+      models and route factories there instead
 - [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoListStrings.swift` and
       `Packages/MyAppKit/Sources/MyAppCore/TodoDetailStrings.swift` — the wording
 - [ ] The `todoList.*` and `todoDetail.*` keys in
@@ -93,7 +97,9 @@ once it has run).
       `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelEditingTests.swift`,
       `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelHideCompletedTests.swift`,
       `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelLookupTests.swift`,
-      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelFixture.swift`, and
+      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelFixture.swift`,
+      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoDetailViewModelTests.swift`, the to-do
+      cases in `Packages/MyAppKit/Tests/MyAppCoreTests/AppModelTests.swift`, and
       `Packages/MyAppKit/Tests/MyAppCoreTests/TodoRepositoryContractTests.swift`
 
 **Platform:**
@@ -119,8 +125,11 @@ once it has run).
 
 **App:**
 
-- [ ] `makeRepository()`, the `todoList` view model, and the `TodoListView` root in
-      `App/MyAppApp.swift` — wire your own port's adapter and first screen there
+- [ ] `makeRepository()` in `App/MyAppApp.swift`, and the `TodoRepository` it hands
+      to `AppModel` — wire your own port's adapter there
+- [ ] The `TodoListView` root screen and the `.todoDetail` branch of
+      `Packages/MyAppKit/Sources/MyAppUI/RootView.swift` — your first screen and your
+      routes' screens go there
 
 **UI tests:**
 
@@ -153,6 +162,9 @@ once it has run).
 - `PreferencesStoring` — `Packages/MyAppKit/Sources/MyAppCore/Preferences/PreferencesStoring.swift`
   and `Packages/MyAppKit/Sources/MyAppPlatform/Preferences/UserDefaultsPreferences.swift`
 - `NavigationModel` — `Packages/MyAppKit/Sources/MyAppCore/Navigation/NavigationModel.swift`
+- `AppModel` — `Packages/MyAppKit/Sources/MyAppCore/AppModel.swift` — and `RootView` —
+  `Packages/MyAppKit/Sources/MyAppUI/RootView.swift`: the shared view models, the route
+  factories, and the one navigation stack
 - `DesignTokens` — `Packages/MyAppKit/Sources/MyAppUI/DesignSystem/DesignTokens.swift`
 - `AppLog` — `Packages/MyAppKit/Sources/MyAppCore/AppLog.swift`
 
@@ -160,14 +172,19 @@ once it has run).
 
 1. Add your own Core model, view model, and their tests beside the example, so the
    coverage floor always has something to measure.
-2. Wire your first screen into `App/MyAppApp.swift` in place of `TodoListView` and
-   `makeRepository()`, and point `LaunchUITests/LaunchTests.swift` at it (`just uitest`).
+2. Put your first screen's view model on `AppModel` and the screen at the root of
+   `RootView`, in place of `todoList` and `TodoListView`; wire your adapter in
+   `App/MyAppApp.swift` in place of `makeRepository()`; and point
+   `LaunchUITests/LaunchTests.swift` at it (`just uitest`).
 3. Delete the UI files and the previews' repository.
 4. Replace `AppRoute.todoDetail` and the `todo` deep link with a route of your own,
-   updating `DeepLinkTests` and `NavigationModelTests` in the same step.
-5. Delete `TodoListViewModel` with its tests (the four `TodoListViewModel*Tests.swift`
-   files and `TodoListViewModelFixture.swift`), the two strings files, their catalog
-   keys, and their `LocalizationTests` cases together.
+   updating `DeepLinkTests` and `NavigationModelTests` in the same step, and replace
+   `AppModel.makeTodoDetailViewModel(id:)` and `RootView`'s `.todoDetail` branch with
+   your route's factory and screen.
+5. Delete `TodoListViewModel` and `TodoDetailViewModel` with their tests (the four
+   `TodoListViewModel*Tests.swift` files, `TodoDetailViewModelTests.swift`, the to-do
+   cases in `AppModelTests.swift`, and `TodoListViewModelFixture.swift`), the two
+   strings files, their catalog keys, and their `LocalizationTests` cases together.
 6. Delete `PreferenceKeys.hideCompleted` with its `PreferenceKeysTests` line and
    `PreviewPreferences`' `init(hideCompleted:)` in
    `Packages/MyAppKit/Sources/MyAppUI/PreviewPreferences.swift` — a stored key's

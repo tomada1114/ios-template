@@ -39,11 +39,21 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 
 ## Getting the view model
 
-- **A model with a port is built in `App/`**, the composition root, because its adapter
-  lives in `MyAppPlatform`, which this module must not import. `MyAppApp` keeps
-  `TodoListViewModel` in `@State` for the whole app; its private `SceneRoot` keeps a
-  `NavigationModel` in `@State` per scene, so each window navigates on its own, and
-  passes both to `TodoListView(model:navigation:)`.
+- **A model with a port is built by Core's `AppModel`**, never in a view: the adapter
+  lives in `MyAppPlatform`, which this module must not import, so `App/` hands the
+  adapters to `AppModel` as ports and `AppModel` builds the models over them
+  (`docs/architecture.md` › Composition root). `MyAppApp` keeps the `AppModel` in
+  `@State` for the whole app; its private `SceneRoot` keeps a `NavigationModel` in
+  `@State` per scene, so each window navigates on its own, and passes both to
+  `RootView(app:navigation:)`.
+- **A model every scene shares** is a stored property of `AppModel`, which `RootView`
+  hands to its screen: `TodoListView(model: app.todoList)`.
+- **A pushed screen's own model** comes from the `AppModel` factory for its route,
+  called in `RootView`'s destination switch:
+  `TodoDetailView(model: app.makeTodoDetailViewModel(id: id))`. The screen keeps it in
+  `@State private var model`, set with `_model = State(initialValue: model)`, so it
+  holds the first model for as long as it is pushed and ignores the fresh one a parent
+  re-render builds. `TodoDetailView` over `TodoDetailViewModel` is the worked example.
 - **A view handed its model** holds it as a plain `let`; `@Observable` re-renders the
   view when a property its `body` read changes. `TodoListView` uses `@Bindable` instead
   only because its text field binds to `draftTitle`, the one settable property.
@@ -80,8 +90,13 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 - One `NavigationStack(path:)` per navigation root, bound to Core's `NavigationModel`
   (`docs/architecture.md` › Navigation), with one value-based
   `navigationDestination(for: AppRoute.self)`: a link pushes an `AppRoute`, the
-  destination builds its screen from it. A new screen is a new `AppRoute` case and a new
-  branch of that destination's `switch`, never navigation state in a view's `@State`.
+  destination builds its screen from it. Both live in `RootView`, never in a screen:
+  `TodoListView` is a plain screen that only pushes routes with
+  `NavigationLink(value:)`. A new screen is a new `AppRoute` case and a new branch of
+  `RootView`'s destination `switch` — building its model through an `AppModel` factory
+  when it needs one — never navigation state in a view's `@State`.
+- A screen's previews give it the stack `RootView` would: wrap it in a plain
+  `NavigationStack { … }`, as `TodoListView`'s and `TodoDetailView`'s previews do.
 - A button inside a `NavigationLink` row takes a non-default style
   (`.buttonStyle(.borderless)`, as `TodoDoneToggle` has), or a tap on it follows the link.
 - `NavigationSplitView` only for a regular-width iPad layout the design lock asks for;
