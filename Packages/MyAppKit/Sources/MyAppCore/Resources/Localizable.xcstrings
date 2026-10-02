@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "failure.dismiss" : {
+      "comment" : "Button that dismisses the failure alert.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
+      }
+    },
     "todoDetail.created" : {
       "comment" : "Label beside the date a to-do item was created, on its detail screen.",
       "localizations" : {
@@ -107,17 +118,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The item could not be deleted."
-          }
-        }
-      }
-    },
-    "todoList.failure.dismiss" : {
-      "comment" : "Button that dismisses the failure alert.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OK"
           }
         }
       }

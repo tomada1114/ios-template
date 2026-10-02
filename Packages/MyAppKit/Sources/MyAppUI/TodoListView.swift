@@ -34,6 +34,9 @@ private struct TodoRow: View {
 /// It does not own its model: `App/` creates it once for the app, inside `AppModel`, and
 /// `RootView` hands it down. `@Bindable` is only what lets the text field bind to
 /// ``TodoListViewModel/draftTitle``.
+///
+/// It presents no alert of its own: a ``TodoListViewModel/failure`` presents from
+/// `RootView`, over whichever screen is on top.
 public struct TodoListView: View {
     @Bindable private var model: TodoListViewModel
     @FocusState private var isDraftFocused: Bool
@@ -51,15 +54,6 @@ public struct TodoListView: View {
                 if model.phase == .idle {
                     await model.load()
                 }
-            }
-            .alert(
-                Text(TodoListStrings.failureTitle),
-                isPresented: isFailurePresented,
-                presenting: model.failure,
-            ) { _ in
-                Button(TodoListStrings.dismiss) { model.dismissFailure() }
-            } message: { failure in
-                Text(failure.message)
             }
     }
 
@@ -202,19 +196,6 @@ public struct TodoListView: View {
         Binding(
             get: { model.hideCompleted },
             set: { model.setHideCompleted($0) },
-        )
-    }
-
-    /// The alert's presentation, derived from the model: dismissing it (by any route)
-    /// clears the failure, and a new failure presents it again.
-    private var isFailurePresented: Binding<Bool> {
-        Binding(
-            get: { model.failure != nil },
-            set: { isPresented in
-                if !isPresented {
-                    model.dismissFailure()
-                }
-            },
         )
     }
 
