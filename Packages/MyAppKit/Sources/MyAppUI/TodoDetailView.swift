@@ -3,21 +3,26 @@ import SwiftUI
 
 /// One to-do item's detail screen: its title, when it was created, and its done toggle.
 ///
-/// Pushed by ``AppRoute/todoDetail(_:)`` — from a row's link or a deep link — and handed
-/// the list's view model rather than a copy of the item, so it shows the item as it is
-/// now and a toggle here is the same action as on the row. An identifier no loaded item
-/// has (a deleted item, a stale link) shows the not-found state instead.
+/// Pushed by ``AppRoute/todoDetail(_:)`` — from a row's link or a deep link — over a
+/// `TodoDetailViewModel` of its own, which `RootView` asks `AppModel` for. The model
+/// decides what shows: the item as the list holds it now, progress while the list is
+/// still loading, or the not-found state for an identifier no loaded item has (a deleted
+/// item, a stale link).
 public struct TodoDetailView: View {
-    private let model: TodoListViewModel
-    private let id: TodoItem.ID
+    /// Kept in `@State`, so the screen holds the first model it was handed for as long as
+    /// it is pushed, and a parent re-render that builds a new one does not replace it.
+    @State private var model: TodoDetailViewModel
 
     public var body: some View {
         Group {
-            if let item = model.item(withID: id) {
+            switch model.content {
+            case let .item(item):
                 details(of: item)
-            } else if model.isAwaitingItems {
+
+            case .loading:
                 ProgressView()
-            } else {
+
+            case .notFound:
                 notFound
             }
         }
@@ -25,13 +30,9 @@ public struct TodoDetailView: View {
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
         #endif
-            .task {
-                // A deep link can push this screen before the list under it ever
-                // appeared, so it asks for the first load too; `load()` runs once either way.
-                if model.phase == .idle {
-                    await model.load()
-                }
-            }
+            // A deep link can push this screen before the list under it ever appeared,
+            // so the model asks for the first load too.
+            .task { await model.load() }
     }
 
     private var notFound: some View {
@@ -46,18 +47,17 @@ public struct TodoDetailView: View {
         }
     }
 
-    /// Creates the detail screen of the item `id` names, looked up in `model`, which the
-    /// caller owns.
-    public init(model: TodoListViewModel, id: TodoItem.ID) {
-        self.model = model
-        self.id = id
+    /// Creates the detail screen over `model` — built for its route by
+    /// `AppModel.makeTodoDetailViewModel(id:)`.
+    public init(model: TodoDetailViewModel) {
+        _model = State(initialValue: model)
     }
 
     private func details(of item: TodoItem) -> some View {
         Form {
             HStack(spacing: DesignTokens.Spacing.small) {
                 TodoDoneToggle(isDone: item.isDone, label: model.toggleLabel(for: item)) {
-                    Task { await model.toggle(item.id) }
+                    Task { await model.toggle() }
                 }
                 .accessibilityIdentifier("detailToggle")
 
@@ -82,12 +82,12 @@ public struct TodoDetailView: View {
     /// of an identifier an empty store does not hold, for the not-found state.
     @MainActor
     private func detailPreview(of stored: TodoItem?) -> some View {
-        let model = TodoListViewModel(
+        let app = AppModel(
             repository: PreviewTodoRepository(items: stored.map { [$0] } ?? []),
             preferences: PreviewPreferences(),
         )
         return NavigationStack {
-            TodoDetailView(model: model, id: stored?.id ?? UUID())
+            TodoDetailView(model: app.makeTodoDetailViewModel(id: stored?.id ?? UUID()))
         }
     }
 

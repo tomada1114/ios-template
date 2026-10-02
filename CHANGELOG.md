@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The navigation root moved out of `TodoListView` into a new `MyAppUI` `RootView`, which
+  owns the app's one `NavigationStack(path:)` and its `navigationDestination` switch;
+  `TodoListView(model:)` is now a plain screen. `App/` builds a new Core `AppModel` from
+  the ports, which holds the shared `TodoListViewModel` (`todoList`) and builds a pushed
+  screen's own view model by a factory per route — the detail screen now runs on
+  `TodoDetailViewModel` from `makeTodoDetailViewModel(id:)` (#68)
+
 - The deployment floor is iOS 27 (`project.yml`) with `.iOS(.v27)` and `.macOS(.v27)`
   in `Package.swift` (now `swift-tools-version: 6.4`), and the pinned Xcode is 27.0
   (`.xcode-version`); CI's macOS jobs run on the `xcode-27` runner image, since

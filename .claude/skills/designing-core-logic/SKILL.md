@@ -138,7 +138,16 @@ an app wants to tweak creates it, in this shape:
   the resulting state.
 - An action that waits is `async` and the view calls it from `.task` or `Task { }`;
   the view model does not spawn untracked tasks from an initializer. Construction has
-  no side effects (see `TodoListViewModel.init`: nothing is read until `load()`).
+  no side effects (see `TodoListViewModel.init`: nothing is read until `load()`) —
+  which is also what lets a re-render build a pushed screen's model and discard it.
+- **Who builds a view model:** `AppModel`, never a view or `App/`. A model every scene
+  shares is an `AppModel` stored property built in its initializer from the ports `App/`
+  passes (`todoList`); a pushed screen's own model is built by a named
+  `make…ViewModel(…)` method, one per route that needs it
+  (`makeTodoDetailViewModel(id:)`). A screen that shows what a shared model holds takes
+  that model, not a copy of the value — `TodoDetailViewModel` holds the list and an
+  identifier — so both screens show one state. `AppModelTests` builds each route's
+  model over the fakes (`docs/architecture.md` › Composition root).
 - Domain rules live in value types (`TodoItem`) that the view model holds and delegates
   to; the view model translates between them and what the view shows.
 
@@ -153,7 +162,7 @@ reasoning lives in `docs/architecture.md`; the template ships no ADRs of its own
 | A generic `send(_ action:)` reducer on every view model | Methods are discoverable, typed, and testable one at a time | `docs/architecture.md` › View models |
 | Use-case / interactor classes, presenters, per-layer DTOs | The view model's action *is* the use case; copies between layers add no consumer | `docs/architecture.md` › Layers |
 | A repository or protocol per type "for testability" | A port exists only where a storage or OS boundary does (`TodoRepository`); a pure rule (`TodoItem`) is tested directly | `docs/architecture.md` › Repositories |
-| A dependency-injection container or service locator | `App/` is the composition root; initializer parameters with defaults are enough | `docs/architecture.md` › Composition root |
+| A dependency-injection container or service locator | `App/` hands the ports to `AppModel`'s initializer, and `AppModel` builds each model by a named method — no registry, no lookup by type, no global | `docs/architecture.md` › Composition root |
 | Coordinators / routers as separate objects | SwiftUI's own navigation state, owned by a view model, suffices at this size | this skill |
 | An event bus or `NotificationCenter` between Core types | Direct calls; an OS notification is observed through a port instead | `docs/architecture.md` › Where new code goes |
 

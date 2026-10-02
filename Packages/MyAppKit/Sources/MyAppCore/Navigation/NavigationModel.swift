@@ -9,8 +9,9 @@ import Observation
 /// per navigation stack: a tab-based app keeps one per tab.
 ///
 /// Owned per scene, in `@State` on `App/`'s scene root, and handed to the root view: the
-/// app supports multiple windows, and each navigates on its own. The view models it
-/// routes between stay app-level and shared.
+/// app supports multiple windows, and each navigates on its own. The shared view models
+/// it routes between stay app-level, in ``AppModel`` — which is why this model never
+/// moves there.
 @MainActor
 @Observable
 public final class NavigationModel {

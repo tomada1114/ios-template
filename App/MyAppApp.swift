@@ -3,19 +3,19 @@ import MyAppPlatform
 import MyAppUI
 import SwiftUI
 
-/// One window's root: its own navigation over the app's shared to-do list.
+/// One window's root: its own navigation over the app's shared models.
 ///
 /// A scene, not the app, owns the `NavigationModel`: the app supports multiple scenes
 /// (two windows on iPad), and a path shared between them would move every window in
 /// lockstep, and a deep link would move them all instead of the window it arrived in.
 private struct SceneRoot: View {
-    let todoList: TodoListViewModel
+    let app: AppModel
     @State private var navigation = NavigationModel()
 
     var body: some View {
         // A `my-app://` link (project.yml registers the scheme) goes to Core, which
         // decides what it opens.
-        TodoListView(model: todoList, navigation: navigation)
+        RootView(app: app, navigation: navigation)
             .onOpenURL { navigation.open($0) }
     }
 }
@@ -24,9 +24,10 @@ private struct SceneRoot: View {
 ///
 /// This is also the composition root: the one place that knows both halves of a port.
 /// It opens the SwiftData store and the `UserDefaults` preferences through their
-/// `MyAppPlatform` adapters and hands them to a `MyAppCore` view model, so nothing below
-/// `App/` — not the view model, not the view — depends on which store answers
-/// (`docs/architecture.md` › Layers).
+/// `MyAppPlatform` adapters and hands them, as ports, to Core's `AppModel`, which builds
+/// every view model over them — so nothing below `App/` depends on which store answers,
+/// and `App/` decides nothing but which adapter each port gets
+/// (`docs/architecture.md` › Composition root).
 @main
 struct MyAppApp: App {
     /// The launch argument `LaunchUITests` passes: an in-memory store and a scratch
@@ -40,14 +41,14 @@ struct MyAppApp: App {
 
     /// Owned here, in `@State`, so the model outlives any one scene's view tree and every
     /// window shows the same items. Navigation is per window (`SceneRoot`).
-    @State private var todoList = TodoListViewModel(
+    @State private var app = AppModel(
         repository: Self.makeRepository(),
         preferences: Self.makePreferences(),
     )
 
     var body: some Scene {
         WindowGroup {
-            SceneRoot(todoList: todoList)
+            SceneRoot(app: app)
         }
     }
 
