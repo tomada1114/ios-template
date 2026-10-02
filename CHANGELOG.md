@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- SwiftData now runs on one app-wide store: a new `MyAppPlatform` `PersistenceStore`
+  opens the only `ModelContainer` (`makeContainer(storage:)`) from the app-wide schema
+  and migration plan, renamed `AppSchemaV1` and `AppMigrationPlan` (the stored entity,
+  attributes, and version identifier are unchanged, so an existing store opens as it
+  was), and `App/` hands that one container to every repository's
+  `init(modelContainer:)`. `SwiftDataTodoRepository.make(storage:)` and
+  `SwiftDataTodoRepository.Storage` are removed; `PersistenceStore.Storage` adds
+  `.file(URL)` for tests that reopen a store file (#69)
+
 - The navigation root moved out of `TodoListView` into a new `MyAppUI` `RootView`, which
   owns the app's one `NavigationStack(path:)` and its `navigationDestination` switch;
   `TodoListView(model:)` is now a plain screen. `App/` builds a new Core `AppModel` from

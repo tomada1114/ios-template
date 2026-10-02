@@ -18,8 +18,9 @@ Four kinds of test, split by what is under test (`docs/architecture.md` › Test
    `swift test`.** SwiftData and Foundation run on the host Mac, so an adapter over them
    is tested in `Tests/MyAppPlatformTests`, run by `just test` and CI's `test` job like
    any other suite — SwiftData with an in-memory store (`.inMemory`), never the on-disk
-   one. There is no opt-in trait and no separate human-run recipe here: a Platform test
-   is a gated test.
+   one; a test that must reopen a store uses `.file(URL)` in its own temporary directory
+   (Hygiene, below). There is no opt-in trait and no separate human-run recipe here: a
+   Platform test is a gated test.
 3. **Translation through an iOS-only API → a test inside `#if os(iOS)` in
    `Tests/MyAppPlatformTests`.** `swift test` builds the package for macOS, where that
    test compiles away; `just test-ios` runs it on the iOS Simulator (CI's

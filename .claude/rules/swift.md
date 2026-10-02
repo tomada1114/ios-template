@@ -49,14 +49,17 @@ paths:
 ## Persistence
 
 - `@Model` types, `ModelContainer`, and `ModelContext` appear only in
-  `Sources/MyAppPlatform/Persistence/` — never in Core, a view, or `App/`, which reaches
-  the store through `SwiftDataTodoRepository.make(storage:)`
+  `Sources/MyAppPlatform/Persistence/` — never in Core, a view, or `App/`. `App/` opens
+  the app's one container through `PersistenceStore.makeContainer(storage:)` and hands it
+  to each repository's `init(modelContainer:)` without importing SwiftData or naming the
+  type; no repository opens a container of its own
 - The adapter is a `@ModelActor` actor and maps a record to a Core value type inside the
   actor, so no `@Model` object crosses the port
   (`docs/architecture.md` › Repositories › The SwiftData adapter)
-- A shipped `VersionedSchema` (`TodoSchemaV1`) is never edited: a change to a stored
-  model is a new schema version plus a `TodoMigrationPlan` stage, with a test that opens a
-  store the previous version wrote (`docs/architecture.md` › What is contract)
+- A shipped `VersionedSchema` (`AppSchemaV1`, the whole app's) is never edited: a change
+  to a stored model, or a new one, is a new schema version plus an `AppMigrationPlan`
+  stage, with a test that opens a store the previous version wrote
+  (`docs/architecture.md` › What is contract)
 
 ## Access Control
 

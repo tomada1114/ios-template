@@ -188,13 +188,31 @@ public protocol TodoRepository: Sendable {
 `ModelContext` bound to its own serial executor, so no model object leaves the actor and
 the main actor never waits on a write it did not ask for.
 
-- **`make(storage:)`** opens the container — `.onDisk` for the app, `.inMemory` for UI
-  tests (`-uiTesting`) and host tests — and maps a failure to `.storageFailure`.
+- **One store, one container, for the whole app.** `PersistenceStore.makeContainer(storage:)`
+  is the only place a `ModelContainer` is opened, from the app-wide `AppSchemaV1` and
+  `AppMigrationPlan`. `App/` opens it once and hands it to every repository's
+  `init(modelContainer:)` (the initializer `@ModelActor` generates); no repository opens a
+  container of its own, because a second container with a different schema over the same
+  default store file risks failing to open or damaging the store. Each repository is its
+  own actor with its own `ModelContext` over the shared container, so two of them see each
+  other's saved writes (`PersistenceStoreTests`).
+- **`Storage`** picks the file: `.onDisk` (SwiftData's default store, for the app),
+  `.inMemory` (UI tests under `-uiTesting`, and host tests), or `.file(URL)` (a test that
+  must close a store and reopen the same file, as a migration test does).
+- **A failed open is logged, then rethrown.** `makeContainer` logs SwiftData's error as a
+  fault (`.private`: it can quote a path) and throws it unchanged; `App/` answers with
+  `UnavailableTodoRepository` for every port the store would have served.
 - **A failed save rolls the context back**, or the pending change would be written by
   the next successful save.
-- **The schema is versioned from day one** (`TodoSchemaV1`, `TodoMigrationPlan`). The
-  stored shape is contract (below): the next change to `TodoRecord` adds `TodoSchemaV2`
-  and a migration stage instead of editing V1.
+- **The schema is versioned from day one** (`AppSchemaV1`, `AppMigrationPlan`), and it
+  is the whole app's, not one entity's. The stored shape is contract (below): the next
+  change to `TodoRecord` adds `AppSchemaV2` and a migration stage instead of editing V1.
+  Adding a second entity is the same move: a `@Model` in `AppSchemaV2` plus a stage in
+  `AppMigrationPlan`, and a repository over the shared container. The store records the
+  model's entities, attributes, and version identifier — never the Swift names of the
+  schema or the plan — so a store written before both were renamed to their `App`
+  names opens unchanged (`PersistenceStoreTests` reopens one written by a frozen copy of
+  the old schema, `PreRenameSchemaV1`).
 - **`@Attribute(.unique)` on the identifier** makes a save with a known id an update.
   CloudKit sync does not allow unique constraints; an app that turns sync on replaces it
   with a fetch-before-insert in a new schema version, and that choice is an ADR.
@@ -346,12 +364,13 @@ public protocol PreferencesStoring: Sendable {
 ## Composition root
 
 `App/MyAppApp.swift` is the one place that knows both halves of every port. It picks the
-storage and the preferences suite from the launch arguments, opens the SwiftData adapter,
-falls back to the null object on failure, and builds one `AppModel` in `@State`, handing
-it the adapters as ports through its initializer. Each scene's root (`SceneRoot`) owns
-that scene's `NavigationModel`, forwards opened URLs to it (`.onOpenURL`), and renders
-`MyAppUI`'s `RootView` over the app model and the navigation model. `App/` chooses
-adapters and nothing else.
+storage and the preferences suite from the launch arguments, opens the one SwiftData
+container (`PersistenceStore`) and builds every SwiftData repository over it, falls back
+to the null object when the container will not open, and builds one `AppModel` in
+`@State`, handing it the adapters as ports through its initializer. Each scene's root
+(`SceneRoot`) owns that scene's `NavigationModel`, forwards opened URLs to it
+(`.onOpenURL`), and renders `MyAppUI`'s `RootView` over the app model and the navigation
+model. `App/` chooses adapters and nothing else.
 
 `AppModel` (`Sources/MyAppCore/AppModel.swift`) is a `@MainActor @Observable final
 class` in Core that does the rest of the wiring:
@@ -439,7 +458,7 @@ device that ran an earlier build, or the user.
 |---|---|---|
 | **Core's public API** | `MyAppUI`, `MyAppPlatform`, `App/`, the tests | Update every caller in the same pull request; a new public declaration carries a `///` saying why; a new port is an ADR |
 | **The bundle identifier** (`PRODUCT_BUNDLE_IDENTIFIER` in `project.yml`) | The app's data container and Keychain items on every device, App Store Connect, push and other capabilities, `AppLog.subsystem`, `just run`/`just logs` | Fixed once a build has left your machine: a new identifier is a new app, and the user's data stays behind. `project.yml` and `AppLog.subsystem` change together (`AppLogTests`) |
-| **The stored schema** (`TodoSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus a `TodoMigrationPlan` stage, with a test that opens a store written by the previous version. Never edit a shipped schema version |
+| **The stored schema** (`AppSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus an `AppMigrationPlan` stage, with a test that opens a store written by the previous version. Never edit a shipped schema version |
 | **The URL scheme** (`DeepLink.scheme`, registered in `project.yml`) | Links to the app in messages, notes, and other apps | Fixed once a build has left your machine: a renamed scheme breaks every link in the wild. `project.yml` and `DeepLink.scheme` change together (`DeepLinkTests`); a new link shape is a new `DeepLink` case with its tests, and an old shape keeps parsing |
 | **`UserDefaults` keys and file formats** | Saved preferences and files on a user's device | Read the old key or format and migrate it in Core, with a test that starts from the old value. Every key is a `PreferenceKeys` constant, pinned by `PreferenceKeysTests` |
 
