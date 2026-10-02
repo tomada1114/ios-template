@@ -113,6 +113,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A failure on a pushed screen now presents there: a toggle that could not be saved on
+  the detail screen showed no alert until the user went back to the list. The failure
+  alert is now one shared `MyAppUI` modifier, `.failureAlert(_:dismiss:)`, applied once
+  in `RootView` outside the `NavigationStack`, over a new Core `PresentableFailure`
+  protocol (`title` and `message`) that `TodoListFailure` adopts; `TodoListView` no
+  longer declares an alert. `TodoListStrings.dismiss` moved to
+  `FailureStrings.dismiss` (catalog key `failure.dismiss`). Debug builds accept a
+  `-failUpdates` launch argument that fails every toggle, which `LaunchTests` uses to
+  prove the alert shows over the detail screen (#78)
+
 - `LaunchTests` no longer fails intermittently on CI: it waits for `newItemField` to
   take keyboard focus before typing, and `just uitest` boots the simulator and waits
   for it before `xcodebuild` launches the app, so a cold boot no longer times out the

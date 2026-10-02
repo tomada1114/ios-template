@@ -60,9 +60,10 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 - **A view that owns a portless model** holds it in `@State private var model`, set with
   `_model = State(initialValue: model)` from an initializer parameter, so a preview can
   inject a state.
-- **A binding to state the view may not set** is built from an action: `TodoListView`'s
-  `isFailurePresented` reads `model.failure != nil` and calls `model.dismissFailure()`.
-  Never widen a `private(set)` to let `@Bindable` reach it.
+- **A binding to state the view may not set** is built from an action: the shared
+  `failureAlert(_:dismiss:)` modifier (`FailureAlert.swift`) reads `failure != nil` and
+  calls the `dismiss` action it is handed. Never widen a `private(set)` to let
+  `@Bindable` reach it.
 - Not used here: `ObservableObject`, `@StateObject`, `@ObservedObject`,
   `@EnvironmentObject`. Initializer parameters carry a model (`designing-core-logic`).
 
@@ -107,8 +108,14 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 - Whether something is presented is view-model state: a `Bool` such as
   `isPresentingAddItem`, or an optional value (`failure`) whose presence presents it.
   Bind through an action-built `Binding`, so every dismissal route — a button, a swipe,
-  the system — goes through the action. `TodoListView`'s `.alert(_:isPresented:presenting:)`
-  is the example.
+  the system — goes through the action. `FailureAlert.swift` is the example.
+- **A failure is presented once, from `RootView`, outside the `NavigationStack`**, with
+  `.failureAlert(_:dismiss:)`, never by an `.alert` on a screen: an alert attached to a
+  screen inside the stack does not present while another screen is pushed over it, so a
+  failure on the detail screen showed nothing until the user went back (#78). A
+  feature's failure type adopts Core's `PresentableFailure` (a `title` and a `message`
+  as `LocalizedStringResource`), as `TodoListFailure` does; a second feature's failure
+  is one more `.failureAlert` beside the first in `RootView`.
 - `.presentationDetents` and other sheet sizing only as the design lock says.
 
 ## Size classes, Dynamic Type, safe areas
