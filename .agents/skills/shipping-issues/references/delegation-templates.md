@@ -43,8 +43,8 @@ a checkout others are working in without disturbing it. Everything downstream
 of implementation still runs one PR at a time in the parent.
 
 **Every spawn names a tier.** Pass the tier from `.claude/agents/` as the
-`subagent_type` -- `executor`, `architect`, or `worker` -- never a bare `model`,
-which keeps the model but loses the tier's effort and instructions. Which step
+`subagent_type` -- `executor`, `architect`, `scout`, or `worker` -- never a bare
+`model`, which loses the tier's settings and instructions. Which step
 takes which tier, and why: [cost-discipline.md](cost-discipline.md#model-tiers).
 Under Codex CLI, which has neither the tiers nor `SendMessage`, read the prompt
 body below as the brief for doing that step inline in the main session.

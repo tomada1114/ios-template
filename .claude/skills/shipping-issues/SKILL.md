@@ -52,8 +52,8 @@ or `design=open` issue ships only when named or with `--include-design` (step 2b
 Spawn by `subagent_type`, naming a `.claude/agents/` tier, never a bare `model`:
 `executor` for a settled spec (implementation, review fix, CI repair); `architect` for
 foundational implementation, priority research, the review fallback, a CI failure that
-survived two attempts, and design decisions; `worker` for tool-free drafting from a
-complete brief ([cost-discipline.md](references/cost-discipline.md#model-tiers)).
+survived two attempts, and design decisions; `scout` for read-only research that only collects or
+enumerates; `worker` for tool-free drafting from a complete brief ([cost-discipline.md](references/cost-discipline.md#model-tiers)).
 **Reuse before respawn:** a resume or next repair attempt goes to the same agent via
 `SendMessage` while reachable. Codex CLI has no tiers or `SendMessage`: run it inline.
 
