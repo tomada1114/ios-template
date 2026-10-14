@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The design is now kept as its present state instead of Architecture Decision
-  Records: the ADR index (`docs/architecture/README.md`), `docs/architecture/adr/template.md`,
-  and the `recording-architecture-decisions` skill are removed. A design change rewrites
+- The design is now kept as its present state instead of numbered decision records:
+  the record index and template under `docs/architecture/`, and the skill that wrote
+  them, are removed. A design change rewrites
   `AGENTS.md`'s Architecture and Product sections, `docs/architecture.md`, and the owning
   skill in place; the design lock is the "Design lock" section of
   `docs/design-system.md`; and the `## Product` section's fourth entry is now "Why it is
