@@ -5,12 +5,12 @@ description: >
   Guidelines (semantic and accent colors, text styles and Dynamic Type, light and dark
   appearance, Increase Contrast, SF Symbols, safe areas, size classes, 44-point targets,
   toolbars, haptics, swipe actions, Liquid Glass with an iOS 27 floor), the
-  DesignTokens scale in MyAppUI/DesignSystem, and the per-app design lock, an ADR under
-  docs/architecture/ researched with /refero-design. Use when choosing a color, font,
+  DesignTokens scale in MyAppUI/DesignSystem, and the per-app design lock, the present-state
+  section of docs/design-system.md researched with /refero-design. Use when choosing a color, font,
   spacing, radius, symbol, material, or animation, adding or changing a DesignTokens
   value, touching AccentColor.colorset or AppIcon.appiconset, adding glassEffect or
   sensoryFeedback, reviewing how a screen looks in light, dark, the largest text size,
-  or Increase Contrast, or writing or amending the app's design-lock ADR.
+  or Increase Contrast, or writing or amending the app's design lock.
 ---
 
 # Designing UI
@@ -20,8 +20,7 @@ description: >
 design lock: the short set of visual decisions every screen obeys, and where they are
 recorded. **Does not own:** how a view is written in SwiftUI, its previews, and its
 accessibility wiring (`building-swiftui-screens`); the device family and scene model
-(`starting-an-app`); an ADR's shape, numbering, and statuses
-(`recording-architecture-decisions`); launching the app and taking screenshots
+(`starting-an-app`); launching the app and taking screenshots
 (`running-the-app`).
 
 Apple's Human Interface Guidelines (HIG) are the baseline and are not restated: this
@@ -131,10 +130,11 @@ sheets, `TabView` — take Liquid Glass. That is the template's whole adoption.
 The lock is the app's answer to "what does every screen here look like?" — a handful of
 decisions made once, each a value or an explicit "system default".
 
-- **It is an ADR.** Write it as `recording-architecture-decisions` says, with the next
-  free number in `docs/architecture/adr/`, status Proposed, and a row in
-  `docs/architecture/README.md`. Only the owner accepts it; until then screens may be
-  built against it only as an experiment.
+- **It is the "Design lock" section of `docs/design-system.md`**, stated as the present
+  state: one value per field, each with its reason. The template ships its reference
+  lock there; an app rewrites that section for itself after the bootstrap. The owner
+  reviews it in the pull request that writes it; until it merges, screens may be built
+  against it only as an experiment.
 - **When:** after the device family is decided and before the second screen.
 - **What it holds, and where each value lands:**
   [references/design-lock.md](references/design-lock.md).
@@ -142,12 +142,13 @@ decisions made once, each a value or an explicit "system default".
   [references/refero-workflow.md](references/refero-workflow.md) — `/refero-design`
   with iOS screens and flows when the Refero tools are available, the HIG rules above
   when they are not.
-- **Changing it:** a corrected value in an Accepted lock is an amendment; a new
-  direction (a new accent, custom type, denser layout) is a new ADR that supersedes it.
-- **In the template itself** there is no lock: the template ships no ADRs, and its
-  defaults are system-first. A change to them updates `docs/design-system.md`.
+- **Changing it:** edit the section in place — a corrected value and a new direction (a
+  new accent, custom type, denser layout) alike — in the pull request that changes the
+  code, rewriting the reason beside it; git history holds what it used to say.
+- **In the template itself** the lock is the system-first reference lock, and a change
+  to it updates `docs/design-system.md`.
 
-| Template default | Each app decides in its design-lock ADR |
+| Template default | Each app decides in its design lock |
 |---|---|
 | Spacing, radius, hit-target, motion tokens above | Adjusted spacing or radii, density |
 | Semantic system colors; system accent | Accent color (Any/Dark/Increased-contrast variants), brand colors |

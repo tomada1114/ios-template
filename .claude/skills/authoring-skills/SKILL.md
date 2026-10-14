@@ -123,8 +123,8 @@ the same commit, and widening a skill's subject means widening its row. Enforced
 - **Platform skills.** A skill about an iOS or Apple API surface holds only what this
   repository decided there and why. It links Apple's documentation by URL instead of
   restating it, and a version, availability, or policy it must state carries its URL and
-  a checked date (**BACKGROUND:** `recording-architecture-decisions` › "Fact
-  discipline").
+  a checked date, so the next reader can recheck it instead of trusting it; a claim
+  that could not be checked is marked `Unverified:` rather than stated as fact.
 
 ## Where a skill lives
 

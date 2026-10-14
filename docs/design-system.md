@@ -5,8 +5,10 @@ of tokens every screen draws from — `DesignTokens` in
 `Packages/MyAppKit/Sources/MyAppUI/DesignSystem/DesignTokens.swift` — and leaves color
 and type to the system, so a screen built from the template is correct in light, dark,
 every Dynamic Type size, and Increase Contrast before anyone decides a brand. Every brand
-decision belongs to the app's own design lock, an ADR written as the `designing-ui` skill
-says (its `references/refero-workflow.md` is how an app researches one).
+decision belongs to the app's own design lock — the "Design lock" section below, which
+the template ships as its reference lock and an app rewrites for itself after the
+bootstrap, as the `designing-ui` skill says (its `references/refero-workflow.md` is how an
+app researches one).
 
 Researched 2026-09-30 with the owner's `/refero-design` skill and the Refero MCP tools
 (screens and flows on `platform: "ios"`; styles only as a check). Apple claims were
@@ -163,7 +165,7 @@ Token commitments: background — system (List default); type — system text st
 
 ## Template defaults vs. app decisions
 
-| Template default | Each app decides in its design-lock ADR |
+| Template default | Each app decides in its design lock |
 |---|---|
 | Spacing, radius, hit-target, motion tokens above | Adjusted spacing or radii, density |
 | Semantic system colors; system accent | Accent color (Any/Dark/Increased-contrast variants), brand colors |
@@ -171,6 +173,31 @@ Token commitments: background — system (List default); type — system text st
 | SF Symbols, default rendering | Rendering mode per context, custom symbols/images |
 | Standard components; automatic Liquid Glass | Custom glass or materials, where and on which OS |
 | — | Navigation structure (tabs vs. stack), iPad layout, haptics, motion personality, copy voice, app icon |
+
+## Design lock
+
+What every screen in this app looks like, one value per field
+(`designing-ui`'s `references/design-lock.md` lists the fields and where each lands in
+code). This is the template's reference lock: system-first and unbranded, because the
+template is the neutral base every app departs from. An app cut from the template
+rewrites this section for itself after the bootstrap; changing a value later is an edit
+to this section in place, in the pull request that changes the code, with the reason in
+the sentence beside it — git history holds what it used to say.
+
+- Accent color: system default (`AccentColor` with no value). Nothing depends on its hue.
+- Custom colors: none; semantic system colors only.
+- Type: system font and text styles with Dynamic Type; a large navigation title.
+- Spacing and corner radius: the template scale in `DesignTokens`, unchanged.
+- Density: regular; the system `List` default style.
+- Symbols: SF Symbols only, default rendering.
+- Materials and Liquid Glass: standard components only.
+- Navigation structure: one `NavigationStack`; the Add button beside the draft field.
+- iPad layout: same as iPhone (the template targets both, `TARGETED_DEVICE_FAMILY: "1,2"`).
+- Haptics: none.
+- Motion: system transitions only (`.default`), none under Reduce Motion.
+- Copy style: title case for navigation titles and buttons; sentence case for alerts and
+  empty states. Voice: short and plain.
+- App icon: placeholder until distribution is decided.
 
 ## Visual QA
 

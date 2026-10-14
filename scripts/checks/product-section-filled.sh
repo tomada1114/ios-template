@@ -88,5 +88,5 @@ fi
 
 check_report ERR_CHECK_PRODUCT_SECTION "AGENTS.md's \`## Product\` section does not match this repository (${MODE})" \
     "a \`## Product\` section naming its \`**Non-goals**\`, left as a \`${MARKER}\` skeleton in the template and holding no \`${MARKER}\` once scripts/bootstrap.sh has renamed it into an app" \
-    "write AGENTS.md's \`## Product\` section for this app — what it is and who for, the core interaction, its non-goals, and where those decisions are recorded — and delete every \`${MARKER}\` marker (README.md's \"Using This Template\", step 3)"
+    "write AGENTS.md's \`## Product\` section for this app — what it is and who for, the core interaction, its non-goals, and why it is shaped this way — and delete every \`${MARKER}\` marker (README.md's \"Using This Template\", step 3)"
 check_finish "product-section-filled: AGENTS.md's Product section matches ${MODE}."

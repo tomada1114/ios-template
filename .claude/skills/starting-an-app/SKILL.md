@@ -23,7 +23,7 @@ description: >
 and what the new app keeps.
 **Does not own:** how a skill is authored or mirrored (`authoring-skills`); how a
 repository script is written or tested (`writing-repo-scripts`); what a gate file may
-contain (`changing-gates`); how an ADR is written (`recording-architecture-decisions`);
+contain (`changing-gates`);
 the README's own prose (`updating-docs`).
 
 <!-- bootstrap:keep-begin -->
@@ -156,26 +156,24 @@ capabilities it adds on top: Push Notifications, iCloud, App Groups, Background 
 Associated Domains, Sign in with Apple, and the rest. The template ships no
 `.entitlements` file and no capability. Adding one, or any capability that needs a
 provisioning profile, ties the app to an App ID configuration outside the repository:
-it owes an ADR, and it is a signing change that needs the owner's sign-off
+it is a design change, and it is a signing change that needs the owner's sign-off
 (`AGENTS.md` › "Security and human approval") — propose it and name the feature that
 needs it, never add it yourself. A capability is declared in `project.yml`
 (`entitlements:` on the app target, which XcodeGen writes to the file and wires into
 `CODE_SIGN_ENTITLEMENTS`), never in a hand-edited Xcode project, which `just generate`
-overwrites. A privacy-gated permission (camera, location, contacts) is its own ADR
-trigger and needs its `INFOPLIST_KEY_NS…UsageDescription` build setting in the same
+overwrites. A privacy-gated permission (camera, location, contacts) is its own design
+change and needs its `INFOPLIST_KEY_NS…UsageDescription` build setting in the same
 file.
 
 ## Recording both decisions
 
-Both steps end in the new app's first two ADRs, written after the rename in the tree
-`recording-architecture-decisions` owns: copy `docs/architecture/adr/template.md` to
-`docs/architecture/adr/0001-device-family.md` (iPhone only or iPhone and iPad, the
-orientations, multiple windows, and why) and `0002-capabilities.md` (the capability set,
-empty included, naming the feature that forces each one), each with status Proposed —
-only the owner accepts — and add both rows to `docs/architecture/README.md`'s Decisions
-table in the same change. Every external claim in them (an App Store rule, what a
-capability requires) carries its URL and checked date. The template itself ships no
-ADRs; these belong to the app.
+Both steps end, after the rename, in the new app's description of itself, written as
+present state in `AGENTS.md`'s Architecture section and `docs/architecture.md`: the
+device family (iPhone only or iPhone and iPad), the orientations, multiple windows, and
+why; and the capability set, empty included, naming the feature that forces each one.
+They replace the template's wording in place rather than sitting beside it, and the
+owner reviews them in the pull request that writes them. Every external claim in them
+(an App Store rule, what a capability requires) carries its URL and checked date.
 
 ## What the new app keeps
 

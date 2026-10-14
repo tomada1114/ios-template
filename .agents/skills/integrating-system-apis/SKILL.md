@@ -21,7 +21,8 @@ description: >
 **Owns:** reaching an iOS framework from this app — the port and adapter shape, a
 permission as Core state, where a usage description and an `Info.plist` key live, and
 what can be tested where. **Does not own:** which capabilities and entitlements the app
-takes (`starting-an-app`, and an ADR — `recording-architecture-decisions`); the
+takes (`starting-an-app`, written as present state in `AGENTS.md` › Architecture and
+`docs/architecture.md`); the
 red-green loop for the Core decision the port serves (`tdd`); the Core error enum an
 adapter maps into (`designing-errors`); running the app and the evidence a pull request
 carries (`running-the-app`); a picker or other control that lives in a view
@@ -105,8 +106,8 @@ rather than a paraphrase (all checked 2026-09-30).
 A notification is observed on the Simulator with `xcrun simctl push`; a background task
 cannot be launched there at all — Apple's debugger route works only on a device
 ([Starting and terminating tasks during development](https://developer.apple.com/documentation/backgroundtasks/starting-and-terminating-tasks-during-development),
-checked 2026-09-30). Adding a background mode or any capability is an ADR and a signing
-change (`AGENTS.md` › "Security and human approval").
+checked 2026-09-30). Adding a background mode or any capability is a design change and a
+signing change (`AGENTS.md` › "Security and human approval").
 
 ## Two platforms at compile time
 
@@ -159,8 +160,9 @@ nowhere; using either to silence a diagnostic needs a human's sign-off (`AGENTS.
       about it has a Core test against the fake.
 - [ ] The fake and one contract function live in `Tests/MyAppTestSupport`, run against
       the fake in `MyAppCoreTests` and against the adapter where it can run.
-- [ ] Every usage description and `Info.plist` key is in `project.yml`, and the ADR for
-      the permission or capability is written as Proposed.
+- [ ] Every usage description and `Info.plist` key is in `project.yml`, and the same pull
+      request rewrites the present-state description of the permission or capability
+      (`AGENTS.md` › Architecture, `docs/architecture.md`).
 - [ ] iOS-only code and its test sit behind `#if os(iOS)`; `just test-ios` passes.
 - [ ] The pull request carries what no test can: the real prompt, the delivered
       notification, or the device run (`running-the-app`).

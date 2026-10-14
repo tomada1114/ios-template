@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The design is now kept as its present state instead of numbered decision records:
+  the record index and template under `docs/architecture/`, and the skill that wrote
+  them, are removed. A design change rewrites
+  `AGENTS.md`'s Architecture and Product sections, `docs/architecture.md`, and the owning
+  skill in place; the design lock is the "Design lock" section of
+  `docs/design-system.md`; and the `## Product` section's fourth entry is now "Why it is
+  shaped this way". The roadmap stays.
 - SwiftData now runs on one app-wide store: a new `MyAppPlatform` `PersistenceStore`
   opens the only `ModelContainer` (`makeContainer(storage:)`) from the app-wide schema
   and migration plan, renamed `AppSchemaV1` and `AppMigrationPlan` (the stored entity,

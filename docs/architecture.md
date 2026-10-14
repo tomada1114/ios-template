@@ -11,7 +11,7 @@ a SwiftData adapter, a fake, a contract test, and a UI test.
 
 | Decision | Choice | Why |
 |---|---|---|
-| Minimum OS | iOS 27 (`project.yml`, `Package.swift`), built with Xcode 27 (`.xcode-version`) | Apps cut from this template are built for their owner's own devices, which run the current iOS, so the floor is the current major release: every API the SDK ships, Liquid Glass included, is usable without an `#available` branch, and the one simulator runtime CI's Xcode ships is the floor itself. Lowering it is an app's decision, and owes an ADR |
+| Minimum OS | iOS 27 (`project.yml`, `Package.swift`), built with Xcode 27 (`.xcode-version`) | Apps cut from this template are built for their owner's own devices, which run the current iOS, so the floor is the current major release: every API the SDK ships, Liquid Glass included, is usable without an `#available` branch, and the one simulator runtime CI's Xcode ships is the floor itself. Lowering it is an app's design change, and rewrites this row |
 | Presentation pattern | MVVM with `@MainActor @Observable` view models in Core | The view model is plain Swift that `swift test` drives in milliseconds, so every decision a screen makes is unit-tested and coverage-gated; the view stays a thin renderer |
 | Persistence | SwiftData, behind a Core-declared repository port | First-party (no dependency), migrations built in, and the port keeps it replaceable: Core never imports SwiftData |
 | Networking | `URLSession` behind a Core `HTTPClient` port | First-party, no dependency; the port keeps decisions about status codes and failures in Core, where tests see them |
@@ -233,7 +233,7 @@ the main actor never waits on a write it did not ask for.
   the old schema, `PreRenameSchemaV1`).
 - **`@Attribute(.unique)` on the identifier** makes a save with a known id an update.
   CloudKit sync does not allow unique constraints; an app that turns sync on replaces it
-  with a fetch-before-insert in a new schema version, and that choice is an ADR.
+  with a fetch-before-insert in a new schema version, and that choice is a design change that rewrites this entry.
 
 ### Fakes and contracts
 
@@ -474,7 +474,7 @@ device that ran an earlier build, or the user.
 
 | Contract | What depends on it | What changing it requires |
 |---|---|---|
-| **Core's public API** | `MyAppUI`, `MyAppPlatform`, `App/`, the tests | Update every caller in the same pull request; a new public declaration carries a `///` saying why; a new port is an ADR |
+| **Core's public API** | `MyAppUI`, `MyAppPlatform`, `App/`, the tests | Update every caller in the same pull request; a new public declaration carries a `///` saying why; a new port is a design change (`AGENTS.md` › Before changing the architecture) |
 | **The bundle identifier** (`PRODUCT_BUNDLE_IDENTIFIER` in `project.yml`) | The app's data container and Keychain items on every device, App Store Connect, push and other capabilities, `AppLog.subsystem`, `just run`/`just logs` | Fixed once a build has left your machine: a new identifier is a new app, and the user's data stays behind. `project.yml` and `AppLog.subsystem` change together (`AppLogTests`) |
 | **The stored schema** (`AppSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus an `AppMigrationPlan` stage, with a test that opens a store written by the previous version. Never edit a shipped schema version |
 | **The URL scheme** (`DeepLink.scheme`, registered in `project.yml`) | Links to the app in messages, notes, and other apps | Fixed once a build has left your machine: a renamed scheme breaks every link in the wild. `project.yml` and `DeepLink.scheme` change together (`DeepLinkTests`); a new link shape is a new `DeepLink` case with its tests, and an old shape keeps parsing |

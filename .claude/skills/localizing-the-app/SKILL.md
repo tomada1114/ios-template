@@ -20,15 +20,14 @@ go, and what adding a language involves. **Does not own:** a view model's shape 
 injecting a `Locale` to format a number or date (`designing-core-logic`); how a view is
 wired to its model and its accessibility identifiers (`building-swiftui-screens`);
 capitalization and voice (`designing-ui`'s copy rules and design lock); which
-usage-description key a system API needs (`integrating-system-apis`); the ADR a second
-language owes (`recording-architecture-decisions`); the English-only rule and its one
+usage-description key a system API needs (`integrating-system-apis`); the English-only rule and its one
 exception (`AGENTS.md`'s "Important Reminders").
 
 ## What the template decides
 
 - **English only.** `Package.swift` sets `defaultLocalization: "en"`, and the one
-  catalog's source language is `en`. Shipping a second language is an app's decision,
-  recorded as an ADR: every later string then owes a translation, and every translation
+  catalog's source language is `en`. Shipping a second language is an app's design
+  change (`AGENTS.md` › Before changing the architecture): every later string then owes a translation, and every translation
   owes a reviewer.
 - **Core owns the wording.** Core returns `LocalizedStringResource` (Foundation, which
   Core may import) and a view renders it. The wording then sits under the coverage floor,
@@ -165,17 +164,18 @@ forms.
 
 ## Adding a language
 
-In an app cut from the template, a second language is an ADR the owner accepts before
-any translation lands (`recording-architecture-decisions`): which language, who
-translates, and who reviews. Then:
+In an app cut from the template, a second language is a design change the owner
+approves before any translation lands: the same pull request rewrites this skill's "What
+the template decides" and `AGENTS.md`'s Architecture section in the present tense —
+which language, who translates, and who reviews. Then:
 
 - Add the language in Xcode's catalog editor, or import a translated `.xcloc` with
   `xcodebuild -importLocalizations`. Keys, comments, and the English stay English; the
   translated values are the one non-English text the repository allows. An
   `App/InfoPlist.xcstrings`, if the app has one, owes the same language.
 - Unverified: whether iOS offers the app in that language from the package bundle's
-  `.lproj` alone or also needs `CFBundleLocalizations` in `project.yml`. The ADR keeps
-  this as an open question until it is checked in the running app (`running-the-app`),
-  then records the answer.
-- Unverified: how `typos` (`just lint`) treats translated values; the ADR decides whether
-  an exclusion is warranted, which is a gate change (`changing-gates`).
+  `.lproj` alone or also needs `CFBundleLocalizations` in `project.yml`. It stays an
+  open question in the pull request until it is checked in the running app
+  (`running-the-app`); the answer then replaces this line.
+- Unverified: how `typos` (`just lint`) treats translated values; that pull request
+  decides whether an exclusion is warranted, which is a gate change (`changing-gates`).

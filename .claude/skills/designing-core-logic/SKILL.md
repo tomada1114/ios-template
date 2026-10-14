@@ -18,8 +18,7 @@ deterministic under `swift test` — what it is handed rather than reads, where 
 numbers live, what its entry points look like, and which patterns are not adopted.
 **Does not own:** the test-first loop itself (`tdd`); error types and `throws`
 (`designing-errors`); a storage or OS service behind a port (`docs/architecture.md` ›
-Repositories); recording a decision to adopt a new pattern
-(`recording-architecture-decisions`); the module boundaries and import rules
+Repositories); the module boundaries and import rules
 (`AGENTS.md` › Architecture, `.claude/rules/swift.md`).
 
 ## Why this exists
@@ -154,7 +153,7 @@ an app wants to tweak creates it, in this shape:
 ## Deliberately not adopted
 
 Each row is a pattern an implementer may reach for out of habit. The template's own
-reasoning lives in `docs/architecture.md`; the template ships no ADRs of its own.
+reasoning lives in `docs/architecture.md`.
 
 | Pattern | Why not | Reasoning |
 |---|---|---|
@@ -166,6 +165,7 @@ reasoning lives in `docs/architecture.md`; the template ships no ADRs of its own
 | Coordinators / routers as separate objects | SwiftUI's own navigation state, owned by a view model, suffices at this size | this skill |
 | An event bus or `NotificationCenter` between Core types | Direct calls; an OS notification is observed through a port instead | `docs/architecture.md` › Where new code goes |
 
-An app cut from this template that adopts one of these records that as an ADR under
-`docs/architecture/adr/`, naming the problem the current shape cannot solve.
-**REQUIRED:** `recording-architecture-decisions`.
+An app cut from this template that adopts one of these rewrites this table's row and
+the `docs/architecture.md` section it cites in the same pull request, stating in the
+present tense the problem the current shape could not solve and why the pattern now
+holds (`AGENTS.md` › Before changing the architecture).
