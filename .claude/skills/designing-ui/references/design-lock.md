@@ -1,16 +1,14 @@
 # The design lock: fields and where they land
 
-The design lock is one ADR (the `designing-ui` skill says when it is written and how it
-changes; `recording-architecture-decisions` owns its shape, number, and status). This
-file lists what its **Decision** section fixes. Copy `docs/architecture/adr/template.md`
-as usual; the fields below go in the Decision section, and the alternatives weighed for
-each go in Considered options. How to research the values: `refero-workflow.md`, beside
-this file.
+The design lock is the "Design lock" section of `docs/design-system.md` (the
+`designing-ui` skill says when it is written and how it changes). This file lists the
+fields that section fixes; the template's own reference lock there is the worked
+example. How to research the values: `refero-workflow.md`, beside this file.
 
 Every field is either a value or the words "system default". "System default" is a real
 decision — often the right one for a first version — and saying it explicitly stops the
 next implementer from inventing a value. A field left out is a gap, not a default: list
-it under Open questions until it is decided.
+it as an open question in the pull request until it is decided.
 
 ## Fields
 
@@ -42,12 +40,12 @@ value only one view needs, that the scale does not cover, stays in that view's
 they are the system's semantic colors and text styles, or a Color Set and a font the
 lock names.
 
-## A Decision section, sketched
+## A lock, sketched
 
 An illustration; replace every value with the app's own.
 
 ```markdown
-## Decision
+## Design lock
 
 - Accent color: system default. Nothing depends on its hue.
 - Custom colors: none; semantic system colors only.
@@ -67,12 +65,14 @@ An illustration; replace every value with the app's own.
 ```
 
 Keep the sketch's level of detail: values and one reason each, not a style guide. The
-reasoning that beat the alternatives belongs in Considered options, and anything the
-owner has not settled goes under Open questions, never filled in from habit.
+research that beat the alternatives stays in `docs/design-system.md`'s ledger, and
+anything the owner has not settled stays an open question in the pull request, never
+filled in from habit.
 
 ## What does not belong in the lock
 
-- The device family and scene model — `starting-an-app` and its own ADR.
+- The device family and scene model — `starting-an-app`, written in `AGENTS.md`'s
+  Architecture section and `docs/architecture.md`.
 - A single screen's layout — that is the screen's own pull request, built against the
   lock.
 - Anything the HIG already fixes for every iOS app (the standard toolbar placements, the

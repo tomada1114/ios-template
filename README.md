@@ -89,7 +89,8 @@ floor sees it: Core view models return `LocalizedStringResource`, and the one
 [`Localizable.xcstrings`](Packages/MyAppKit/Sources/MyAppCore/Resources/Localizable.xcstrings)
 sits in `MyAppCore` beside them. Views render those resources and carry no literal of
 their own. The template ships English alone, since a second language makes every later
-string owe a translation and a reviewer; an app that wants one records it as an ADR.
+string owe a translation and a reviewer; an app that wants one
+rewrites that sentence, and the reasoning behind it, in the same pull request.
 `LocalizationTests` holds Core's keys and English to the catalog.
 
 ### Why Swift Testing?
@@ -105,15 +106,15 @@ The template must not impose a brand, so its default is neutral:
 [`DesignTokens`](Packages/MyAppKit/Sources/MyAppUI/DesignSystem/DesignTokens.swift) is a
 small spacing and size scale, while color and type come from the system — semantic
 colors and text styles that are right in light, dark, every Dynamic Type size, and
-Increase Contrast. Liquid Glass arrives through standard components with no custom glass. Brand belongs to each app's own design lock, an ADR
-([docs/design-system.md](docs/design-system.md)).
+Increase Contrast. Liquid Glass arrives through standard components with no custom glass. Brand belongs to each app's own design lock, the
+present-state section of [docs/design-system.md](docs/design-system.md) it rewrites for itself.
 
 ### Why zero dependencies?
 
 An app template should not impose opinions about networking, persistence, or analytics
 frameworks. `Package.swift` declares no package dependency: SwiftData, `URLSession`,
 and `UserDefaults` sit behind ports, and you add what you need — a new dependency
-needs a human's sign-off and an ADR ([`AGENTS.md`](AGENTS.md)).
+needs a human's sign-off and a rewritten design description ([`AGENTS.md`](AGENTS.md)).
 
 ### Why Just?
 
@@ -132,16 +133,17 @@ disable safety lint rules) — reducing review cycles. Skills are authored under
 `.agents/skills/`, the path Codex CLI reads, and `just agents-sync` mirrors them
 byte-for-byte into `.claude/skills/`, the path Claude Code reads.
 
-### Why an ADR tree that ships empty?
+### Why present-state design docs instead of decision records?
 
 The template's own decisions are the ones above, and this section is where they live.
 An app cut from the template makes decisions of a different kind — its device family,
 where it keeps state, which capabilities and permissions it takes, how it ships — and
-records each as an Architecture Decision Record under
-[`docs/architecture/`](docs/architecture/README.md), whose index the template ships
-empty. `AGENTS.md`'s "Before changing the architecture" names the changes that owe
-one. A replaced decision gets a new ADR rather than a rewrite, so the reasoning that
-held at the time stays readable.
+writes each as the present state of `AGENTS.md`'s Architecture and Product sections,
+[`docs/architecture.md`](docs/architecture.md), and the skill that owns the subject.
+`AGENTS.md`'s "Before changing the architecture" names these design changes; the pull
+request that makes one rewrites the description in place, and git history holds what
+it used to say. Numbered records with statuses would make every feature change cost a
+new record, so there are none.
 
 ### Why a gitignored `Config/Local.xcconfig` for device runs, and no distribution pipeline?
 
@@ -178,8 +180,7 @@ run each without Just.
   iPhone, and removing the example code
 - [Architecture](docs/architecture.md) — the layers, ports and adapters, and the
   reasoning behind them
-- [Architecture Decisions](docs/architecture/README.md) — the app's ADR index and its
-  roadmap
+- [Roadmap](docs/architecture/roadmap.md) — the app's Now / Next / Later direction
 - [Design System](docs/design-system.md) — the default tokens and the research behind
   them
 - [Running on Your Own iPhone](docs/running-on-device.md) — `Config/Local.xcconfig`

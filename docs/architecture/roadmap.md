@@ -20,9 +20,10 @@ and repeats neither:
   copies their bodies.
 
 It records direction and authorizes nothing. An issue is implemented because it is
-filed, tiered, and picked, never because a line here names it. It is not an ADR either:
-it takes no status and no number, and a decision a line depends on is recorded as an
-ADR ([the index](README.md)) and linked from here. What has shipped is in
+filed, tiered, and picked, never because a line here names it. It is not a design document
+either: a design change a line depends on is written, in the present tense, into
+`AGENTS.md`'s Architecture section and [`docs/architecture.md`](../architecture.md),
+and linked from here. What has shipped is in
 `CHANGELOG.md`, not on this page.
 
 The owner decides what the page says; an agent proposes a change to it in a pull
@@ -44,7 +45,7 @@ The outcomes being worked on, one to three of them. Each has its issues filed.
 The outcomes that follow once Now's are done. An issue may already exist for one, often
 parked as `on hold`; none is required.
 
-- TODO: **[an outcome]** — why it follows Now. Before it moves up: [an ADR to write, an
+- TODO: **[an outcome]** — why it follows Now. Before it moves up: [a design change to make, an
   outcome in Now to land, an open question for the owner]. Issues, if any: #N.
 
 ## Later

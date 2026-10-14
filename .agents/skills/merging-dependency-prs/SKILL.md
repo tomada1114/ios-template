@@ -70,7 +70,7 @@ title is only as precise as the bot made it.
   `platforms:` minimum, and new SwiftLint rules.
 - **Platform floor:** a SwiftPM bump whose package raises its `platforms:` above this
   package's `.iOS(.v27)` or `.macOS(.v27)` (`Packages/MyAppKit/Package.swift`) is not
-  mergeable: taking it means raising the deployment floor, an ADR-level decision
+  mergeable: taking it means raising the deployment floor, a design change
   (AGENTS.md "Before changing the architecture"). Hold it with that reason, green or not.
 - **gitleaks checksum:** a Renovate gitleaks bump cannot rewrite `GITLEAKS_SHA256`, so
   its `Gitleaks History Scan` run fails until a human updates the hash, as the PR body
@@ -156,7 +156,7 @@ the plan named it.
 - A maintainer, owner, or source change on any bumped dependency.
 - A new package appearing in `Package.resolved`, or a bump that needs a new dependency.
 - A SwiftPM bump that raises a package's `platforms:` above `.iOS(.v27)` or
-  `.macOS(.v27)`: raising the floor needs an ADR first (`recording-architecture-decisions`).
+  `.macOS(.v27)`: raising the floor is a design change first (`AGENTS.md` › Before changing the architecture).
 - A bump that only goes green by disabling a lint rule, lowering the coverage floor, or
   editing another gate file.
 - A bump of `.xcode-version`: bots never open one; it is hand-bumped per Toolchain Pinning.

@@ -2,8 +2,8 @@
 name: updating-docs
 description: >
   Decides whether a change owes a documentation update and which surface it lands on:
-  README.md, AGENTS.md, CHANGELOG.md, docs/architecture.md, the ADR tree and roadmap
-  under docs/architecture/, a skill under .agents/skills/, or a /// doc comment in
+  README.md, AGENTS.md, CHANGELOG.md, docs/architecture.md, the roadmap under
+  docs/architecture/, a skill under .agents/skills/, or a /// doc comment in
   Packages/*/Sources. Use when triaging whether a pull request needs a document
   changed or a CHANGELOG entry, when a rule, a just recipe, or an architecture boundary
   moved and it is unclear which file owns it, when the quick start or setup steps
@@ -14,8 +14,7 @@ description: >
 
 **Owns:** whether a change owes a documentation update, and which surface it lands on.
 **Does not own:** what a `///` comment for a given symbol says (`.claude/rules/swift.md`);
-how a skill is authored and mirrored (`authoring-skills`); whether a change owes an ADR
-and how one is written (`recording-architecture-decisions`); the roadmap's content
+how a skill is authored and mirrored (`authoring-skills`); the roadmap's content
 (`steering-the-roadmap`); the wording rules for files under `docs/` and the top-level
 Markdown (`.claude/rules/docs.md`).
 
@@ -69,11 +68,11 @@ another's content. An issue that creates a new document adds its line here.
   concurrency, logging, localization, testing, what is contract, and "Where new code
   goes". It covers the same ground as `AGENTS.md`'s Architecture section, so a moved
   boundary updates both in the same pull request.
-- `docs/architecture/` — an app's Architecture Decision Records and their index, which
-  the template ships empty. `recording-architecture-decisions` owns whether a change
-  owes an ADR and how one is written; a moved boundary it records still updates
-  `docs/architecture.md` and `AGENTS.md`'s Architecture section to match. Its
-  `roadmap.md`, the app's direction and not an ADR, is `steering-the-roadmap`'s.
+- `docs/architecture/roadmap.md` — the app's direction, `steering-the-roadmap`'s. The
+  design itself is never kept as a log of decisions: a design change (`AGENTS.md`'s
+  "Before changing the architecture") rewrites `docs/architecture.md`, `AGENTS.md`'s
+  Architecture section, and the owning skill in place, in the present tense, and git
+  history holds what they used to say.
 - `.agents/skills/<name>/SKILL.md` — the conventions of one kind of change, loaded on
   demand. `authoring-skills` owns how one is written, mirrored, and checked.
 - `///` doc comments in `Packages/*/Sources/**` — a symbol's contract: the "why",

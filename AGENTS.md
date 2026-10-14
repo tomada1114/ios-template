@@ -33,8 +33,10 @@ answer to "is this in scope?". Fill in every `TODO:` below right after the renam
   do this well, nothing else about it matters.
 - **Non-goals** — TODO: what this app deliberately does not do, even where it would be
   easy. Moving anything from here to a goal is a human's decision, not an implementer's.
-- **Where these decisions are recorded** — TODO: where the reasoning behind the three
-  entries above lives.
+- **Why it is shaped this way** — TODO: the reasoning behind the three entries above,
+  in the present tense — why this audience, why this interaction comes first, and why
+  each non-goal stays out — so a reader finds why and not only what. It is rewritten
+  when the reasoning changes, not appended to ("Before changing the architecture").
 
 ## Quick Reference
 
@@ -105,7 +107,7 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | A skill under `.agents/skills/` | `just agents-sync`, then `just agents-check` and `just check-harness`; `just test-scripts` when the skill ships scripts (it runs their `scripts/tests/` unittest suite) |
 | A workflow under `.github/workflows/` | `just lint` (actionlint), then `just check-harness` |
 | Markdown | `just lint` (its `typos` spell-check) |
-| `docs/architecture/` (an ADR, the index, the roadmap) | `just lint` (its `typos` spell-check) |
+| `docs/architecture/roadmap.md` | `just lint` (its `typos` spell-check) |
 | `mise.toml` | `mise install`, then `just check` |
 | `.github/labels.yml`, or an issue form under `.github/ISSUE_TEMPLATE/` | `just lint` (its `typos` spell-check), then `just check-harness` (every applied label declared, once); `scripts/tests/sync-labels_test.sh` for `scripts/sync-labels.sh` itself |
 | `.github/rulesets/main.json`, or `scripts/apply-ruleset.sh` | `scripts/tests/apply-ruleset_test.sh`; `just check-harness` for `main.json` (`scripts/checks/ruleset-contexts.sh` reads it) |
@@ -156,11 +158,14 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
 
 ## Before changing the architecture
 
-An app cut from this template records its architecture decisions as ADRs under
-`docs/architecture/` — start at its `README.md`, the index, whose statuses say what is
-decided and what is only proposed. `docs/architecture.md` describes the layers every app
-starts with; the ADRs record what the app decided on top of them. A change to any of
-these owes an ADR, as `recording-architecture-decisions` sets out:
+The design is recorded as it stands now, never as a log of decisions: this file's
+Architecture and Product sections, `docs/architecture.md`, and the skill that owns the
+subject say together how the app is built and why, and git history holds what it used
+to be. The changes below, which the skills call design changes, are hard to reverse, so
+the pull request that makes one also rewrites that description: the current design and
+the reasoning behind it (what it protects and, where it matters, the alternative it
+rules out and why), in the present tense, in place of the sentences it replaces, never
+as a dated entry beside them:
 
 - a new target (`project.yml`, `Package.swift`) or a new Core port;
 - the device family and scene model — iPhone only or iPhone and iPad
@@ -178,11 +183,12 @@ these owes an ADR, as `recording-architecture-decisions` sets out:
   Transparency) — or a required-reason API declared in `PrivacyInfo.xcprivacy`;
 - a shipped language beyond English.
 
-An agent writes an ADR as Proposed; only a human accepts it. An ADR records reasoning and
-grants nothing: an entitlement, a signing change, or a new dependency still needs the
-sign-off "Security and human approval" asks for. The template repository ships the index
-empty — its own reasoning lives in `docs/architecture.md`'s "Decisions at a glance", and
-ADRs belong to the apps cut from it.
+Writing the reasoning down grants nothing: an entitlement, a signing change, or a new
+dependency still needs the sign-off "Security and human approval" asks for, and the
+owner reviews the rewritten description with the change. The reasoning behind the
+layers every app starts with lives in `docs/architecture.md`'s "Decisions at a glance";
+a change that replaces one of them rewrites that row too, rather than leaving the old
+reason beside the new one.
 
 ## Skills
 
@@ -210,14 +216,13 @@ into `.claude/skills/`, the only path Claude Code reads:
 | `writing-repo-scripts` | writing or testing a shell script under `scripts/`, `.githooks/pre-commit`, or `scripts/tests/`: why bash, refusing or skipping outside a git checkout, the stderr contract by example, and `scripts/tests/lib.sh` |
 | `designing-errors` | an `Error` type, a `throws`/`throws(E)` signature, a `do`/`catch`, or cancellation: Core error enums, typed throws, no user data in errors or logs, `CancellationError`, and mapping a SwiftData or Foundation (`NSError`/`CocoaError`) error in an adapter |
 | `designing-core-logic` | shaping logic in `MyAppCore`: injecting time (`Clock`, a `() -> Date`), identifiers, `Locale`, and a `RandomNumberGenerator`; one `Tuning` type for tunables; action-shaped `@Observable` view models; and the patterns deliberately not adopted |
-| `recording-architecture-decisions` | the ADRs under `docs/architecture/`: whether a change owes an ADR (a target or port, the device family and scene model, a capability or entitlement, persistence, a dependency, distribution, `deploymentTarget`, a privacy-gated permission, a shipped language), an ADR's statuses, amending versus superseding, and fact discipline — every external claim with a URL and a checked date |
 | `steering-the-roadmap` | the app's direction in `docs/architecture/roadmap.md`: its Now / Next / Later horizons, who changes it and when, how the backlog and parked `on hold` issues feed it, and answering "what is next?" before `shipping-issues` |
 | `starting-an-app` | turning this template into a new app: `scripts/bootstrap.sh`'s rename, the template-only passages it removes, what the new repository keeps, its `just labels` and `just ruleset` setup, choosing the device family (iPhone only or iPhone and iPad), and deciding which capabilities and entitlements it takes |
 | `running-the-app` | seeing a change work on the iOS Simulator: `just run` and confirming the installed app is the fresh build, reading `just logs`, `simctl` screenshots in dark mode and at large Dynamic Type sizes, deep links, simulated pushes, launch arguments, a throwaway XCUITest, `just reset-permissions`, and the evidence a PR then carries |
 | `integrating-system-apis` | reaching an iOS system API through a Core port: the adapter in `MyAppPlatform`, a permission as a Core enum, usage descriptions and `Info.plist` keys in `project.yml`, `PrivacyInfo.xcprivacy`, notifications, PhotosPicker, background tasks, `simctl privacy`, `#if os(iOS)`, and what `just test`, `just test-ios`, and a device each prove |
-| `designing-ui` | how a screen looks: HIG craft rules, `DesignTokens`, Liquid Glass with an iOS 27 floor, and the app's design lock ADR, researched with `/refero-design` |
+| `designing-ui` | how a screen looks: HIG craft rules, `DesignTokens`, Liquid Glass with an iOS 27 floor, and the app's design lock in `docs/design-system.md`, researched with `/refero-design` |
 | `building-swiftui-screens` | a view in `MyAppUI`: a thin renderer over a `MyAppCore` `@Observable` view model, navigation, sheets and alerts, size classes, Dynamic Type, safe areas and the keyboard, touch targets, `#Preview` per state, accessibility identifiers and labels, and verifying a screen |
-| `updating-docs` | deciding whether a change owes a documentation update and which surface it lands on: `README.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/architecture.md`, `docs/architecture/`, a skill, or a `///` comment |
+| `updating-docs` | deciding whether a change owes a documentation update and which surface it lands on: `README.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/architecture.md`, `docs/architecture/roadmap.md`, a skill, or a `///` comment |
 | `localizing-the-app` | a string a person reads: the String Catalog `Localizable.xcstrings` in `MyAppCore`, `defaultLocalization`, Core returning `LocalizedStringResource` (`bundle: .module`), `Text(verbatim:)` in `MyAppUI`, keeping the catalog and `LocalizationTests` in step, `xcodebuild -exportLocalizations`, plurals, `InfoPlist.xcstrings`, and what adding a language involves |
 
 ### Rules

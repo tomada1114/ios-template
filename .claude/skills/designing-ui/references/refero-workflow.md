@@ -1,6 +1,6 @@
 # Researching the design lock with /refero-design
 
-How an app cut from this template researches its design-lock ADR. The template ran the
+How an app cut from this template researches its design lock. The template ran the
 same workflow for its own neutral defaults; `docs/design-system.md` is the worked record
 to copy — its brief, query table, reviewed screens, reference lock, and ledger.
 
@@ -11,7 +11,7 @@ to copy — its brief, query table, reviewed screens, reference lock, and ledger
   steps below. Neither is a project dependency; nothing in the repository calls them.
 - **Either is missing** (Codex CLI, or no Refero account): the rules in `designing-ui`'s
   `SKILL.md` and the HIG pages it cites are the research. Write the lock from them, and
-  say in the ADR's Context that research was HIG-only. Never write a Refero ID you did
+  say beside the lock that research was HIG-only. Never write a Refero ID you did
   not get from a tool call.
 
 ## Steps
@@ -38,17 +38,13 @@ to copy — its brief, query table, reviewed screens, reference lock, and ledger
 4. **Reference lock and decision ledger.** In the skill's format: Primary, Preserve,
    Borrow only, Role rules, Media strategy, Reject, Token commitments; and a ledger row
    (Decision, Source, Rule/role, Why) per lock field.
-5. **Write the ADR.** Map the research into `docs/architecture/adr/template.md`:
-
-   | Research output | ADR section |
-   |---|---|
-   | The brief and the product it came from | Context |
-   | The reference lock, as one value per `design-lock.md` field | Decision |
-   | The ledger, and each rejected direction with why it lost | Considered options |
-   | Choices the owner has not made, claims not yet checked (`Unverified:`) | Open questions |
-   | Every Refero ID reviewed and every Apple URL cited, with the checked date | Sources |
-
-   Status Proposed; only the owner accepts it.
+5. **Write the lock.** Rewrite `docs/design-system.md` in place for the app: the brief
+   and the product it came from under Brief, the reviewed screens and flows with every
+   Refero ID and Apple URL and the checked date under Sources, the ledger with each
+   rejected direction and why it lost, and the "Design lock" section as one value per
+   `design-lock.md` field. Choices the owner has not made and claims not yet checked
+   (`Unverified:`) go in the pull request as open questions; the owner reviews the lock
+   there.
 6. **Implement and look.** Land the values where `design-lock.md` says, then run
    `designing-ui`'s review pass — light, dark, the largest text size, Increase Contrast —
    and compare the screenshots against the reference lock. Fix drift before the pull

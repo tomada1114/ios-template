@@ -2,8 +2,8 @@
 
 Two choices cover most apps started from this template. Make one before writing
 features: it decides which layouts every screen owes, which devices the launch test
-runs on, and what the App Store lists. Record it as the app's first ADR (`SKILL.md` ›
-"Recording both decisions").
+runs on, and what the App Store lists. Write it as present state in `AGENTS.md`'s Architecture
+section and `docs/architecture.md` (`SKILL.md` › "Recording both decisions").
 
 | | iPhone and iPad (what the template ships) | iPhone only |
 |---|---|---|
@@ -38,7 +38,7 @@ portrait and both landscapes on iPhone; a portrait-only app keeps just
 ### iPhone and iPad
 
 Keep `"1,2"` and both orientation keys. The template's iPad list allows all four
-orientations; narrowing it is a decision to record in the same ADR, with the platform
+orientations; narrowing it is a decision written into the same description, with the platform
 rule it runs into cited by URL, not a default to reach for.
 
 ### Multiple windows on iPad
@@ -76,7 +76,7 @@ model in `@State` on the `App` struct, so the model outlives any one scene's vie
 with multiple windows on, every window shows that same instance — two windows are two
 views of one list. If each window should hold its own state, the state moves into the
 scene's view tree (a view that owns it inside the `WindowGroup`), and that is part of
-the same ADR. A phone-only app, or an iPad app with multiple windows off, has one scene
+the same description. A phone-only app, or an iPad app with multiple windows off, has one scene
 and no such question.
 
 ## `LaunchUITests`
@@ -101,4 +101,4 @@ identifier and label, not by position.
 
 How a screen adapts between compact and regular size classes, and which layouts an
 iPad screen owes, is `building-swiftui-screens`'s subject. Recording the choice is
-`recording-architecture-decisions`'.
+`SKILL.md` › "Recording both decisions".
