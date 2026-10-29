@@ -120,6 +120,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- CI's `lint` job runs on `ubuntu-24.04` instead of `ubuntu-latest`, so SwiftLint
+  starts again: `ubuntu-latest` moved to Ubuntu 26.04, whose image ships only
+  `libxml2.so.16`, while the SwiftLint Linux binary mise installs needs
+  `libxml2.so.2` and failed to load. `swiftlint --strict` still runs on every pull
+  request.
+
 - `TodoListViewModel.load()` is safe to call while another load is in flight: the
   newest load wins and an older one that returns later drops its result, an add,
   toggle, or delete that finishes during a load is kept rather than overwritten by the
