@@ -36,7 +36,7 @@ The template's `com.example.MyApp` may be refused, because an App ID is unique a
 all teams. Run `just run-device` in an app cut from the template, after
 `scripts/bootstrap.sh` has given it your own prefix. Never work around this by
 overriding `PRODUCT_BUNDLE_IDENTIFIER` in `Local.xcconfig`: the bundle identifier is
-contract (`docs/architecture.md` › What is contract and what is private), and
+contract (`AGENTS.md` › What is contract and what is private), and
 `AppLog.subsystem` follows it.
 
 ## Everyday use

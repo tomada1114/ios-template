@@ -2,9 +2,9 @@
 
 This file holds what every agent needs before it knows which task it is on: what the
 app is, how to check a change, where code goes, and which decisions need a human. It is
-the one guide Claude Code and Codex CLI share. The reasoning behind the architecture is
-in [`docs/architecture.md`](docs/architecture.md); the conventions of one kind of change
-belong to a skill under `.agents/skills/` ([Skills](#skills)); a value a gate enforces
+the one guide Claude Code and Codex CLI share. The conventions of one kind of change,
+and the design of the subject it touches, belong to a skill under `.agents/skills/`
+([Skills](#skills)); a value a gate enforces
 belongs to its config (`.swiftlint.yml`, `.swiftformat`, `Package.swift`,
 `scripts/coverage.sh`, `mise.toml`), and running the gate is how you learn it.
 
@@ -17,6 +17,9 @@ language mode, an 80% line-coverage and a 75% function-coverage floor on the Cor
 module) are enforced from day one. It ships a small worked example — a to-do list —
 that exercises every seam an app needs: MVVM with `@Observable` view models, a
 repository port with a SwiftData adapter, a fake and a contract test, and an XCUITest.
+How the app is built and why lives in the skills that own each subject (the Skills
+table below) and this file's Architecture section; there is no separate architecture or
+roadmap document (`updating-docs`).
 
 ## Product
 
@@ -107,7 +110,6 @@ Run the narrowest check that can fail, then `just check` before you open a PR.
 | A skill under `.agents/skills/` | `just agents-sync`, then `just agents-check` and `just check-harness`; `just test-scripts` when the skill ships scripts (it runs their `scripts/tests/` unittest suite) |
 | A workflow under `.github/workflows/` | `just lint` (actionlint), then `just check-harness` |
 | Markdown | `just lint` (its `typos` spell-check) |
-| `docs/architecture/roadmap.md` | `just lint` (its `typos` spell-check) |
 | `mise.toml` | `mise install`, then `just check` |
 | `.github/labels.yml`, or an issue form under `.github/ISSUE_TEMPLATE/` | `just lint` (its `typos` spell-check), then `just check-harness` (every applied label declared, once); `scripts/tests/sync-labels_test.sh` for `scripts/sync-labels.sh` itself |
 | `.github/rulesets/main.json`, or `scripts/apply-ruleset.sh` | `scripts/tests/apply-ruleset_test.sh`; `just check-harness` for `main.json` (`scripts/checks/ruleset-contexts.sh` reads it) |
@@ -147,25 +149,54 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, or WidgetKit — in any
   spelling. Enforced twice: `.swiftlint.yml`'s `no_ui_import_in_core` and
   `ArchitectureBoundaryTests`; their module lists change together.
-- The package also builds for macOS so `swift test` runs on the host; an iOS-only API in
-  `MyAppUI` or `MyAppPlatform` goes behind `#if os(iOS)`.
+- The package also builds for macOS so `swift test` runs the whole package on the host
+  Mac — seconds instead of a simulator boot, and the only way `scripts/coverage.sh` can
+  read coverage. Every target therefore compiles for macOS too: an iOS-only API in
+  `MyAppUI` or `MyAppPlatform` (`UIApplication`, `.navigationBarTitleDisplayMode`) goes
+  behind `#if os(iOS)`. The app itself is iOS-only; CI's `app` job builds and launches it.
+- A new feature is, in order: domain values, a port only for storage or an OS service
+  (its fake and contract beside it), a view model (shared ones are `AppModel` stored
+  properties; a pushed screen's own one comes from an `AppModel` `make…ViewModel(…)`
+  factory, tested in `AppModelTests`), the adapter, the view, an `AppRoute` case with its
+  branch in `RootView`'s destination switch, and `App/` wiring only for a new port. A new
+  remote API is `Endpoint` values sent through `APIClient`, never a new port; a new stored
+  model is a new schema version, never an edit to a shipped one.
 - Shipped code logs through `AppLog` (`os.Logger`); `print`, `debugPrint`, and `NSLog`
   are rejected under `Packages/*/Sources/` and `App/` by `no_print_in_sources`.
 - `MyApp.xcodeproj` is generated — edit `project.yml` instead.
-- Four things are contract — Core's public API, the bundle identifier, the stored
-  SwiftData schema, and `UserDefaults` keys/file formats — and each changes only as
-  `docs/architecture.md` › What is contract says.
+- **App shape:** iPhone and iPad (`TARGETED_DEVICE_FAMILY: "1,2"`), multiple windows on
+  iPad, no capability or entitlement, and no privacy-gated permission. An app rewrites
+  this line when it decides its device family, capabilities, and permissions
+  (`starting-an-app`, `integrating-system-apis`), naming the feature that forces each.
+
+### What is contract and what is private
+
+Contract is what something outside a change can observe: another module, a user's
+device that ran an earlier build, or the user.
+
+| Contract | What depends on it | What changing it requires |
+|---|---|---|
+| **Core's public API** | `MyAppUI`, `MyAppPlatform`, `App/`, the tests | Update every caller in the same pull request; a new public declaration carries a `///` saying why; a new port is a design change ("Before changing the architecture") |
+| **The bundle identifier** (`PRODUCT_BUNDLE_IDENTIFIER` in `project.yml`) | The app's data container and Keychain items on every device, App Store Connect, push and other capabilities, `AppLog.subsystem`, `just run`/`just logs` | Fixed once a build has left your machine: a new identifier is a new app, and the user's data stays behind. `project.yml` and `AppLog.subsystem` change together (`AppLogTests`) |
+| **The stored schema** (`AppSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus an `AppMigrationPlan` stage, with a test that opens a store written by the previous version. Never edit a shipped schema version (`persisting-data`) |
+| **The URL scheme** (`DeepLink.scheme`, registered in `project.yml`) | Links to the app in messages, notes, and other apps | Fixed once a build has left your machine: a renamed scheme breaks every link in the wild. `project.yml` and `DeepLink.scheme` change together (`DeepLinkTests`); a new link shape is a new `DeepLink` case with its tests, and an old shape keeps parsing |
+| **`UserDefaults` keys and file formats** | Saved preferences and files on a user's device | Read the old key or format and migrate it in Core, with a test that starts from the old value. Every key is a `PreferenceKeys` constant, pinned by `PreferenceKeysTests` |
+
+Everything else is private: `internal` declarations, how an adapter talks to its
+framework, view structure, file and type layout, test helpers, log messages.
 
 ## Before changing the architecture
 
-The design is recorded as it stands now, never as a log of decisions: this file's
-Architecture and Product sections, `docs/architecture.md`, and the skill that owns the
-subject say together how the app is built and why, and git history holds what it used
-to be. The changes below, which the skills call design changes, are hard to reverse, so
-the pull request that makes one also rewrites that description: the current design and
-the reasoning behind it (what it protects and, where it matters, the alternative it
-rules out and why), in the present tense, in place of the sentences it replaces, never
-as a dated entry beside them:
+The design is recorded in one place per subject, as it stands now, never as a log of
+decisions: the skill that owns the subject (the Skills table), with this file's
+Architecture section for the layer rules, the app's shape, and what is contract, and its
+Product section for scope. Git history holds what it used to be. Keeping those current
+is the whole obligation: no other document repeats the design, so no other document
+needs rewriting with it. The changes below, which the skills call design changes, are
+hard to reverse, so the pull request that makes one also rewrites the owning skill (or
+that section): the current design and the reasoning behind it (what it protects and,
+where it matters, the alternative it rules out and why), in the present tense, in place
+of the sentences it replaces, never as a dated entry beside them:
 
 - a new target (`project.yml`, `Package.swift`) or a new Core port;
 - the device family and scene model — iPhone only or iPhone and iPad
@@ -186,9 +217,10 @@ as a dated entry beside them:
 Writing the reasoning down grants nothing: an entitlement, a signing change, or a new
 dependency still needs the sign-off "Security and human approval" asks for, and the
 owner reviews the rewritten description with the change. The reasoning behind the
-layers every app starts with lives in `docs/architecture.md`'s "Decisions at a glance";
-a change that replaces one of them rewrites that row too, rather than leaving the old
-reason beside the new one.
+choices every app starts with lives in the skill that owns each — the layers in
+`designing-core-logic`, persistence in `persisting-data`, the toolchain in
+`changing-gates` — and a change that replaces one rewrites that reasoning too, rather
+than leaving the old reason beside the new one.
 
 ## Skills
 
@@ -206,7 +238,7 @@ into `.claude/skills/`, the only path Claude Code reads:
 | Skill | Load it when you are working on |
 |---|---|
 | `shipping-issues` | shipping the open issue backlog: ranking issues by `priority: P0`-`P3`, implementing the top one, reviewing it with `/code-review`, and taking its PR through CI to merge |
-| `triaging-issues` | filing or triaging an issue: the labels in `.github/labels.yml`, priority tiers, the `Depends on #N` convention, and what an issue body must contain |
+| `triaging-issues` | filing or triaging an issue: the labels in `.github/labels.yml`, priority tiers, the `Depends on #N` convention, and what an issue body must contain; asked what to work on next |
 | `tdd` | a behavior change in `MyAppCore`: writing a failing Swift Testing test before the implementation |
 | `create-pr` | opening or updating a pull request: the `just check` pre-check, title, template, and checklist |
 | `smart-commit` | committing and pushing changes: grouping them into Conventional Commits, excluding sensitive files |
@@ -215,14 +247,14 @@ into `.claude/skills/`, the only path Claude Code reads:
 | `authoring-skills` | adding, editing, or reviewing a skill: authoring under `.agents/skills/`, the `just agents-sync` mirror, frontmatter, layout, and size limits |
 | `writing-repo-scripts` | writing or testing a shell script under `scripts/`, `.githooks/pre-commit`, or `scripts/tests/`: why bash, refusing or skipping outside a git checkout, the stderr contract by example, and `scripts/tests/lib.sh` |
 | `designing-errors` | an `Error` type, a `throws`/`throws(E)` signature, a `do`/`catch`, or cancellation: Core error enums, typed throws, no user data in errors or logs, `CancellationError`, and mapping a SwiftData or Foundation (`NSError`/`CocoaError`) error in an adapter |
-| `designing-core-logic` | shaping logic in `MyAppCore`: injecting time (`Clock`, a `() -> Date`), identifiers, `Locale`, and a `RandomNumberGenerator`; one `Tuning` type for tunables; action-shaped `@Observable` view models; and the patterns deliberately not adopted |
-| `steering-the-roadmap` | the app's direction in `docs/architecture/roadmap.md`: its Now / Next / Later horizons, who changes it and when, how the backlog and parked `on hold` issues feed it, and answering "what is next?" before `shipping-issues` |
+| `designing-core-logic` | shaping logic in `MyAppCore`: injecting time (`Clock`, a `() -> Date`), identifiers, `Locale`, and a `RandomNumberGenerator`; one `Tuning` type for tunables; action-shaped `@Observable` view models, reentrancy, and `AppModel` as the composition root; why the code is split into Core, UI, and Platform; and the patterns deliberately not adopted |
+| `persisting-data` | keeping state between launches: a repository port, the SwiftData adapter and its one container, the versioned schema and migration stages, the null object when the store will not open, and preferences through `PreferencesStoring` and `PreferenceKeys` |
 | `starting-an-app` | turning this template into a new app: `scripts/bootstrap.sh`'s rename, the template-only passages it removes, what the new repository keeps, its `just labels` and `just ruleset` setup, choosing the device family (iPhone only or iPhone and iPad), and deciding which capabilities and entitlements it takes |
 | `running-the-app` | seeing a change work on the iOS Simulator: `just run` and confirming the installed app is the fresh build, reading `just logs`, `simctl` screenshots in dark mode and at large Dynamic Type sizes, deep links, simulated pushes, launch arguments, a throwaway XCUITest, `just reset-permissions`, and the evidence a PR then carries |
-| `integrating-system-apis` | reaching an iOS system API through a Core port: the adapter in `MyAppPlatform`, a permission as a Core enum, usage descriptions and `Info.plist` keys in `project.yml`, `PrivacyInfo.xcprivacy`, notifications, PhotosPicker, background tasks, `simctl privacy`, `#if os(iOS)`, and what `just test`, `just test-ios`, and a device each prove |
-| `designing-ui` | how a screen looks: HIG craft rules, `DesignTokens`, Liquid Glass with an iOS 27 floor, and the app's design lock in `docs/design-system.md`, researched with `/refero-design` |
-| `building-swiftui-screens` | a view in `MyAppUI`: a thin renderer over a `MyAppCore` `@Observable` view model, navigation, sheets and alerts, size classes, Dynamic Type, safe areas and the keyboard, touch targets, `#Preview` per state, accessibility identifiers and labels, and verifying a screen |
-| `updating-docs` | deciding whether a change owes a documentation update and which surface it lands on: `README.md`, `AGENTS.md`, `CHANGELOG.md`, `docs/architecture.md`, `docs/architecture/roadmap.md`, a skill, or a `///` comment |
+| `integrating-system-apis` | reaching an iOS system API or a remote API through a Core port (`HTTPClient`, `APIClient`): the adapter in `MyAppPlatform`, a permission as a Core enum, usage descriptions and `Info.plist` keys in `project.yml`, `PrivacyInfo.xcprivacy`, notifications, PhotosPicker, background tasks, `simctl privacy`, `#if os(iOS)`, and what `just test`, `just test-ios`, and a device each prove |
+| `designing-ui` | how a screen looks: HIG craft rules, `DesignTokens`, Liquid Glass with an iOS 27 floor, and the app's design lock in its `references/design-lock.md`, researched with `/refero-design` into `docs/design-system.md` |
+| `building-swiftui-screens` | a view in `MyAppUI`: a thin renderer over a `MyAppCore` `@Observable` view model, navigation (`AppRoute`, `NavigationModel`, deep links), sheets and alerts, size classes, Dynamic Type, safe areas and the keyboard, touch targets, `#Preview` per state, accessibility identifiers and labels, and verifying a screen |
+| `updating-docs` | deciding whether a change owes a documentation update and which surface it lands on: `README.md`, `AGENTS.md`, `CHANGELOG.md`, a guide under `docs/`, the skill that owns the design, or a `///` comment; why there is no architecture or roadmap document |
 | `localizing-the-app` | a string a person reads: the String Catalog `Localizable.xcstrings` in `MyAppCore`, `defaultLocalization`, Core returning `LocalizedStringResource` (`bundle: .module`), `Text(verbatim:)` in `MyAppUI`, keeping the catalog and `LocalizationTests` in step, `xcodebuild -exportLocalizations`, plurals, `InfoPlist.xcstrings`, and what adding a language involves |
 
 ### Rules

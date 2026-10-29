@@ -40,7 +40,7 @@ jobs:
 
       - name: Build the package for analysis
         # App/ is a thin @main shell; all logic lives in the local package
-        # (docs/architecture.md), so building it covers every analyzable line.
+        # (AGENTS.md › Architecture), so building it covers every analyzable line.
         run: swift build --package-path Packages/MyAppKit
 
       - name: Analyze

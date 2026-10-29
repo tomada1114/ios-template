@@ -1,16 +1,43 @@
-# The design lock: fields and where they land
+# The design lock
 
-The design lock is the "Design lock" section of `docs/design-system.md` (the
-`designing-ui` skill says when it is written and how it changes). This file lists the
-fields that section fixes; the template's own reference lock there is the worked
-example. How to research the values: `refero-workflow.md`, beside this file.
+What every screen in this app looks like, one value per field. The lock lives here, in
+the skill, and binds every screen; `SKILL.md` says when it is written and how it changes,
+and `refero-workflow.md`, beside this file, how its values are researched.
+`docs/design-system.md` is the research record the values came from — the brief, the
+reviewed references, the decision ledger, and the sources — and is never a second copy
+of the lock.
+
+## The lock
+
+This is the template's reference lock: system-first and unbranded, because the template
+is the neutral base every app departs from. An app cut from the template rewrites this
+section for itself after the bootstrap; changing a value later is an edit to this
+section in place, in the pull request that changes the code, with the reason in the
+sentence beside it — git history holds what it used to say.
+
+- Accent color: system default (`AccentColor` with no value). Nothing depends on its hue.
+- Custom colors: none; semantic system colors only.
+- Type: system font and text styles with Dynamic Type; a large navigation title.
+- Spacing and corner radius: the template scale in `DesignTokens`, unchanged.
+- Density: regular; the system `List` default style.
+- Symbols: SF Symbols only, default rendering.
+- Materials and Liquid Glass: standard components only.
+- Navigation structure: one `NavigationStack`; the Add button beside the draft field.
+- iPad layout: same as iPhone (the template targets both, `TARGETED_DEVICE_FAMILY: "1,2"`).
+- Haptics: none.
+- Motion: system transitions only (`.default`), none under Reduce Motion.
+- Copy style: title case for navigation titles and buttons; sentence case for alerts and
+  empty states. Voice: short and plain.
+- App icon: placeholder until distribution is decided.
+
+## Fields
+
+The fields every lock fixes, and where each value lands in code.
 
 Every field is either a value or the words "system default". "System default" is a real
 decision — often the right one for a first version — and saying it explicitly stops the
 next implementer from inventing a value. A field left out is a gap, not a default: list
 it as an open question in the pull request until it is decided.
-
-## Fields
 
 | Field | What "decided" looks like | Where it lands in code |
 |---|---|---|
@@ -42,10 +69,11 @@ lock names.
 
 ## A lock, sketched
 
-An illustration; replace every value with the app's own.
+An illustration of an app's own lock, departing from the reference one; replace every
+value with the app's own.
 
 ```markdown
-## Design lock
+## The lock
 
 - Accent color: system default. Nothing depends on its hue.
 - Custom colors: none; semantic system colors only.
@@ -72,7 +100,7 @@ filled in from habit.
 ## What does not belong in the lock
 
 - The device family and scene model — `starting-an-app`, written in `AGENTS.md`'s
-  Architecture section and `docs/architecture.md`.
+  Architecture section.
 - A single screen's layout — that is the screen's own pull request, built against the
   lock.
 - Anything the HIG already fixes for every iOS app (the standard toolbar placements, the

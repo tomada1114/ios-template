@@ -5,8 +5,8 @@ import os
 /// `MyAppCore` is allowed to `import os`: it is Apple's logging facility, not a UI or
 /// OS-integration framework, and it works unchanged on every platform Core serves, so a
 /// logging port would buy nothing and cost every call site an injection
-/// (`docs/architecture.md` › Logging). `MyAppUI`, `MyAppPlatform`, and `App/` log through
-/// these same loggers, which they already see by importing `MyAppCore`.
+/// (`.claude/rules/swift.md` › Logging). `MyAppUI`, `MyAppPlatform`, and `App/` log
+/// through these same loggers, which they already see by importing `MyAppCore`.
 ///
 /// Never `print`, `debugPrint`, or `NSLog` under `Sources/` or `App/`: an app launched
 /// from the Home Screen has nowhere to send stdout, so those lines vanish exactly when

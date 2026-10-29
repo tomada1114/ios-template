@@ -4,7 +4,7 @@ description: >
   Covers writing an iOS SwiftUI view in MyAppUI as a thin renderer over a MyAppCore
   @Observable view model - how the view receives and holds its model (@State, a plain
   property, @Bindable, a Binding built from an action), what may sit in body,
-  NavigationStack and navigationDestination, sheets and alerts driven by view-model
+  NavigationStack over AppRoute and DeepLink, sheets and alerts driven by view-model
   state, horizontalSizeClass layouts for iPhone and iPad, Dynamic Type with text styles,
   ScaledMetric and ViewThatFits, safe areas and safeAreaInset, the keyboard with
   FocusState, submitLabel and onSubmit, 44-point touch targets, iOS-only modifiers
@@ -42,7 +42,7 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 - **A model with a port is built by Core's `AppModel`**, never in a view: the adapter
   lives in `MyAppPlatform`, which this module must not import, so `App/` hands the
   adapters to `AppModel` as ports and `AppModel` builds the models over them
-  (`docs/architecture.md` › Composition root). `MyAppApp` keeps the `AppModel` in
+  (`designing-core-logic`). `MyAppApp` keeps the `AppModel` in
   `@State` for the whole app; its private `SceneRoot` keeps a `NavigationModel` in
   `@State` per scene, so each window navigates on its own, and passes both to
   `RootView(app:navigation:)`.
@@ -88,8 +88,8 @@ only — so any branch that lives in a view is a branch no gate tests. `TodoList
 
 ## Navigation
 
-- One `NavigationStack(path:)` per navigation root, bound to Core's `NavigationModel`
-  (`docs/architecture.md` › Navigation), with one value-based
+- One `NavigationStack(path:)` per root, bound to Core's `NavigationModel` (**REQUIRED:**
+  [references/navigation.md](references/navigation.md)), with one value-based
   `navigationDestination(for: AppRoute.self)`: a link pushes an `AppRoute`, the
   destination builds its screen from it. Both live in `RootView`, never in a screen:
   `TodoListView` is a plain screen that only pushes routes with

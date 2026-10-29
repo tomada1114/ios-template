@@ -8,7 +8,7 @@ import Testing
 /// as unset, so every user's saved value silently resets to the default on the next
 /// launch. Do not edit this test to match: keep the old name, or write a migration in
 /// Core that reads the old key, with a test that starts from the old value
-/// (`docs/architecture.md` › What is contract and what is private).
+/// (`AGENTS.md` › What is contract and what is private).
 @Suite("PreferenceKeys")
 struct PreferenceKeysTests {
     @Test

@@ -49,7 +49,7 @@ public enum TodoListFailure: Equatable, PresentableFailure {
 /// Observable presentation state for the to-do list, over a ``TodoRepository`` port and a
 /// ``PreferencesStoring`` port.
 ///
-/// The template's worked example of a view model (`docs/architecture.md` › View models):
+/// The template's worked example of a view model (`designing-core-logic` › View models):
 /// it holds the ports, not adapters, so `MyAppCoreTests` drives it with the in-memory
 /// fake and `App/` hands it the SwiftData adapter. Every decision a reader can observe —
 /// when Add is enabled, what an empty list says, what a failed save does to the row — is
@@ -180,7 +180,7 @@ public final class TodoListViewModel {
     /// repository fails.
     ///
     /// Safe to call while another load is in flight — `.task`, pull-to-refresh, Retry, and
-    /// the detail screen can all ask at once (`docs/architecture.md` › Reentrancy):
+    /// the detail screen can all ask at once (`designing-core-logic` › Reentrancy):
     /// - The newest load wins. An older one that returns later drops its result, success
     ///   or failure, so a slow, stale fetch never overwrites a newer one.
     /// - An add, toggle, or delete the repository acknowledged while the load was in

@@ -168,7 +168,7 @@ file.
 ## Recording both decisions
 
 Both steps end, after the rename, in the new app's description of itself, written as
-present state in `AGENTS.md`'s Architecture section and `docs/architecture.md`: the
+present state in `AGENTS.md`'s Architecture section (its "App shape" line): the
 device family (iPhone only or iPhone and iPad), the orientations, multiple windows, and
 why; and the capability set, empty included, naming the feature that forces each one.
 They replace the template's wording in place rather than sitting beside it, and the

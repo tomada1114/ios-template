@@ -2,21 +2,22 @@
 name: updating-docs
 description: >
   Decides whether a change owes a documentation update and which surface it lands on:
-  README.md, AGENTS.md, CHANGELOG.md, docs/architecture.md, the roadmap under
-  docs/architecture/, a skill under .agents/skills/, or a /// doc comment in
-  Packages/*/Sources. Use when triaging whether a pull request needs a document
-  changed or a CHANGELOG entry, when a rule, a just recipe, or an architecture boundary
-  moved and it is unclear which file owns it, when the quick start or setup steps
-  drifted, or when deciding that an internal refactor needs no documentation change.
+  README.md, AGENTS.md, CHANGELOG.md, a guide under docs/, the skill that owns the
+  design of what changed, or a /// doc comment in Packages/*/Sources. Use when
+  triaging whether a pull request needs a document changed or a CHANGELOG entry, when a
+  rule, a just recipe, or an architecture boundary moved and it is unclear which file
+  owns it, when tempted to write an architecture overview, decision record, or roadmap,
+  when the quick start or setup steps drifted, or when deciding that an internal
+  refactor needs no documentation change.
 ---
 
 # Updating Documentation
 
 **Owns:** whether a change owes a documentation update, and which surface it lands on.
 **Does not own:** what a `///` comment for a given symbol says (`.claude/rules/swift.md`);
-how a skill is authored and mirrored (`authoring-skills`); the roadmap's content
-(`steering-the-roadmap`); the wording rules for files under `docs/` and the top-level
-Markdown (`.claude/rules/docs.md`).
+how a skill is authored and mirrored (`authoring-skills`); a design change's description
+(`AGENTS.md`'s "Before changing the architecture"); the wording rules for files under
+`docs/` and the top-level Markdown (`.claude/rules/docs.md`).
 
 ## Decide on observability, not location
 
@@ -31,21 +32,36 @@ rejects, and how the template is turned into a new app (README's "Using This
 Template"). A change to any of those owes a document; a change behind them does not.
 
 - `README.md` changes when the first ten minutes with a checkout change — the
-  Quickstart commands, a "Why …?" design decision, or what "Using This Template" asks
-  you to do.
+  Quickstart commands, the layout it tours, or what "Using This Template" asks you to
+  do.
 - It does not change for a refactor, a test, a gate or rule that `AGENTS.md` owns, or an
   edit to a skill.
+
+## Design lives in the skills
+
+How the app is built and why — its layers, view models, navigation, storage, ports,
+screens, and the template's own choices — is written once, in the skill that owns the
+subject, so a code change owes at most that skill (and `AGENTS.md`'s Architecture
+section for a layer rule or a contract). There is no architecture overview, decision
+record, design-philosophy page, or roadmap to keep in step: never create one, and never
+copy a skill's design into another surface. Direction is `AGENTS.md`'s Product section
+and the open issues (`triaging-issues`).
+
+The design is stated as it stands now, never as a log of decisions: a design change
+rewrites the owning skill in place, in the present tense, and git history holds what it
+used to say. Numbered records with statuses would make every feature change cost a new
+record, and two homes for one fact drift apart, so there are none.
 
 ## Purpose per file
 
 Each surface has one job; do not blur them, and do not let one grow a second copy of
 another's content. An issue that creates a new document adds its line here.
 
-- `README.md` — the tour: what the app is, the Quickstart, the Design Philosophy (one
-  "Why …?" section per template decision, each linking the file that enforces it),
-  "Using This Template" (turning it into a new app), the everyday-recipe Development
-  table, and the Documentation list. It links to `docs/architecture.md`, `AGENTS.md`,
-  and `CONTRIBUTING.md` instead of repeating them.
+- `README.md` — the tour: what the app is, the Quickstart, how it is laid out (a short
+  paragraph pointing at `AGENTS.md`'s Architecture section and the skills), "Using This
+  Template" (turning it into a new app), the everyday-recipe Development table, and the
+  Documentation list. It links to `AGENTS.md` and `CONTRIBUTING.md` instead of repeating
+  them, and holds no design reasoning of its own.
 - `CONTRIBUTING.md` — for a human contributor: the prerequisites, every `just` recipe in
   `justfile` order with the commands it runs without Just, the pull request process,
   code standards, commit messages, and the changelog policy. The full recipe list lives
@@ -55,7 +71,8 @@ another's content. An issue that creates a new document adds its line here.
   what to keep, and an order that stays green), opening the project in Xcode, and the
   app icon. A file the example adds, moves, or wires in updates its removal list.
 - `AGENTS.md` — the agent-facing guide: the Quick Reference command index, "Validating a
-  change", the Architecture, "Before changing the architecture", the Skills and Rules
+  change", the Architecture (the layer rules, the app's shape, and "What is contract
+  and what is private"), "Before changing the architecture", the Skills and Rules
   tables, "Security and human approval", "Repository scripts", "Enforcement
   layers", and the Review Checklist. A changed boundary, gate, `just`
   recipe, or script rule lands here.
@@ -63,18 +80,14 @@ another's content. An issue that creates a new document adds its line here.
   Keep a Changelog format its header links. A user-facing change gets an entry under
   `[Unreleased]` in the same pull request that makes it; GitHub's generated release
   notes are supplementary, never a substitute.
-- `docs/architecture.md` — the design document: "Decisions at a glance" (the template's
-  own reasoning), the layers, view models, repositories, the composition root,
-  concurrency, logging, localization, testing, what is contract, and "Where new code
-  goes". It covers the same ground as `AGENTS.md`'s Architecture section, so a moved
-  boundary updates both in the same pull request.
-- `docs/architecture/roadmap.md` — the app's direction, `steering-the-roadmap`'s. The
-  design itself is never kept as a log of decisions: a design change (`AGENTS.md`'s
-  "Before changing the architecture") rewrites `docs/architecture.md`, `AGENTS.md`'s
-  Architecture section, and the owning skill in place, in the present tense, and git
-  history holds what they used to say.
-- `.agents/skills/<name>/SKILL.md` — the conventions of one kind of change, loaded on
-  demand. `authoring-skills` owns how one is written, mirrored, and checked.
+- `docs/design-system.md` — the research record behind the design lock: the brief, the
+  reviewed references, the decision ledger, and the sources. The lock itself is
+  `designing-ui`'s; a lock change that new research supports updates both.
+- `docs/running-on-device.md` — the device-run guide: the one-time setup and everyday
+  use of `just run-device`.
+- `.agents/skills/<name>/SKILL.md` and its `references/` — the conventions of one kind
+  of change, loaded on demand, and the design of the subject it owns ("Design lives in
+  the skills"). `authoring-skills` owns how one is written, mirrored, and checked.
 - `///` doc comments in `Packages/*/Sources/**` — a symbol's contract: the "why",
   not what the signature already says (`.claude/rules/swift.md`). Public API carries one
   (`AGENTS.md`'s "Review Checklist"); this skill owns only whether one is owed.

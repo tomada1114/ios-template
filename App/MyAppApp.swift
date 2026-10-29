@@ -27,7 +27,7 @@ private struct SceneRoot: View {
 /// `MyAppPlatform` adapters and hands them, as ports, to Core's `AppModel`, which builds
 /// every view model over them — so nothing below `App/` depends on which store answers,
 /// and `App/` decides nothing but which adapter each port gets
-/// (`docs/architecture.md` › Composition root).
+/// (the `designing-core-logic` skill's `references/view-models.md`).
 @main
 struct MyAppApp: App {
     /// The launch argument `LaunchUITests` passes: an in-memory store and a scratch

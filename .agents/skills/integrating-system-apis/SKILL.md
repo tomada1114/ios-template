@@ -1,18 +1,16 @@
 ---
 name: integrating-system-apis
 description: >
-  Covers reaching an iOS system API from this app through a Core port under Swift 6
-  strict concurrency - where the port, the MyAppPlatform adapter, the fake, the contract,
-  and the App/ wiring go; a permission status as a Core enum; Info.plist usage
+  Covers reaching an iOS system API or a remote API through a Core port under Swift 6
+  strict concurrency - the port, MyAppPlatform adapter, fake, contract, and App/
+  wiring; the HTTPClient port, URLSessionHTTPClient, and the APIClient Endpoint service; a permission status as a Core enum; Info.plist usage
   descriptions (INFOPLIST_KEY_NSCameraUsageDescription and friends), UIBackgroundModes,
   BGTaskSchedulerPermittedIdentifiers and PrivacyInfo.xcprivacy in project.yml;
-  UserNotifications authorization and scheduling, PhotosPicker and loadTransferable,
-  BGTaskScheduler background tasks, simctl privacy grant, revoke and reset; #if os(iOS)
-  in MyAppPlatform and what just test, just test-ios, and a human on a device each
-  prove. Use when adding a notification, photo, camera, location, background-task, or
-  other framework integration, when a permission prompt or a denied permission is
-  involved, when the app crashes at a missing usage-description string, when a
-  framework type will not cross an actor boundary, or when tempted by @unchecked
+  UserNotifications, PhotosPicker and loadTransferable, BGTaskScheduler, simctl
+  privacy; #if os(iOS) and what just test, just test-ios, and a device each prove. Use when adding a notification, photo, camera, location, background-task,
+  network call, or other framework integration, when a permission prompt or a denied
+  permission is involved, when the app crashes at a missing usage-description string,
+  when a framework type will not cross an actor boundary, or when tempted by @unchecked
   Sendable or nonisolated(unsafe).
 ---
 
@@ -21,8 +19,8 @@ description: >
 **Owns:** reaching an iOS framework from this app — the port and adapter shape, a
 permission as Core state, where a usage description and an `Info.plist` key live, and
 what can be tested where. **Does not own:** which capabilities and entitlements the app
-takes (`starting-an-app`, written as present state in `AGENTS.md` › Architecture and
-`docs/architecture.md`); the
+takes (`starting-an-app`, written as present state in `AGENTS.md` › Architecture);
+storage — a repository, SwiftData, or a preference (`persisting-data`); the
 red-green loop for the Core decision the port serves (`tdd`); the Core error enum an
 adapter maps into (`designing-errors`); running the app and the evidence a pull request
 carries (`running-the-app`); a picker or other control that lives in a view
@@ -31,7 +29,8 @@ carries (`running-the-app`); a picker or other control that lives in a view
 ## The shape, before any OS code
 
 Every integration is the same pieces, and the template ships one of each to copy —
-`docs/architecture.md` › Repositories is the full description:
+the repository port, which `persisting-data`'s "A repository is a port" describes in
+full:
 
 | Piece | Where | Worked example |
 |---|---|---|
@@ -109,10 +108,17 @@ cannot be launched there at all — Apple's debugger route works only on a devic
 checked 2026-09-30). Adding a background mode or any capability is a design change and a
 signing change (`AGENTS.md` › "Security and human approval").
 
+## Networking
+
+A remote API is never a new port: the transport is already behind `HTTPClient`, and its
+calls are `Endpoint` values sent through the Core `APIClient`. **REQUIRED:**
+[references/http-client.md](references/http-client.md) before adding a call, a
+service over `APIClient`, or a change to either.
+
 ## Two platforms at compile time
 
 `MyAppPlatform` also builds for macOS, because `swift test` runs the package on the host
-(`docs/architecture.md` › Why the package also builds for macOS). An iOS-only framework
+(`AGENTS.md` › Architecture). An iOS-only framework
 call — `BGTaskScheduler`, a UIKit type, `UIApplication.openSettingsURLString` — sits
 inside `#if os(iOS)`, and so does its test; `just test-ios` runs that test on the iOS
 Simulator, and CI's `Package Tests (iOS Simulator)` job runs it on every pull request.
@@ -162,7 +168,7 @@ nowhere; using either to silence a diagnostic needs a human's sign-off (`AGENTS.
       the fake in `MyAppCoreTests` and against the adapter where it can run.
 - [ ] Every usage description and `Info.plist` key is in `project.yml`, and the same pull
       request rewrites the present-state description of the permission or capability
-      (`AGENTS.md` › Architecture, `docs/architecture.md`).
+      (`AGENTS.md` › Architecture).
 - [ ] iOS-only code and its test sit behind `#if os(iOS)`; `just test-ios` passes.
 - [ ] The pull request carries what no test can: the real prompt, the delivered
       notification, or the device run (`running-the-app`).

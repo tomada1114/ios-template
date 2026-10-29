@@ -10,8 +10,12 @@ description: >
 
 # TDD Workflow
 
-TDD is mandatory for all production Swift code (`docs/architecture.md` › Testing).
-Never write implementation before a failing test exists.
+TDD is mandatory for all production Swift code (`.claude/rules/testing.md`). Never
+write implementation before a failing test exists.
+
+Every package suite uses Swift Testing — `@Test`, `#expect`, and parameterized
+`@Test(arguments:)` are the modern default shipped with the toolchain. XCTest appears
+only in `LaunchUITests/`, because Apple offers UI automation in XCTest alone.
 
 ## Step 0: Decide Where the Code Lives
 
@@ -22,7 +26,7 @@ Never write implementation before a failing test exists.
 - **Persistence or an OS service** → a `Sendable` port (protocol) in `MyAppCore` plus
   its adapter in `Packages/MyAppKit/Sources/MyAppPlatform` (SwiftData, UserNotifications,
   …). Test the Core side against the port's fake in `Tests/MyAppTestSupport`
-  (`docs/architecture.md` › Testing); the adapter itself is translation only and sits
+  (`.claude/rules/testing.md`); the adapter itself is translation only and sits
   outside the coverage floor, so anything it would need a test for belongs in Core
   instead. Whether the framework really behaves as the adapter assumes is the port's
   contract function run against the adapter in `Tests/MyAppPlatformTests` — under
@@ -55,8 +59,8 @@ Confirm the new test fails (a compile error for a not-yet-existing symbol counts
 ## Step 3: GREEN — Implement the Minimum
 
 Write the smallest implementation in `MyAppCore` that makes the test pass.
-Follow `docs/architecture.md`: typed errors, no force-unwrap/`try!`, value
-types first, `///` docs on public API.
+Follow `.claude/rules/swift.md` and `designing-core-logic`: typed errors, no
+force-unwrap/`try!`, value types first, `///` docs on public API.
 
 ```bash
 cd Packages/MyAppKit && swift test

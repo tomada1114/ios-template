@@ -17,7 +17,7 @@ let package = Package(
     // package on the host Mac — seconds instead of a simulator boot, and the only way
     // scripts/coverage.sh can read coverage. Every target therefore has to compile for
     // both; an iOS-only API in MyAppUI or MyAppPlatform sits behind `#if os(iOS)`
-    // (docs/architecture.md › Why the package also builds for macOS).
+    // (AGENTS.md › Architecture).
     platforms: [.iOS(.v27), .macOS(.v27)],
     products: [
         .library(name: "MyAppCore", targets: ["MyAppCore"]),

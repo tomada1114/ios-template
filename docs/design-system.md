@@ -5,10 +5,11 @@ of tokens every screen draws from — `DesignTokens` in
 `Packages/MyAppKit/Sources/MyAppUI/DesignSystem/DesignTokens.swift` — and leaves color
 and type to the system, so a screen built from the template is correct in light, dark,
 every Dynamic Type size, and Increase Contrast before anyone decides a brand. Every brand
-decision belongs to the app's own design lock — the "Design lock" section below, which
-the template ships as its reference lock and an app rewrites for itself after the
-bootstrap, as the `designing-ui` skill says (its `references/refero-workflow.md` is how an
-app researches one).
+decision belongs to the app's own design lock, which lives in the `designing-ui` skill
+(`.agents/skills/designing-ui/references/design-lock.md`): the template ships its
+reference lock there, and an app rewrites it for itself after the bootstrap. This page is
+the research record behind the lock, never a copy of it; the skill's
+`references/refero-workflow.md` is how an app researches its own.
 
 Researched 2026-09-30 with the owner's `/refero-design` skill and the Refero MCP tools
 (screens and flows on `platform: "ios"`; styles only as a check). Apple claims were
@@ -163,48 +164,13 @@ Token commitments: background — system (List default); type — system text st
 | Add button: `.borderedProminent` at `.controlSize(.large)` | HIG Buttons (44 pt); measured 50 pt tall | The primary action | The regular size falls under 44 pt |
 | App icon: placeholder stays | HIG App Icons; Icon Composer docs | `App/Assets.xcassets/AppIcon.appiconset` | Icon Composer `.icon` versus an asset catalog is an app decision |
 
-## Template defaults vs. app decisions
-
-| Template default | Each app decides in its design lock |
-|---|---|
-| Spacing, radius, hit-target, motion tokens above | Adjusted spacing or radii, density |
-| Semantic system colors; system accent | Accent color (Any/Dark/Increased-contrast variants), brand colors |
-| System font, text styles, Dynamic Type | A custom font (with license and Dynamic Type scaling), type roles per screen |
-| SF Symbols, default rendering | Rendering mode per context, custom symbols/images |
-| Standard components; automatic Liquid Glass | Custom glass or materials, where and on which OS |
-| — | Navigation structure (tabs vs. stack), iPad layout, haptics, motion personality, copy voice, app icon |
-
-## Design lock
-
-What every screen in this app looks like, one value per field
-(`designing-ui`'s `references/design-lock.md` lists the fields and where each lands in
-code). This is the template's reference lock: system-first and unbranded, because the
-template is the neutral base every app departs from. An app cut from the template
-rewrites this section for itself after the bootstrap; changing a value later is an edit
-to this section in place, in the pull request that changes the code, with the reason in
-the sentence beside it — git history holds what it used to say.
-
-- Accent color: system default (`AccentColor` with no value). Nothing depends on its hue.
-- Custom colors: none; semantic system colors only.
-- Type: system font and text styles with Dynamic Type; a large navigation title.
-- Spacing and corner radius: the template scale in `DesignTokens`, unchanged.
-- Density: regular; the system `List` default style.
-- Symbols: SF Symbols only, default rendering.
-- Materials and Liquid Glass: standard components only.
-- Navigation structure: one `NavigationStack`; the Add button beside the draft field.
-- iPad layout: same as iPhone (the template targets both, `TARGETED_DEVICE_FAMILY: "1,2"`).
-- Haptics: none.
-- Motion: system transitions only (`.default`), none under Reduce Motion.
-- Copy style: title case for navigation titles and buttons; sentence case for alerts and
-  empty states. Voice: short and plain.
-- App icon: placeholder until distribution is decided.
-
 ## Visual QA
 
 The to-do list with two items and its empty state, on an iPhone 16e (the smallest iPhone
 device type offered, iOS 26.1), in light, dark, `accessibility-extra-extra-extra-large`,
 and Increase Contrast, taken with `running-the-app`'s `simctl` commands. The screenshots
-are the pull request's evidence, not files in the repository. Compared against the lock:
+are the pull request's evidence, not files in the repository. Compared against the lock
+(`designing-ui`'s `references/design-lock.md`):
 
 - Held: system grouped background and rows, large title, secondary gray for the empty
   state's text, accent only on the Add button, 44 pt or larger targets, text wrapping at

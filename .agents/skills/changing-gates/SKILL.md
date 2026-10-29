@@ -97,13 +97,13 @@ for the `scripts/tests/lint_test.sh` case that fails if the pinned tools drift.
 
 ## `Package.swift`'s `strictSettings`
 
-`strictSettings` holds `.swiftLanguageMode(.v6)` and `.treatAllWarnings(as: .error)`.
-It is not inherited: each target passes `swiftSettings: strictSettings` itself, so a new
-target — source, test, or a test-support library like `MyAppTestSupport` — must opt in
-explicitly, or it compiles without Swift 6 data-race errors and with warnings allowed.
-Removing an entry, or adding an `unsafeFlags` or a per-target exception, is weakening a
-gate. A new target is also an architecture decision (`AGENTS.md`'s "Before changing the
-architecture").
+`strictSettings` holds `.swiftLanguageMode(.v6)` and `.treatAllWarnings(as: .error)`
+(why, with XcodeGen, the iOS 27 floor, and Just: **BACKGROUND:**
+[references/design-reasons.md](references/design-reasons.md)). It is not inherited: each
+target passes `swiftSettings: strictSettings` itself, so a new target — source, test, or
+a test-support library — must opt in, or it compiles without Swift 6 data-race errors
+and with warnings allowed. Removing an entry, or adding an `unsafeFlags` or a per-target
+exception, is weakening a gate; a new target is a design change too.
 
 ## `mise.toml`
 

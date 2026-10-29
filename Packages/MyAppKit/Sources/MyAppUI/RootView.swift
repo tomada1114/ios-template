@@ -10,8 +10,8 @@ import SwiftUI
 /// ``AppRoute`` case and a branch of ``destination(for:)`` without touching any other
 /// screen. A pushed screen that needs a view model of its own gets it from the
 /// ``AppModel``'s `make…ViewModel(…)` factory for its route — Core decides what the model
-/// is built over, so this view never needs an adapter (`docs/architecture.md` ›
-/// Navigation).
+/// is built over, so this view never needs an adapter (`building-swiftui-screens`'s
+/// `references/navigation.md`).
 ///
 /// It owns neither model: `App/` creates the app model once for the app and the
 /// navigation model once per scene (both in `@State`), and hands them down. `@Bindable`

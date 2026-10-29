@@ -8,15 +8,20 @@ description: >
   close condition, a `Depends on #N` line). Use when filing a GitHub issue, triaging
   or re-prioritizing the backlog, picking a `priority: P0`-`P3` label, choosing
   between `bug`/`enhancement`/`documentation`/`chore`, marking a tracking issue,
-  editing .github/labels.yml or an issue form, running `just labels`, or routing a
-  friction or idea that came up while using the app.
+  editing .github/labels.yml or an issue form, running `just labels`, routing a
+  friction or idea that came up while using the app, or when asked what to work on
+  next or for the app's plan or status.
 ---
 
 # Triaging Issues
 
 **Owns:** this repository's issue vocabulary — the label taxonomy, what a priority
-means, and what an issue body must contain. **Does not own:** implementing an issue; a
-change to a gate file (`changing-gates`); any workflow beyond the tracker.
+means, and what an issue body must contain — and answering "what is next?" from it.
+**Does not own:** implementing an issue (`shipping-issues`); what the app is and its
+non-goals (`AGENTS.md`'s `## Product`); a change to a gate file (`changing-gates`).
+
+The app's direction is `AGENTS.md`'s `## Product` plus the open issues — their tiers,
+`on hold` parking, and tracking parents. There is no roadmap file or roadmap issue.
 
 Labels carry the triage decision, so it is made once and read back rather than
 re-derived every time the backlog is looked at. An issue is filed with a type label and
@@ -140,3 +145,22 @@ A parked issue leaves the lane only by a decision, never by age:
 
 Moving a request out of `## Product`'s non-goals is a human's call, not the triager's:
 parking or dropping it records that line rather than crossing it.
+
+## Answering "what is next?"
+
+Read the backlog as it is now, never as remembered; it changes between sessions:
+
+```bash
+gh issue list --state open --limit 200 --json number,title,labels
+```
+
+Lead with anything only the owner can clear — a `blocked: design` choice, a
+`blocked: external` step — since nothing behind it moves until they act. Then recommend
+one to three ready issues in tier order (the highest `priority:` without a `blocked:` or
+`on hold` label, its `Depends on #N` closed), each with its number and a one-line reason,
+and ask the owner to pick. Several `on hold` issues pointing the same way are evidence
+for a direction: say so, and leave promoting them to the rule above.
+
+`shipping-issues` takes the pick from there, and invoking it authorizes every write it
+makes, merge included. Invoke it only on the owner's confirmed pick, never on this
+skill's own recommendation.

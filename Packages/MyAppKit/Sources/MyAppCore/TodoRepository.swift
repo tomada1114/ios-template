@@ -17,7 +17,7 @@ public enum TodoRepositoryError: Error, Equatable, Sendable {
 /// A port: where to-do items are kept, asked in Core's own vocabulary.
 ///
 /// This is the template's worked example of the repository pattern
-/// (`docs/architecture.md` › Repositories). Core declares the protocol; `MyAppPlatform`
+/// (the `persisting-data` skill). Core declares the protocol; `MyAppPlatform`
 /// holds the SwiftData adapter (`SwiftDataTodoRepository`); `MyAppTestSupport` holds the
 /// in-memory fake every Core test uses; and `App/` — the composition root — decides which
 /// one the view model gets. Nothing below `App/` knows which store it is talking to.
