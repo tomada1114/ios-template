@@ -25,8 +25,8 @@ paths:
   composition root that hands a `MyAppPlatform` adapter, as a port, to Core's `AppModel`,
   which builds the view models over it
 - How Core logic is shaped (injected time, locale, and randomness; action-shaped view
-  models) is the `designing-core-logic` skill; the reasoning is
-  `docs/architecture.md` › View models
+  models, reentrancy, the composition root) and why the code is split this way is the
+  `designing-core-logic` skill
 - `///` doc comments on all public API; document *why*, not what the signature already says
 - A `switch` over an enum `MyAppCore` declares lists every case and has no `default:`
   (group cases with `case .a, .b:` instead), so adding a case is a compile error at each
@@ -44,7 +44,7 @@ paths:
   goes inside `#if os(iOS)`
 - `cd Packages/MyAppKit && swift build` is the check that catches a missing guard;
   `just build` alone compiles only for iOS and will not
-- The why: `docs/architecture.md` › Why the package also builds for macOS
+- The why: AGENTS.md › Architecture
 
 ## Persistence
 
@@ -55,11 +55,11 @@ paths:
   type; no repository opens a container of its own
 - The adapter is a `@ModelActor` actor and maps a record to a Core value type inside the
   actor, so no `@Model` object crosses the port
-  (`docs/architecture.md` › Repositories › The SwiftData adapter)
+  (the `persisting-data` skill)
 - A shipped `VersionedSchema` (`AppSchemaV1`, the whole app's) is never edited: a change
   to a stored model, or a new one, is a new schema version plus an `AppMigrationPlan`
   stage, with a test that opens a store the previous version wrote
-  (`docs/architecture.md` › What is contract)
+  (AGENTS.md › What is contract and what is private)
 
 ## Access Control
 
@@ -119,8 +119,9 @@ paths:
 - Level by intent: `.debug` for the development stream `just logs` shows, `.info` for a
   milestone worth keeping, `.error`/`.fault` for something that went wrong. See
   `TodoListViewModel.load()` for the worked example
-- A log message is an autoclosure: log a local constant, not a `self.` property
-  (`docs/architecture.md` › Logging)
+- A log message is an autoclosure that needs an explicit `self`, which SwiftFormat's
+  `redundantSelf` rule strips: log a local constant, not a `self.` property
+  (`TodoListViewModel.load()`)
 
 ## Concurrency
 
@@ -128,10 +129,11 @@ paths:
 - UI-facing state is `@MainActor` (`TodoListViewModel`); keep Core types `Sendable` where
   they cross actors
 - Ports are `Sendable`. The repository and HTTP ports are `async`; `PreferencesStoring` is
-  deliberately synchronous (`docs/architecture.md` › Preferences)
+  deliberately synchronous (the `persisting-data` skill's `references/preferences.md`)
 - Adapters and fakes are actors (`SwiftDataTodoRepository`, `InMemoryTodoRepository`), or
   `Sendable` structs holding only `Sendable` values (`URLSessionHTTPClient`,
   `UserDefaultsPreferences`) and final classes guarding their state with a `Mutex`
-  (`InMemoryPreferences`) — never `@unchecked Sendable` (`docs/architecture.md` ›
-  Concurrency)
+  (`InMemoryPreferences`) — never `@unchecked Sendable`
+- A closure a test injects (`now`, `makeID`, the fake's `onSave` and `onFetch`) is
+  `@Sendable`; it captures values, not a `@MainActor` static
 - No `@unchecked Sendable` without a comment proving the invariant it papers over

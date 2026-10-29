@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- How the app is built and why now lives only in the skill that owns each subject, plus
+  `AGENTS.md`'s Architecture section: `docs/architecture.md`, the
+  `docs/architecture/roadmap.md` skeleton, the `steering-the-roadmap` skill, and
+  README's Design Philosophy are removed. A new `persisting-data` skill owns the
+  repository port, the SwiftData store and its schema versions, and preferences; view
+  models and the composition root, navigation, the HTTP client, and the design lock
+  move into references of `designing-core-logic`, `building-swiftui-screens`,
+  `integrating-system-apis`, and `designing-ui`; "What is contract and what is
+  private" moves into `AGENTS.md`. The app's direction is the `## Product` section and
+  the open issues, and "what is next?" is answered by `triaging-issues`.
 - The design is now kept as its present state instead of numbered decision records:
   the record index and template under `docs/architecture/`, and the skill that wrote
   them, are removed. A design change rewrites

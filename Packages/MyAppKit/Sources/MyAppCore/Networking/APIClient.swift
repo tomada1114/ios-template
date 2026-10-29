@@ -2,8 +2,8 @@ import Foundation
 import os
 
 /// A JSON API, reached through an ``HTTPClient``: the Core service every networked
-/// feature builds on, not a port of its own (`docs/architecture.md` › The HTTP client
-/// port › A worked API service).
+/// feature builds on, not a port of its own (the `integrating-system-apis` skill's
+/// `references/http-client.md`).
 ///
 /// It turns an ``Endpoint`` into an ``HTTPRequest`` below one base URL, sends it, and
 /// answers with the decoded 2xx body or a closed ``APIError`` — so a feature decides

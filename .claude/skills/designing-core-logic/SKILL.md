@@ -4,11 +4,13 @@ description: >
   Covers how logic in MyAppCore is shaped: time, the current date, identifiers, Locale,
   and randomness injected rather than read (Clock, any Clock<Duration>, Date(), UUID(),
   Locale.current, SystemRandomNumberGenerator), tunable numbers gathered in one Tuning
-  type, action-shaped methods on @MainActor @Observable view models, and the patterns
-  this template deliberately does not adopt. Use when adding a type, a view model, a
-  timer, a debounce, a delay, a formatted string, a threshold, or anything random to
-  MyAppCore, or when reaching for a coordinator, a use-case class, a DI container, a
-  reducer, or an event bus.
+  type, action-shaped methods on @MainActor @Observable view models, reentrancy after an
+  await, AppModel and the composition root in App/, why the code is split into Core, UI,
+  and Platform, and the patterns this template deliberately does not adopt. Use when
+  adding a type, a view model, a timer, a debounce, a delay, a formatted string, a
+  threshold, or anything random to MyAppCore, wiring a view model into AppModel, or when
+  reaching for a coordinator, a use-case class, a DI container, a reducer, or an event
+  bus.
 ---
 
 # Designing Core Logic
@@ -17,8 +19,9 @@ description: >
 deterministic under `swift test` — what it is handed rather than reads, where tunable
 numbers live, what its entry points look like, and which patterns are not adopted.
 **Does not own:** the test-first loop itself (`tdd`); error types and `throws`
-(`designing-errors`); a storage or OS service behind a port (`docs/architecture.md` ›
-Repositories); the module boundaries and import rules
+(`designing-errors`); storage behind a port — the repository, SwiftData, and
+preferences (`persisting-data`); an OS service or the HTTP client behind a port
+(`integrating-system-apis`); the module boundaries and import rules
 (`AGENTS.md` › Architecture, `.claude/rules/swift.md`).
 
 ## Why this exists
@@ -86,7 +89,7 @@ only when the answer really comes from a framework Core may not import.
   `value.formatted(.number.locale(locale))`, `date.formatted(.dateTime.locale(locale))`.
 - Keep the user-visible *wording* in Core where the coverage floor sees it, as a
   `LocalizedStringResource` like `TodoListStrings` and `TodoListFailure.message`; the
-  view only renders it (`docs/architecture.md` › Localization).
+  view only renders it (`localizing-the-app`).
 - **Tests:** `Locale(identifier: "en_US_POSIX")` for a stable expected string, plus a
   second locale (`"de_DE"`, `"ja_JP"`) when the behavior under test *is* the
   localization.
@@ -146,26 +149,28 @@ an app wants to tweak creates it, in this shape:
   (`makeTodoDetailViewModel(id:)`). A screen that shows what a shared model holds takes
   that model, not a copy of the value — `TodoDetailViewModel` holds the list and an
   identifier — so both screens show one state. `AppModelTests` builds each route's
-  model over the fakes (`docs/architecture.md` › Composition root).
+  model over the fakes. Ownership, reentrancy after an `await`, and the composition
+  root: **REQUIRED:** [references/view-models.md](references/view-models.md).
 - Domain rules live in value types (`TodoItem`) that the view model holds and delegates
   to; the view model translates between them and what the view shows.
 
 ## Deliberately not adopted
 
-Each row is a pattern an implementer may reach for out of habit. The template's own
-reasoning lives in `docs/architecture.md`.
+Each row is a pattern an implementer may reach for out of habit, with the reason it is
+not used here. The reasoning behind the layers themselves — the package split, MVVM, no
+dependencies — is **BACKGROUND:** [references/design-reasons.md](references/design-reasons.md).
 
-| Pattern | Why not | Reasoning |
-|---|---|---|
-| A third-party architecture framework (TCA, a Redux store, an MVVM kit) | Zero dependencies; `@Observable` plus actions already gives testable state | `docs/architecture.md` › Decisions at a glance |
-| A generic `send(_ action:)` reducer on every view model | Methods are discoverable, typed, and testable one at a time | `docs/architecture.md` › View models |
-| Use-case / interactor classes, presenters, per-layer DTOs | The view model's action *is* the use case; copies between layers add no consumer | `docs/architecture.md` › Layers |
-| A repository or protocol per type "for testability" | A port exists only where a storage or OS boundary does (`TodoRepository`); a pure rule (`TodoItem`) is tested directly | `docs/architecture.md` › Repositories |
-| A dependency-injection container or service locator | `App/` hands the ports to `AppModel`'s initializer, and `AppModel` builds each model by a named method — no registry, no lookup by type, no global | `docs/architecture.md` › Composition root |
-| Coordinators / routers as separate objects | SwiftUI's own navigation state, owned by a view model, suffices at this size | this skill |
-| An event bus or `NotificationCenter` between Core types | Direct calls; an OS notification is observed through a port instead | `docs/architecture.md` › Where new code goes |
+| Pattern | Why not |
+|---|---|
+| A third-party architecture framework (TCA, a Redux store, an MVVM kit) | Zero dependencies; `@Observable` plus actions already gives testable state |
+| A generic `send(_ action:)` reducer on every view model | Methods are discoverable, typed, and testable one at a time |
+| Use-case / interactor classes, presenters, per-layer DTOs | The view model's action *is* the use case; copies between layers add no consumer |
+| A repository or protocol per type "for testability" | A port exists only where a storage or OS boundary does (`TodoRepository`); a pure rule (`TodoItem`) is tested directly |
+| A dependency-injection container or service locator | `App/` hands the ports to `AppModel`'s initializer, and `AppModel` builds each model by a named method — no registry, no lookup by type, no global |
+| Coordinators / routers as separate objects | SwiftUI's own navigation state, owned by a view model, suffices at this size |
+| An event bus or `NotificationCenter` between Core types | Direct calls; an OS notification is observed through a port instead |
 
-An app cut from this template that adopts one of these rewrites this table's row and
-the `docs/architecture.md` section it cites in the same pull request, stating in the
-present tense the problem the current shape could not solve and why the pattern now
-holds (`AGENTS.md` › Before changing the architecture).
+An app cut from this template that adopts one of these rewrites its row here (and the
+matching entry in `references/design-reasons.md`, if it has one) in the same pull
+request, stating in the present tense the problem the current shape could not solve and
+why the pattern now holds (`AGENTS.md` › Before changing the architecture).

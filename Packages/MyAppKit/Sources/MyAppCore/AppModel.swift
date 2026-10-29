@@ -9,8 +9,8 @@ import Observation
 /// pushed screen's model. That keeps the wiring — which model is built over which port,
 /// and what a route's screen shares with the list — in Core, where `AppModelTests` and
 /// the coverage floor see it, rather than in `App/` or in a destination `switch` in
-/// `MyAppUI`, which may not import the adapters (`docs/architecture.md` › Composition
-/// root).
+/// `MyAppUI`, which may not import the adapters (the `designing-core-logic` skill's
+/// `references/view-models.md`).
 ///
 /// Not a service locator: there is no registry, no lookup by type, and no global. Every
 /// dependency is a named stored property set from this initializer, and a route's model

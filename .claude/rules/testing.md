@@ -6,7 +6,7 @@ paths:
 
 ## Where a Test Goes
 
-Four kinds of test, split by what is under test (`docs/architecture.md` › Testing):
+Four kinds of test, split by what is under test:
 
 1. **A decision → a Core test with the fake.** Anything that branches, clamps, formats,
    orders, or remembers lives in `MyAppCore` and is tested in `Tests/MyAppCoreTests`
@@ -104,7 +104,7 @@ A fake stands in for the adapter only while both keep the port's promises, so th
 promises are asserted once, against both. The contract suite is a function over the
 protocol, not over either implementation, and every clause it checks is one the port's
 `///` states (add the clause there first). `TodoRepository` is the worked example
-(`docs/architecture.md` › Repositories):
+(the `persisting-data` skill):
 
 - The fakes and one contract function per port live in the `MyAppTestSupport` target
   (`Tests/MyAppTestSupport`), which both test targets depend on — never one test target
@@ -132,7 +132,8 @@ protocol, not over either implementation, and every clause it checks is one the 
   failed load, then a retry)
 - **Reentrancy**: a `@MainActor` method that `await`s can be re-entered before it
   resumes — drive the interleaving through the fake's `onSave(_:)`
-  or `onFetch(_:)` (`docs/architecture.md` › View models)
+  or `onFetch(_:)` (the `designing-core-logic` skill's `references/view-models.md` ›
+  Reentrancy)
 - **Both branches** of every conditional in Core (the coverage floors measure lines and functions, not branches, so they will not notice a missed one — write the test for each branch yourself)
 
 ## Hygiene

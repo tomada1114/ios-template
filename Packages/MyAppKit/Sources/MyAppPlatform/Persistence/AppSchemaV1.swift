@@ -5,7 +5,7 @@ import SwiftData
 /// The first version of the app's stored schema: every `@Model` the app keeps, in one
 /// store that ``PersistenceStore`` opens once.
 ///
-/// Versioned from day one because the stored shape is contract (`docs/architecture.md`
+/// Versioned from day one because the stored shape is contract (`AGENTS.md`
 /// › What is contract): an installed app's store outlives every build, so a change to a
 /// `@Model` class that the shipped schema does not describe is a migration, not an
 /// edit. The next change — a changed record or a second entity — adds `AppSchemaV2`

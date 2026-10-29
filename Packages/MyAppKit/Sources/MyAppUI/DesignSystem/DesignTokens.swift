@@ -6,9 +6,9 @@ import SwiftUI
 /// Tokens are a scale, not a style. Color and type are deliberately absent: they come from
 /// the system (semantic colors, text styles, Dynamic Type), so a screen is correct in
 /// light, dark, every text size, and Increase Contrast without a token for it. An app's
-/// design lock (`docs/design-system.md`) may change these values; it never moves them into
-/// `MyAppCore`, which
-/// does not import SwiftUI. The research behind each value is `docs/design-system.md`.
+/// design lock (the `designing-ui` skill's `references/design-lock.md`) may change these
+/// values; it never moves them into `MyAppCore`, which does not import SwiftUI. The
+/// research behind each value is `docs/design-system.md`.
 public enum DesignTokens {
     /// Gaps between elements, in points. The inset from the screen edge is not one of
     /// these: it is the system's (`List` and `Form` insets, `.padding()`), so it follows

@@ -85,8 +85,8 @@ adds brings the manifest with it.
 A privacy-gated permission — a usage-description key, a background mode, a
 required-reason declaration — is one of the changes `AGENTS.md` › "Before changing the
 architecture" lists. The same pull request rewrites the present-state description in
-`AGENTS.md`'s Architecture section and `docs/architecture.md`, naming the feature that
-needs it and what the app does while it is denied.
+`AGENTS.md`'s Architecture section, naming the feature that needs it and what the app
+does while it is denied.
 A background mode or any other capability is also an entitlement or signing change,
 which needs the owner's sign-off.
 

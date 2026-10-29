@@ -5,8 +5,8 @@ description: >
   Guidelines (semantic and accent colors, text styles and Dynamic Type, light and dark
   appearance, Increase Contrast, SF Symbols, safe areas, size classes, 44-point targets,
   toolbars, haptics, swipe actions, Liquid Glass with an iOS 27 floor), the
-  DesignTokens scale in MyAppUI/DesignSystem, and the per-app design lock, the present-state
-  section of docs/design-system.md researched with /refero-design. Use when choosing a color, font,
+  DesignTokens scale in MyAppUI/DesignSystem, and the per-app design lock in this skill's
+  references/design-lock.md, researched with /refero-design into docs/design-system.md. Use when choosing a color, font,
   spacing, radius, symbol, material, or animation, adding or changing a DesignTokens
   value, touching AccentColor.colorset or AppIcon.appiconset, adding glassEffect or
   sensoryFeedback, reviewing how a screen looks in light, dark, the largest text size,
@@ -25,8 +25,8 @@ accessibility wiring (`building-swiftui-screens`); the device family and scene m
 
 Apple's Human Interface Guidelines (HIG) are the baseline and are not restated: this
 skill keeps only what this repository decides on top of them and links the page for the
-rest. The template's own research — every reference, the reference lock, and why each
-token has its value — is `docs/design-system.md`.
+rest. The template's own research — every reference, Refero's reference lock, the
+ledger, and why each token has its value — is `docs/design-system.md`.
 
 ## System first, custom by exception
 
@@ -130,14 +130,13 @@ sheets, `TabView` — take Liquid Glass. That is the template's whole adoption.
 The lock is the app's answer to "what does every screen here look like?" — a handful of
 decisions made once, each a value or an explicit "system default".
 
-- **It is the "Design lock" section of `docs/design-system.md`**, stated as the present
-  state: one value per field, each with its reason. The template ships its reference
-  lock there; an app rewrites that section for itself after the bootstrap. The owner
+- **It is [references/design-lock.md](references/design-lock.md)'s "The lock"**, the
+  present state: one value per field, each with its reason. The template ships its
+  reference lock there; an app rewrites it for itself after the bootstrap. The owner
   reviews it in the pull request that writes it; until it merges, screens may be built
   against it only as an experiment.
 - **When:** after the device family is decided and before the second screen.
-- **What it holds, and where each value lands:**
-  [references/design-lock.md](references/design-lock.md).
+- **What it holds, and where each value lands:** **REQUIRED:** the same file's Fields.
 - **How to research it:** **REQUIRED:**
   [references/refero-workflow.md](references/refero-workflow.md) — `/refero-design`
   with iOS screens and flows when the Refero tools are available, the HIG rules above
@@ -145,8 +144,8 @@ decisions made once, each a value or an explicit "system default".
 - **Changing it:** edit the section in place — a corrected value and a new direction (a
   new accent, custom type, denser layout) alike — in the pull request that changes the
   code, rewriting the reason beside it; git history holds what it used to say.
-- **In the template itself** the lock is the system-first reference lock, and a change
-  to it updates `docs/design-system.md`.
+- **In the template itself** the lock is the system-first reference lock, and research
+  behind a change to it updates `docs/design-system.md`'s ledger.
 
 | Template default | Each app decides in its design lock |
 |---|---|
@@ -162,8 +161,8 @@ decisions made once, each a value or an explicit "system default".
 Before calling a screen done, `just build`, then `just run` and screenshot it per
 `running-the-app` on the smallest iPhone the Simulator offers — light, dark,
 `accessibility-extra-extra-extra-large`, and Increase Contrast, plus a regular-width iPad
-while iPad ships — and compare each against the lock (or, in the template, the reference
-lock in `docs/design-system.md`). Fix drift, or name it in the pull request as accepted.
+while iPad ships — and compare each against the lock (`references/design-lock.md`). Fix
+drift, or name it in the pull request as accepted.
 No gate sees any of this: the screenshots in the pull request are the evidence.
 
 ## Sources

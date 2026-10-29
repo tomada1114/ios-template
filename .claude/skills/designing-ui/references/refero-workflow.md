@@ -38,13 +38,13 @@ to copy — its brief, query table, reviewed screens, reference lock, and ledger
 4. **Reference lock and decision ledger.** In the skill's format: Primary, Preserve,
    Borrow only, Role rules, Media strategy, Reject, Token commitments; and a ledger row
    (Decision, Source, Rule/role, Why) per lock field.
-5. **Write the lock.** Rewrite `docs/design-system.md` in place for the app: the brief
-   and the product it came from under Brief, the reviewed screens and flows with every
-   Refero ID and Apple URL and the checked date under Sources, the ledger with each
-   rejected direction and why it lost, and the "Design lock" section as one value per
-   `design-lock.md` field. Choices the owner has not made and claims not yet checked
-   (`Unverified:`) go in the pull request as open questions; the owner reviews the lock
-   there.
+5. **Write the record, then the lock.** Rewrite `docs/design-system.md` in place for the
+   app as the research record: the brief and the product it came from under Brief, the
+   reviewed screens and flows with every Refero ID and Apple URL and the checked date
+   under Sources, and the ledger with each rejected direction and why it lost. Then
+   rewrite `design-lock.md`'s "The lock", beside this file, as one value per field.
+   Choices the owner has not made and claims not yet checked (`Unverified:`) go in the
+   pull request as open questions; the owner reviews the lock there.
 6. **Implement and look.** Land the values where `design-lock.md` says, then run
    `designing-ui`'s review pass — light, dark, the largest text size, Increase Contrast —
    and compare the screenshots against the reference lock. Fix drift before the pull

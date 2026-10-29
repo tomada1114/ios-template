@@ -35,125 +35,25 @@ just run       # build, then install and launch the app in the iOS Simulator
 Device Hub with the fresh build running. [docs/getting-started.md](docs/getting-started.md)
 walks through the rest.
 
-## Design Philosophy
+## How It Is Built
 
-Every choice in this template has a reason. If you disagree with a decision,
-you know exactly what to change and why it was there in the first place.
+```
+App/                      # Thin @main shell: the composition root and resources, no logic
+Packages/MyAppKit/        # All real code, a local Swift package that swift test runs on the host
+├── Sources/MyAppCore/    # Domain values, view models, ports, wording — coverage-gated
+├── Sources/MyAppUI/      # SwiftUI views that render Core state
+├── Sources/MyAppPlatform/  # Adapters behind Core ports: SwiftData, URLSession, UserDefaults
+└── Tests/                # Swift Testing suites, each port's fake and contract
+LaunchUITests/            # The XCUITest launch test
+project.yml               # XcodeGen manifest; MyApp.xcodeproj is generated and gitignored
+```
 
-### Why XcodeGen with a gitignored `.xcodeproj`?
-
-`project.yml` is declarative, diffable, and safely editable by both humans and
-AI agents; a raw `pbxproj` is a UUID graph that merge conflicts and agents can
-silently corrupt. The generated project is treated like a lockfile-derived
-artifact: regenerate, never hand-edit ([`project.yml`](project.yml), `just generate`).
-Trade-off: XcodeGen is a third-party tool with its own bus factor — but the
-manifest is simple enough to migrate away from if that ever matters.
-
-### Why a thin app shell + local Swift package?
-
-[`App/`](App/MyAppApp.swift) contains only the `@main` entry point, the composition
-root, and resources. Everything real lives in the local package under
-[`Packages/`](Packages), so its tests run with plain `swift test`. The package also
-builds for macOS for exactly that reason: `swift test` runs on the host in seconds,
-with no simulator boot and no signing
-([docs/architecture.md › Why the package also builds for macOS](docs/architecture.md#why-the-package-also-builds-for-macos)).
-Precedent: pointfreeco's isowords.
-
-### Why the Core/UI/Platform split and a coverage floor on Core only?
-
-`MyAppCore` holds all logic and never imports a UI, persistence, or OS-integration
-framework (the list is in [`.swiftlint.yml`](.swiftlint.yml)'s `no_ui_import_in_core`,
-and `ArchitectureBoundaryTests` holds it a second time); `MyAppUI` holds thin views;
-`MyAppPlatform` holds the adapters that talk to the OS — the SwiftData repository is
-the worked example — each behind a protocol Core declares, so a test substitutes a
-fake and `App/` decides which implementation the app gets. The 80% line and 75%
-function coverage floors ([`scripts/coverage.sh`](scripts/coverage.sh)) apply to Core
-only, which is what makes a strict numeric gate honest for a UI app instead of an
-invitation to write meaningless view tests.
-
-### Why SwiftData behind a repository port?
-
-SwiftData is first-party, so persistence costs no dependency, and it ships with a
-versioned schema and a migration plan from day one, so the first model change is a
-migration rather than a data loss. Core never sees it: `TodoRepository` is a port in
-Core's vocabulary, `SwiftDataTodoRepository` is its adapter, and when the store will not
-open `App/` hands the view model `UnavailableTodoRepository`, a null object, so the
-app still launches. One contract function,
-[`TodoRepositoryContract`](Packages/MyAppKit/Tests/MyAppTestSupport/TodoRepositoryContract.swift),
-runs against both the in-memory fake and the real adapter, so the fake cannot drift.
-
-### Why one String Catalog in Core, and English only?
-
-User-facing wording is a decision like any other, so it lives where the coverage
-floor sees it: Core view models return `LocalizedStringResource`, and the one
-[`Localizable.xcstrings`](Packages/MyAppKit/Sources/MyAppCore/Resources/Localizable.xcstrings)
-sits in `MyAppCore` beside them. Views render those resources and carry no literal of
-their own. The template ships English alone, since a second language makes every later
-string owe a translation and a reviewer; an app that wants one
-rewrites that sentence, and the reasoning behind it, in the same pull request.
-`LocalizationTests` holds Core's keys and English to the catalog.
-
-### Why Swift Testing?
-
-`@Test`, `#expect`, and parameterized `@Test(arguments:)` are the modern default
-shipped with the toolchain, and every package suite uses them. XCTest appears exactly
-once — in the XCUITest target, [`LaunchUITests/`](LaunchUITests/LaunchTests.swift),
-because Apple has not ported UI automation to Swift Testing.
-
-### Why system-first design tokens?
-
-The template must not impose a brand, so its default is neutral:
-[`DesignTokens`](Packages/MyAppKit/Sources/MyAppUI/DesignSystem/DesignTokens.swift) is a
-small spacing and size scale, while color and type come from the system — semantic
-colors and text styles that are right in light, dark, every Dynamic Type size, and
-Increase Contrast. Liquid Glass arrives through standard components with no custom glass. Brand belongs to each app's own design lock, the
-present-state section of [docs/design-system.md](docs/design-system.md) it rewrites for itself.
-
-### Why zero dependencies?
-
-An app template should not impose opinions about networking, persistence, or analytics
-frameworks. `Package.swift` declares no package dependency: SwiftData, `URLSession`,
-and `UserDefaults` sit behind ports, and you add what you need — a new dependency
-needs a human's sign-off and a rewritten design description ([`AGENTS.md`](AGENTS.md)).
-
-### Why Just?
-
-One command — `just check` — runs the same gate locally that CI runs. Just has cleaner
-syntax than Make and is a task runner, not a build system, which is exactly what an
-Xcode project needs. Every recipe in the [`justfile`](justfile) also works without
-Just (see [CONTRIBUTING.md](CONTRIBUTING.md)).
-
-### Why AGENTS.md, `.claude/rules/`, and skills?
-
-AI-assisted development is the norm, not the exception. [`AGENTS.md`](AGENTS.md),
-the path-scoped rules under [`.claude/rules/`](.claude/rules), and one skill per kind
-of change under [`.agents/skills/`](.agents/skills) give agents the project's
-standards, architecture, and hard prohibitions (never lower the coverage floor, never
-disable safety lint rules) — reducing review cycles. Skills are authored under
-`.agents/skills/`, the path Codex CLI reads, and `just agents-sync` mirrors them
-byte-for-byte into `.claude/skills/`, the path Claude Code reads.
-
-### Why present-state design docs instead of decision records?
-
-The template's own decisions are the ones above, and this section is where they live.
-An app cut from the template makes decisions of a different kind — its device family,
-where it keeps state, which capabilities and permissions it takes, how it ships — and
-writes each as the present state of `AGENTS.md`'s Architecture and Product sections,
-[`docs/architecture.md`](docs/architecture.md), and the skill that owns the subject.
-`AGENTS.md`'s "Before changing the architecture" names these design changes; the pull
-request that makes one rewrites the description in place, and git history holds what
-it used to say. Numbered records with statuses would make every feature change cost a
-new record, so there are none.
-
-### Why a gitignored `Config/Local.xcconfig` for device runs, and no distribution pipeline?
-
-The apps cut from this template run on the owner's own iPhone. Your development team
-is yours and your machine's, so it stays out of every tracked file: it lives in
-`Config/Local.xcconfig`, which is gitignored, which the pre-commit guard refuses, and
-which [`Config/Debug.xcconfig`](Config/Debug.xcconfig) includes only when it exists.
-`just run-device` then builds, installs, and launches from the command line. App Store
-or TestFlight distribution is left to the app that needs it
-([docs/running-on-device.md](docs/running-on-device.md)).
+[AGENTS.md](AGENTS.md)'s Architecture section holds the layer rules and what is contract.
+How each part is built, and why, lives in the skill under
+[`.agents/skills/`](.agents/skills) that owns the subject — `designing-core-logic` for
+the layers, `persisting-data` for storage, `building-swiftui-screens` and `designing-ui`
+for screens, `changing-gates` for the toolchain — indexed by `AGENTS.md`'s Skills table.
+There is no separate architecture or roadmap document.
 
 ## Development
 
@@ -178,11 +78,8 @@ run each without Just.
   request process
 - [Getting Started](docs/getting-started.md) — first run, the simulator and your
   iPhone, and removing the example code
-- [Architecture](docs/architecture.md) — the layers, ports and adapters, and the
-  reasoning behind them
-- [Roadmap](docs/architecture/roadmap.md) — the app's Now / Next / Later direction
-- [Design System](docs/design-system.md) — the default tokens and the research behind
-  them
+- [Design System](docs/design-system.md) — the research behind the default tokens and
+  the design lock
 - [Running on Your Own iPhone](docs/running-on-device.md) — `Config/Local.xcconfig`
   and `just run-device`
 - [Security Policy](SECURITY.md) — how to report a vulnerability
@@ -216,10 +113,8 @@ run each without Just.
    for, the core interaction, and the **Non-goals** it must not grow — the
    agent instructions have no other in-repo answer to "is this in scope?".
    Delete every `TODO:` marker as you go; `just check` fails while one is left
-   (`scripts/checks/product-section-filled.sh`).
-   Then fill in the `docs/architecture/roadmap.md` skeleton — the Now, Next,
-   and Later outcomes that follow from it (the `steering-the-roadmap` skill);
-   nothing checks that page, so its `TODO:` lines stay until you replace them
+   (`scripts/checks/product-section-filled.sh`). The app's direction is that
+   section plus its open issues (the `triaging-issues` skill).
 4. Verify the rename: `just install && just check`
 5. Create the label set on the new repository: `just labels`
    (`.github/labels.yml`; issue forms rely on these labels existing)
