@@ -1,9 +1,9 @@
 /// A port: send one HTTP request, get one HTTP response.
 ///
-/// The networking twin of ``TodoRepository`` (`docs/architecture.md` › Repositories ›
-/// The HTTP client port). Core declares the protocol; `MyAppPlatform` holds the adapter
-/// (`URLSessionHTTPClient`); `MyAppTestSupport` holds the fake every Core test uses
-/// (`FakeHTTPClient`); and `App/` — the composition root — decides which one a Core
+/// The networking twin of ``TodoRepository`` (the `integrating-system-apis` skill's
+/// `references/http-client.md`). Core declares the protocol; `MyAppPlatform` holds the
+/// adapter (`URLSessionHTTPClient`); `MyAppTestSupport` holds the fake every Core test
+/// uses (`FakeHTTPClient`); and `App/` — the composition root — decides which one a Core
 /// service gets. A Core service that calls a remote API takes an `HTTPClient`, so it is
 /// tested against the fake, never against the real network.
 ///

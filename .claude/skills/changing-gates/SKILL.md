@@ -49,8 +49,10 @@ A check in `scripts/lint.sh` is three edits, not one:
 - the tool in `REQUIRED_TOOLS` for its mode, so a missing tool fails as
   `ERR_LINT_TOOL_MISSING` instead of as a confusing linter error;
 - the tool in `mise.toml` and in the `install_args` of ci.yml's `lint` job. That job
-  runs on `ubuntu-latest` and installs only the Linux-capable subset, so a macOS-only
-  tool cannot join `scripts/lint.sh` at all — it belongs in a macOS job.
+  runs on Ubuntu — pinned to `ubuntu-24.04`, because SwiftLint's Linux binary needs the
+  `libxml2.so.2` that 26.04 dropped; the comment on its `runs-on:` says when the pin can
+  go — and installs only the Linux-capable subset, so a macOS-only tool cannot join
+  `scripts/lint.sh` at all — it belongs in a macOS job.
 
 `scripts/tests/run.sh` (`just test-scripts`) is a gate on the gates:
 `scripts/tests/lint_test.sh` pins `scripts/lint.sh`, one test file pins each hook
@@ -98,13 +100,13 @@ for the `scripts/tests/lint_test.sh` case that fails if the pinned tools drift.
 
 ## `Package.swift`'s `strictSettings`
 
-`strictSettings` holds `.swiftLanguageMode(.v6)` and `.treatAllWarnings(as: .error)`.
-It is not inherited: each target passes `swiftSettings: strictSettings` itself, so a new
-target — source, test, or a test-support library like `MyAppTestSupport` — must opt in
-explicitly, or it compiles without Swift 6 data-race errors and with warnings allowed.
-Removing an entry, or adding an `unsafeFlags` or a per-target exception, is weakening a
-gate. A new target is also an architecture decision (`AGENTS.md`'s "Before changing the
-architecture").
+`strictSettings` holds `.swiftLanguageMode(.v6)` and `.treatAllWarnings(as: .error)`
+(why, with XcodeGen, the iOS 27 floor, and Just: **BACKGROUND:**
+[references/design-reasons.md](references/design-reasons.md)). It is not inherited: each
+target passes `swiftSettings: strictSettings` itself, so a new target — source, test, or
+a test-support library — must opt in, or it compiles without Swift 6 data-race errors
+and with warnings allowed. Removing an entry, or adding an `unsafeFlags` or a per-target
+exception, is weakening a gate; a new target is a design change too.
 
 ## `mise.toml`
 

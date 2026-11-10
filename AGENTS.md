@@ -1,11 +1,10 @@
 # Project Guide
 
 This file holds what every agent needs before it knows which task it is on: what the
-app is, how to check a change, where code goes, and which decisions need a human. The
-reasoning behind the architecture is [`docs/architecture.md`](docs/architecture.md);
-each area's coding conventions are a rule under `.claude/rules/` ([Rules](#rules)); a
-kind of change's procedure is a skill; a value a gate enforces belongs to its config,
-and running the gate is how you learn it.
+app is, how to check a change, where code goes, and which decisions need a human. Each
+area's coding conventions are a rule under `.claude/rules/` ([Rules](#rules)); a kind of
+change's procedure, and the design of the subject it touches, is a skill; a value a gate
+enforces belongs to its config, and running the gate is how you learn it.
 
 ## Overview
 
@@ -121,22 +120,45 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, or WidgetKit — in any
   spelling. Enforced twice: `.swiftlint.yml`'s `no_ui_import_in_core` and
   `ArchitectureBoundaryTests`; their module lists change together.
-- The package also builds for macOS so `swift test` runs on the host
-  (`.claude/rules/swift.md`); shipped code logs through `AppLog`, never `print`.
+- The package also builds for macOS so `swift test` runs it on the host in seconds — the
+  only way `scripts/coverage.sh` reads coverage — so every target compiles for macOS too
+  (`.claude/rules/swift.md`); the app itself is iOS-only. Shipped code logs through
+  `AppLog`, never `print`.
+- A new feature is, in order: domain values, a port only for storage or an OS service
+  (with its fake and contract), a view model (`AppModel` builds it), the adapter, the
+  view, an `AppRoute` case with its branch in `RootView`, and `App/` wiring only for a new
+  port. A new remote API is `Endpoint` values sent through `APIClient`, never a new port;
+  a new stored model is a new schema version, never an edit to a shipped one.
 - `MyApp.xcodeproj` is generated — edit `project.yml` instead.
-- Four things are contract — Core's public API, the bundle identifier, the stored
-  SwiftData schema, and `UserDefaults` keys/file formats — and each changes only as
-  `docs/architecture.md` › What is contract says.
+- **App shape:** iPhone and iPad (`TARGETED_DEVICE_FAMILY: "1,2"`), multiple windows on
+  iPad, no capability or entitlement, and no privacy-gated permission. An app rewrites
+  this line when it decides its device family, capabilities, and permissions
+  (`starting-an-app`, `integrating-system-apis`), naming the feature that forces each.
+
+### What is contract and what is private
+
+Contract is what something outside a change can observe: another module, a user's device
+that ran an earlier build, or the user. Everything else is private: `internal`
+declarations, how an adapter talks to its framework, view structure, file and type
+layout, test helpers, log messages.
+
+| Contract | What depends on it | What changing it requires |
+|---|---|---|
+| **Core's public API** | `MyAppUI`, `MyAppPlatform`, `App/`, the tests | Update every caller in the same pull request; a new public declaration carries a `///` saying why; a new port is a design change ("Before changing the architecture") |
+| **The bundle identifier** (`PRODUCT_BUNDLE_IDENTIFIER` in `project.yml`) | The app's data container and Keychain items on every device, App Store Connect, push and other capabilities, `AppLog.subsystem`, `just run`/`just logs` | Fixed once a build has left your machine: a new identifier is a new app, and the user's data stays behind. `project.yml` and `AppLog.subsystem` change together (`AppLogTests`) |
+| **The stored schema** (`AppSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus an `AppMigrationPlan` stage, with a test that opens a store written by the previous version. Never edit a shipped schema version (`persisting-data`) |
+| **The URL scheme** (`DeepLink.scheme`, registered in `project.yml`) | Links to the app in messages, notes, and other apps | Fixed once a build has left your machine: a renamed scheme breaks every link in the wild. `project.yml` and `DeepLink.scheme` change together (`DeepLinkTests`); a new link shape is a new `DeepLink` case with its tests, and an old shape keeps parsing |
+| **`UserDefaults` keys and file formats** | Saved preferences and files on a user's device | Read the old key or format and migrate it in Core, with a test that starts from the old value. Every key is a `PreferenceKeys` constant, pinned by `PreferenceKeysTests` |
 
 ## Before changing the architecture
 
-The design is recorded as it stands now, never as a log of decisions: this file's
-Architecture and Product sections, `docs/architecture.md`, and the rule or skill that
-owns the subject say together how the app is built and why; git history holds what it
-used to be. The changes below, design changes, are hard to reverse, so the pull request
-that makes one also rewrites that description — the current design and its reasoning
-(what it protects and, where it matters, the alternative it rules out), in the present
-tense, in place of the sentences it replaces, never as a dated entry beside them:
+The design is recorded once per subject, as it stands now, never as a log of decisions:
+in the rule or skill that owns it, this file's Architecture section (layer rules, app
+shape, contract), and its Product section (scope); git history holds what it used to be.
+The changes below, design changes, are hard to reverse, so the pull request that makes
+one also rewrites that description — the current design and its reasoning (what it
+protects and, where it matters, the alternative it rules out), in the present tense, in
+place of the sentences it replaces, never as a dated entry beside them:
 
 - a new target (`project.yml`, `Package.swift`) or a new Core port;
 - the device family and scene model — iPhone only or iPhone and iPad
@@ -155,9 +177,9 @@ tense, in place of the sentences it replaces, never as a dated entry beside them
 
 Writing the reasoning down grants nothing: an entitlement, a signing change, or a new
 dependency still needs the sign-off "Security and human approval" asks for, and the
-owner reviews the rewritten description with the change. A change that replaces one of
-the starting layers also rewrites its row in `docs/architecture.md`'s "Decisions at a
-glance" rather than leaving the old reason beside the new one.
+owner reviews the rewritten description with the change. The starting choices' reasons
+live in `designing-core-logic` (layers), `persisting-data`, and `changing-gates`
+(toolchain); replacing one rewrites that reason too.
 
 ## Skills
 
@@ -176,9 +198,8 @@ before designing it: `core.md` (MyAppCore), `ui.md` (MyAppUI, `App/`, LaunchUITe
 
 ### Sub-agents
 
-`.claude/agents/` defines the tiers a step is handed to by `subagent_type` (`executor`,
-`architect`, `scout`, `worker`), generated by the `syncing-agent-tiers` skill; never
-edit them by hand.
+`.claude/agents/` defines the `subagent_type` tiers (`executor`, `architect`, `scout`,
+`worker`), generated by the `syncing-agent-tiers` skill; never edit them by hand.
 
 ## Security and human approval
 
@@ -187,14 +208,14 @@ staged guard (`scripts/check-staged.sh`, rules in `scripts/guard/`) refuses a
 secret-shaped path or credential-shaped content. Whether a commit *should* contain what
 it contains stays in PR review.
 
-Never read a secret-shaped file, even to check it: `.env`, `.env.*`, or `.envrc.*`
-(the `.example`/`.sample`/`.template` samples excepted), anything under a `secrets/`
-directory, `*.p12`, `*.pfx`, `*.p8`, `*.provisionprofile`,
-`*.mobileprovision`, `*.keychain`/`*.keychain-db`, `*key*.pem`, `private-key.*`,
-`.netrc`, `credentials.json`, `secrets.json`, `GoogleService-Info.plist`, and
-`Config/Local.xcconfig` — the list `scripts/guard/paths.sh` refuses to commit (it also
-refuses `.claude/settings.local.json`, which is fine to read). If a task seems to need
-one, ask the human for the non-secret fact instead.
+Never read a secret-shaped file, even to check it: `.env`, `.env.*`, or `.envrc.*` (the
+`.example`/`.sample`/`.template` samples excepted), anything under a `secrets/` directory,
+`*.p12`, `*.pfx`, `*.p8`, `*.provisionprofile`, `*.mobileprovision`,
+`*.keychain`/`*.keychain-db`, `*key*.pem`, `private-key.*`, `.netrc`, `credentials.json`,
+`secrets.json`, `GoogleService-Info.plist`, and `Config/Local.xcconfig` — the list
+`scripts/guard/paths.sh` refuses to commit (it also refuses `.claude/settings.local.json`,
+which is fine to read). If a task seems to need one, ask the human for the non-secret
+fact instead.
 
 Get a human's sign-off before acting on any of these:
 

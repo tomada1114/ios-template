@@ -96,7 +96,8 @@ root type.
   that model plus an identifier, not a copy, so both screens show one state.
   `AppModelTests` builds each route's model over the fakes.
 - Domain rules live in value types (`TodoItem`) the view model delegates to.
-- The reasoning: `docs/architecture.md` › View models and › Composition root.
+- Why, reentrancy after an `await`, and the composition root: the `designing-core-logic`
+  skill's `references/view-models.md`.
 
 ## Deliberately not adopted
 
@@ -110,10 +111,10 @@ root type.
 | Coordinators or routers | SwiftUI navigation state, owned by Core's `NavigationModel`, suffices at this size |
 | An event bus or `NotificationCenter` between Core types | Direct calls; an OS notification is observed through a port |
 
-The longer reasoning is in `docs/architecture.md` (Decisions at a glance, Layers, View
-models, Repositories, Composition root, Where new code goes). An app that adopts one
-rewrites its row here and that section in the same pull request, saying what the
-current shape could not solve (`AGENTS.md` › Before changing the architecture).
+The reasoning behind the layers themselves is the `designing-core-logic` skill's
+`references/design-reasons.md`. An app that adopts one of these rewrites its row here
+(and that file's entry, if it has one) in the same pull request, saying what the current
+shape could not solve (`AGENTS.md` › Before changing the architecture).
 
 ## Errors
 
@@ -191,13 +192,13 @@ current shape could not solve (`AGENTS.md` › Before changing the architecture)
   (`AGENTS.md` › Before changing the architecture) the owner approves before any
   translation lands.
 - Finding catalog drift, what each build does with the catalog, and the open questions a
-  second language raises: `docs/architecture.md` › Localization.
+  second language raises: the `designing-core-logic` skill's `references/localization.md`.
 
 ## Pinned by tests
 
 - A `PreferenceKeys` name or default is pinned by `PreferenceKeysTests`: a rename is a
-  stored-data migration (`docs/architecture.md` › What is contract), not an edit to that
-  test.
+  stored-data migration (`AGENTS.md` › What is contract and what is private), not an
+  edit to that test.
 - A route, a deep link, or the URL scheme: `DeepLinkTests` holds Core's scheme to the
   one `project.yml` registers; run `just uitest` too.
 - `LocalizationTests` holds the catalog (above); `AppLogTests` holds `AppLog.subsystem`

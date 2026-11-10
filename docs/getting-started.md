@@ -202,8 +202,10 @@ once it has run).
    `UnavailableTodoRepository`, `TodoItem` with `TodoItemTests`, and `AppLog.todos`.
 
 `rg -i 'todo'` then lists anything left — including the mentions in `AGENTS.md`,
-`docs/architecture.md`, `.claude/rules/`, and the skills that cite the to-do list as
-the worked example (skills are edited under `.claude/skills/`).
+`.claude/rules/`, and the skills that cite the to-do list as the worked example — among
+them `persisting-data`, and the references `designing-core-logic`'s `view-models.md`,
+and `designing-ui`'s `navigation.md` and `design-lock.md` (skills are edited under
+`.claude/skills/`).
 
 ## Open in Xcode
 

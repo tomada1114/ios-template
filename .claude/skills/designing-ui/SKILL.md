@@ -1,13 +1,15 @@
 ---
 name: designing-ui
 description: >
-  Covers deciding how this iOS app looks: the design lock in docs/design-system.md
+  Covers deciding how this iOS app looks: the design lock in references/design-lock.md
   (accent, custom colors, type, density, symbols, navigation structure, iPad layout,
   haptics, motion, copy style, app icon), the values of the DesignTokens scale,
-  Liquid Glass and materials on the iOS 27 floor, and researching the lock with
-  /refero-design. Use when writing or amending the design lock, changing a DesignTokens
-  value, touching AccentColor.colorset or AppIcon.appiconset, adding custom glass or a
-  material, or comparing a screen against the lock.
+  Liquid Glass and materials on the iOS 27 floor, researching the lock with
+  /refero-design, and why navigation is a Core AppRoute enum with a per-scene
+  NavigationModel and Core-parsed deep links. Use when writing or amending the design
+  lock, changing a DesignTokens value, touching AccentColor.colorset or
+  AppIcon.appiconset, adding custom glass or a material, comparing a screen against the
+  lock, or changing how navigation, tabs, or deep links are structured.
 ---
 
 # Designing UI
@@ -21,8 +23,10 @@ any file under `MyAppUI/` or `App/`); the device family and scene model
 (`starting-an-app`); launching the app and taking screenshots (`running-the-app`).
 
 Apple's Human Interface Guidelines are the baseline and are not restated. The template's
-own research — every reference, the reference lock, and why each token has its value —
-is `docs/design-system.md`.
+own research — every reference, Refero's reference lock, the ledger, and why each token
+has its value — is `docs/design-system.md`, the record the lock's values came from.
+Why navigation is a Core route enum and a per-scene path, how deep links are parsed, and
+what tabs or a split view would change: [references/navigation.md](references/navigation.md).
 
 ## System first, custom by exception
 
@@ -65,14 +69,13 @@ sheets, `TabView` — take Liquid Glass. That is the template's whole adoption.
 The lock is the app's answer to "what does every screen here look like?" — a handful of
 decisions made once, each a value or an explicit "system default".
 
-- **It is the "Design lock" section of `docs/design-system.md`**, stated as the present
-  state: one value per field, each with its reason. The template ships its reference
-  lock there; an app rewrites that section for itself after the bootstrap. The owner
+- **It is [references/design-lock.md](references/design-lock.md)'s "The lock"**, the
+  present state: one value per field, each with its reason. The template ships its
+  reference lock there; an app rewrites it for itself after the bootstrap. The owner
   reviews it in the pull request that writes it; until it merges, screens may be built
   against it only as an experiment.
 - **When:** after the device family is decided and before the second screen.
-- **What it holds, and where each value lands:**
-  [references/design-lock.md](references/design-lock.md).
+- **What it holds, and where each value lands:** **REQUIRED:** the same file's Fields.
 - **How to research it:** **REQUIRED:**
   [references/refero-workflow.md](references/refero-workflow.md) — `/refero-design`
   with iOS screens and flows when the Refero tools are available, the HIG and
@@ -80,8 +83,8 @@ decisions made once, each a value or an explicit "system default".
 - **Changing it:** edit the section in place — a corrected value and a new direction (a
   new accent, custom type, denser layout) alike — in the pull request that changes the
   code, rewriting the reason beside it; git history holds what it used to say.
-- **In the template itself** the lock is the system-first reference lock, and a change
-  to it updates `docs/design-system.md`.
+- **In the template itself** the lock is the system-first reference lock, and research
+  behind a change to it updates `docs/design-system.md`'s ledger.
 
 | Template default | Each app decides in its design lock |
 |---|---|
@@ -95,9 +98,9 @@ decisions made once, each a value or an explicit "system default".
 ## Reviewing a screen against the lock
 
 Take the screenshot set `.claude/rules/ui.md` › Verifying a screen names and compare
-each against the lock (or, in the template, the reference lock in
-`docs/design-system.md`). Fix drift, or name it in the pull request as accepted. No gate
-sees any of this: the screenshots in the pull request are the evidence.
+each against the lock (`references/design-lock.md`). Fix drift, or name it in the pull
+request as accepted. No gate sees any of this: the screenshots in the pull request are
+the evidence.
 
 ## Sources
 

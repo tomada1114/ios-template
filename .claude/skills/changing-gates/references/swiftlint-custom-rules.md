@@ -15,7 +15,7 @@ and the regex change together, in one commit — adding a framework to one and n
 other leaves the boundary enforced once, and `scripts/checks/core-ban-lists-agree.sh`
 (`just check-harness`) fails while the two sets differ. Adding to that list strengthens
 the gate and is the routine direction; removing from it is weakening one. `os` and
-`OSLog` are deliberately not on it, so Core can log (`docs/architecture.md` › Logging);
+`OSLog` are deliberately not on it, so Core can log (`.claude/rules/swift.md`'s Logging);
 a test case pins their absence. Its `included` regex names the package and module, so a
 new Core-like target means widening it and the test's path. The sibling boundary —
 `MyAppUI` and `MyAppPlatform` never importing each other — and the rule that no shipped
@@ -25,7 +25,7 @@ no lint-rule twin.
 `no_print_in_sources` rejects `print(`, `debugPrint(`, and `NSLog(` under
 `Packages/*/Sources/` and `App/`, because an app launched from the Home Screen has
 nowhere to send stdout: shipped code logs through `MyAppCore`'s `AppLog` instead
-(`docs/architecture.md` › Logging). Four parts of it are load-bearing, and a widening
+(`.claude/rules/swift.md`'s Logging). Four parts of it are load-bearing, and a widening
 edit usually breaks one:
 
 - `match_kinds: [identifier]` spares a `print(` inside a comment or a string literal —

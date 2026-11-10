@@ -26,7 +26,7 @@ paths:
   - **Platforms** — its platform floor is at or below **both** of this package's
     `.iOS(.v27)` and `.macOS(.v27)` (`platforms:` in `Packages/MyAppKit/Package.swift`):
     the package also builds on the host for `swift test`
-    (`docs/architecture.md` › Why the package also builds for macOS)
+    (AGENTS.md › Architecture)
   - **Advisories** — no open security advisory against the version being added
 - Allowed licenses (SPDX): MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, Zlib.
   `.github/workflows/dependency-review.yml` enforces this exact list (`allow-licenses`) on

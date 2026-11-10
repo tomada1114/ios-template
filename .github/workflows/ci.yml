@@ -24,7 +24,11 @@ defaults:
 jobs:
   lint:
     name: Lint & Format Check
-    runs-on: ubuntu-latest
+    # Not ubuntu-latest: from ubuntu-26.04 on, the image ships only libxml2.so.16, and
+    # the SwiftLint Linux binary mise installs (aqua's realm/SwiftLint entry links the
+    # dynamic `swiftlint`, not the release zip's `swiftlint-static`) needs libxml2.so.2.
+    # Drop the pin once that install no longer needs libxml2.so.2.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

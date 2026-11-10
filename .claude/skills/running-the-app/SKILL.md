@@ -61,7 +61,7 @@ between builds. A log line the change adds is the other proof — see it in the 
 ## Read what it says
 
 Shipped code logs through `AppLog` (`os.Logger`), never `print`
-(`docs/architecture.md` › Logging): one subsystem, the bundle identifier, and one
+(`.claude/rules/swift.md`'s Logging): one subsystem, the bundle identifier, and one
 category per concern (`todos`, `persistence`, `network`, `preferences`, `navigation`).
 
 ```bash

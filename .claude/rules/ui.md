@@ -94,7 +94,8 @@ design-lock decision, never a per-screen one.
   `navigationDestination(for: AppRoute.self)`; both live in `RootView`, never in a
   screen. A screen pushes with `NavigationLink(value:)`. A new screen is a new `AppRoute`
   case and a new branch of the destination switch, never navigation state in a view's
-  `@State`. Tabs versus a stack is the lock's.
+  `@State`. Tabs versus a stack is the lock's. Why, and how deep links and the per-scene
+  path work: the `designing-ui` skill's `references/navigation.md`.
 - A button inside a `NavigationLink` row takes a non-default style
   (`.buttonStyle(.borderless)`, as `TodoDoneToggle`), or a tap follows the link.
 - `NavigationSplitView` only for a regular-width iPad layout the lock asks for.

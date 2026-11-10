@@ -39,7 +39,7 @@ custom_rules:
   # Architecture): an adapter that needs one belongs in MyAppPlatform, behind a
   # Core-declared port.
   # `os`/`OSLog` are NOT on this list — logging is neither, and Core logs through
-  # AppLog (docs/architecture.md › Logging). Enforced twice: here, and by
+  # AppLog (.claude/rules/swift.md › Logging). Enforced twice: here, and by
   # ArchitectureBoundaryTests in MyAppCoreTests — change both module lists together.
   # No match_kinds: the ^\s* anchor already skips `// import …` comments, and a kind
   # filter would drop the attributed-import case.
@@ -51,7 +51,7 @@ custom_rules:
 
   # Shipped code logs through AppLog (os.Logger), never stdout: an app launched from the
   # Home Screen has nowhere to send stdout, so a print() is invisible exactly when it
-  # would matter (docs/architecture.md › Logging).
+  # would matter (.claude/rules/swift.md › Logging).
   #
   # `included`/`excluded` are substring matches against the whole file path, not
   # repository-relative globs, so they are written to survive any ancestor directory —
@@ -79,5 +79,5 @@ custom_rules:
     regex: '(^|[^\w.])(?<!func )(print|debugPrint|NSLog)\s*\('
     match_kinds:
       - identifier
-    message: "Shipped code must not print to stdout — an app launched from the Home Screen discards it. Log through AppLog (os.Logger) instead, with a privacy annotation on anything user-derived (docs/architecture.md › Logging)."
+    message: "Shipped code must not print to stdout — an app launched from the Home Screen discards it. Log through AppLog (os.Logger) instead, with a privacy annotation on anything user-derived (.claude/rules/swift.md › Logging)."
     severity: error

@@ -29,11 +29,13 @@ branch on domain values belongs in Core, where a test sees it. Fakes and contrac
   it to each repository's `init(modelContainer:)` without importing SwiftData; no
   repository opens a container of its own.
 - A SwiftData adapter is a `@ModelActor` actor that maps a record to a Core value inside
-  the actor, so no `@Model` object crosses the port
-  (`docs/architecture.md` › The SwiftData adapter).
+  the actor, so no `@Model` object crosses the port.
 - A shipped `VersionedSchema` (`AppSchemaV1`) is never edited: a changed or new stored
   model is a new schema version plus an `AppMigrationPlan` stage, with a test that opens
-  a store the previous version wrote (`docs/architecture.md` › What is contract).
+  a store the previous version wrote (`AGENTS.md` › What is contract and what is
+  private).
+- Why one container, a versioned schema, the null object when the store will not open,
+  and the preferences port: the `persisting-data` skill.
 
 ## Mapping framework errors
 

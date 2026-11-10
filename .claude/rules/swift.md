@@ -30,7 +30,7 @@ Module-specific rules: `core.md` (MyAppCore), `ui.md` (MyAppUI, `App/`, LaunchUI
 - `just test` (which builds the package for macOS) catches a missing guard; `just build`
   compiles only for iOS and will not. Code behind `#if os(iOS)`, and behavior that
   differs on the iOS runtime, is tested only by `just test-ios`
-- The why: `docs/architecture.md` › Why the package also builds for macOS
+- The why: `AGENTS.md` › Architecture
 
 ## Access Control
 
@@ -79,8 +79,9 @@ Module-specific rules: `core.md` (MyAppCore), `ui.md` (MyAppUI, `App/`, LaunchUI
 - Level by intent: `.debug` for the development stream `just logs` shows, `.info` for a
   milestone worth keeping, `.error`/`.fault` for something that went wrong. See
   `TodoListViewModel.load()` for the worked example
-- A log message is an autoclosure: log a local constant, not a `self.` property
-  (`docs/architecture.md` › Logging)
+- A log message is an autoclosure that needs an explicit `self`, which SwiftFormat's
+  `redundantSelf` rule strips: log a local constant, not a `self.` property
+  (`TodoListViewModel.load()`)
 
 ## Concurrency
 
@@ -88,11 +89,13 @@ Module-specific rules: `core.md` (MyAppCore), `ui.md` (MyAppUI, `App/`, LaunchUI
 - UI-facing state is `@MainActor` (`TodoListViewModel`); keep Core types `Sendable` where
   they cross actors
 - Ports are `Sendable`. The repository and HTTP ports are `async`; `PreferencesStoring` is
-  deliberately synchronous (`docs/architecture.md` › Preferences)
+  deliberately synchronous (the `persisting-data` skill's `references/preferences.md`)
 - Adapters and fakes are actors (`SwiftDataTodoRepository`, `InMemoryTodoRepository`),
   `Sendable` structs holding only `Sendable` values (`URLSessionHTTPClient`,
   `UserDefaultsPreferences`), or final classes guarding their state with a `Mutex`
   (`InMemoryPreferences`)
+- A closure a test injects (`now`, `makeID`, the fake's `onSave` and `onFetch`) is
+  `@Sendable`; it captures values, not a `@MainActor` static
 - `@unchecked Sendable` and `nonisolated(unsafe)` are not used to silence a diagnostic:
   doing so needs a human's sign-off (`AGENTS.md` › Security and human approval), and a
   comment explaining the invariant does not replace it. The usual fixes are in the

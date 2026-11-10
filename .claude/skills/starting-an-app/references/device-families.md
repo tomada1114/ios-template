@@ -2,8 +2,8 @@
 
 Two choices cover most apps started from this template. Make one before writing
 features: it decides which layouts every screen owes, which devices the launch test
-runs on, and what the App Store lists. Write it as present state in `AGENTS.md`'s Architecture
-section and `docs/architecture.md` (`SKILL.md` › "Recording both decisions").
+runs on, and what the App Store lists. Write it as present state in `AGENTS.md`'s
+Architecture section (`SKILL.md` › "Recording both decisions").
 
 | | iPhone and iPad (what the template ships) | iPhone only |
 |---|---|---|
