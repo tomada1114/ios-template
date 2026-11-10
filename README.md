@@ -4,8 +4,8 @@
 [![License: MIT][license-mit]](LICENSE)
 
 An iOS 27+ SwiftUI app built with XcodeGen and a local Swift package, with SwiftData
-behind a repository port, and quality gates and an agent harness (Claude Code, Codex
-CLI) from the first commit. It ships a small to-do list that exercises every seam an
+behind a repository port, and quality gates and an agent harness (Claude Code) from the
+first commit. It ships a small to-do list that exercises every seam an
 app needs: `@Observable` view models, a port with a SwiftData adapter, a fake and a
 contract suite run against both, typed navigation with deep links, and an XCUITest.
 
@@ -127,11 +127,9 @@ Just (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 AI-assisted development is the norm, not the exception. [`AGENTS.md`](AGENTS.md),
 the path-scoped rules under [`.claude/rules/`](.claude/rules), and one skill per kind
-of change under [`.agents/skills/`](.agents/skills) give agents the project's
+of change under [`.claude/skills/`](.claude/skills) give agents the project's
 standards, architecture, and hard prohibitions (never lower the coverage floor, never
-disable safety lint rules) — reducing review cycles. Skills are authored under
-`.agents/skills/`, the path Codex CLI reads, and `just agents-sync` mirrors them
-byte-for-byte into `.claude/skills/`, the path Claude Code reads.
+disable safety lint rules) — reducing review cycles.
 
 ### Why present-state design docs instead of decision records?
 
@@ -164,7 +162,7 @@ run each without Just.
 |---|---|
 | `just install` | Install pinned tools, git hooks, and generate the Xcode project |
 | `just test` | Package tests on the host Mac, with the coverage floor on `MyAppCore` |
-| `just lint` | SwiftFormat, SwiftLint, ShellCheck, actionlint, typos, and the skills mirror |
+| `just lint` | SwiftFormat, SwiftLint, ShellCheck, actionlint, and typos |
 | `just run` | Build, then launch in the iOS Simulator |
 | `just run-device` | Build, then launch on your connected iPhone |
 | `just uitest` | The XCUITest launch test on an iOS Simulator |
@@ -180,7 +178,6 @@ run each without Just.
   iPhone, and removing the example code
 - [Architecture](docs/architecture.md) — the layers, ports and adapters, and the
   reasoning behind them
-- [Roadmap](docs/architecture/roadmap.md) — the app's Now / Next / Later direction
 - [Design System](docs/design-system.md) — the default tokens and the research behind
   them
 - [Running on Your Own iPhone](docs/running-on-device.md) — `Config/Local.xcconfig`
@@ -217,9 +214,6 @@ run each without Just.
    agent instructions have no other in-repo answer to "is this in scope?".
    Delete every `TODO:` marker as you go; `just check` fails while one is left
    (`scripts/checks/product-section-filled.sh`).
-   Then fill in the `docs/architecture/roadmap.md` skeleton — the Now, Next,
-   and Later outcomes that follow from it (the `steering-the-roadmap` skill);
-   nothing checks that page, so its `TODO:` lines stay until you replace them
 4. Verify the rename: `just install && just check`
 5. Create the label set on the new repository: `just labels`
    (`.github/labels.yml`; issue forms rely on these labels existing)
@@ -240,7 +234,7 @@ run each without Just.
    (they need a public repository or GitHub Advanced Security), and drop the
    `Dependency Review` context from `.github/rulesets/main.json` — otherwise no
    pull request can merge. Details:
-   [private-repository.md](.agents/skills/starting-an-app/references/private-repository.md)
+   [private-repository.md](.claude/skills/starting-an-app/references/private-repository.md)
 
 To find any placeholders the script left untouched (the pattern uses `.`
 wildcards so the rename cannot rewrite this very command into your new names):

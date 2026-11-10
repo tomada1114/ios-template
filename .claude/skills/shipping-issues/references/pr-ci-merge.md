@@ -58,7 +58,7 @@ CI (lint, tests with coverage, build, UI test, Release smoke) routinely runs lon
 `--timeout 1800` watch in the foreground would be killed mid-wait, with no verdict and a
 truncated log. So pick one of these, in this order:
 
-1. **Background, then wait for the notification (Claude Code).** Start the command
+1. **Background, then wait for the notification.** Start the command
    above with the Bash tool's `run_in_background`. The host re-invokes this session when
    the command exits; read the four lines then. This is the run's only wait primitive --
    never a hand-rolled `sleep`/poll loop, which burns turns and context. The session may
@@ -67,9 +67,6 @@ truncated log. So pick one of these, in this order:
 2. **Foreground, under the cap.** Run it with `--timeout 540` or less. `verdict:
    TIMEOUT` then means only that the watch's own bound ran out, not that CI failed: run
    the same watch again, until 1800 seconds of watching have passed in total.
-3. **Codex CLI**, which has no background call with a completion notification: the
-   foreground form, with `--timeout` kept below that host's own command timeout, re-run
-   on `TIMEOUT` the same way.
 
 After 1800 seconds of `TIMEOUT` in total, treat it like `ERROR`: re-read the PR's
 actual CI state before deciding anything.

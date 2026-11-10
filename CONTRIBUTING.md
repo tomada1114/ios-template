@@ -45,7 +45,7 @@ just fmt
 # Format, auto-fix SwiftLint violations, then run the full lint check
 just fix
 
-# Run formatters and linters in check mode (swiftformat, swiftlint, shellcheck, actionlint, typos, skills mirror)
+# Run formatters and linters in check mode (swiftformat, swiftlint, shellcheck, actionlint, typos)
 just lint
 
 # Verify the git hooks are installed and executable (skips under CI or ALLOW_MISSING_GIT_HOOKS)
@@ -90,12 +90,6 @@ just smoke
 # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → build
 just check
 
-# Regenerate the .claude/skills/ mirror from .agents/skills/ (run after any skill edit)
-just agents-sync
-
-# Fail if .claude/skills/ is not byte-identical to .agents/skills/ (writes nothing)
-just agents-check
-
 # Remove build artifacts and the generated project
 just clean
 
@@ -132,8 +126,6 @@ xcrun simctl bootstatus "$(scripts/simulator-destination.sh --udid)" -b
 xcodebuild test-without-building -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult   # just uitest-run (just uitest runs both)
 (cd Packages/MyAppKit && xcodebuild test -scheme MyAppKit-Package -destination "$(../../scripts/simulator-destination.sh)" -derivedDataPath ../../build/ios-test-derived-data -resultBundlePath ../../build/MyAppKitTests-iOS.xcresult)   # just test-ios
 mise exec -- scripts/smoke_launch.sh  # just smoke
-scripts/sync-agents.sh                # just agents-sync
-scripts/sync-agents.sh --check        # just agents-check
 scripts/sync-labels.sh                # just labels — writes labels to the GitHub repo gh is pointed at
 scripts/apply-ruleset.sh              # just ruleset — admin-only
 ```

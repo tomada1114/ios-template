@@ -189,7 +189,7 @@ public final class TodoListViewModel {
     ///   to what it was before the load. Cancellation is read from `Task.isCancelled`
     ///   after the fetch, not from the port, because ``TodoRepositoryError`` has no
     ///   cancellation case — a store that sees its caller cancel reports a failure, which
-    ///   the cancelled caller no longer wants (the `designing-errors` skill).
+    ///   the cancelled caller no longer wants (`.claude/rules/core.md` › Cancellation).
     public func load() async {
         hideCompleted = preferences.value(for: PreferenceKeys.hideCompleted)
         if phase != .loading {

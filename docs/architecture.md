@@ -113,8 +113,7 @@ The view model is written for that:
   `idle` and the next appearance asks again. The view model reads `Task.isCancelled`
   after the fetch rather than a port case: `TodoRepositoryError` has no cancellation
   case, so a store that sees its caller cancel can only report a failure, which the
-  cancelled caller no longer wants (the `designing-errors` skill, Cancellation
-  propagates).
+  cancelled caller no longer wants (`.claude/rules/core.md` › Cancellation).
 
 Each of these has a test in `TodoListViewModelTests` that drives the interleaving through
 the fake's `onSave` hook, or its `onFetch` hook, which runs after a fetch has read the
@@ -442,6 +441,41 @@ through `LocalizedStringResource(_:defaultValue:bundle: .module, comment:)`. Eng
 the only shipped language (`defaultLocalization: "en"`); adding one is an app's decision.
 `swift test` copies the catalog uncompiled, so tests resolve English from `defaultValue`
 (the `english` helper in `MyAppCoreTests`); `xcodebuild` compiles it into the app.
+The declaration and catalog rules are `.claude/rules/core.md` › Wording and localization.
+
+Checked on Xcode 26.5 (17F42) with Swift 6.3.2, 2026-09-30:
+
+| | `swift build` / `swift test` (`just test`) | `xcodebuild` (`just build`, the app) |
+|---|---|---|
+| The catalog in Core's resource bundle (`*_MyAppCore.bundle`) | copied as `Localizable.xcstrings`, uncompiled | compiled to `en.lproj/Localizable.strings` |
+| Where English comes from at run time | each resource's `defaultValue` | the catalog |
+
+`LocalizationTests` therefore reads the catalog's source, not a compiled bundle. An iOS
+app bundle is flat: Core's resource bundle sits directly inside `MyApp.app/`. No gate
+looks inside the app; after `just build`,
+`find build -path '*MyApp.app/*' -name 'Localizable.strings*'` finds the compiled
+strings and `plutil -p` shows what shipped.
+
+To find drift between code and catalog:
+
+```bash
+just generate
+xcodebuild -exportLocalizations -project MyApp.xcodeproj -localizationPath build/localizations -exportLanguage en
+```
+
+It writes the gitignored `build/localizations/en.xcloc` and can rewrite the catalog in
+place: a key in code but not the catalog is added (`"state" : "new"`), and a key no code
+uses gains `"extractionState" : "stale"`. Review that diff, and revert it when it only
+reorders keys or adds `extractionState`. Neither `just build` nor `swift build` touches
+the catalog. The export also carries the generated `Info.plist`'s `CFBundleName` as a
+synthesized `App/en.lproj/MyApp-InfoPlist.strings`, which exists in no file.
+
+A second language is added in Xcode's catalog editor or with
+`xcodebuild -importLocalizations`; keys, comments, and the English stay English, and an
+`App/InfoPlist.xcstrings` owes the same language. Two questions stay open until an app
+checks them: whether iOS offers the language from the package bundle's `.lproj` alone
+or also needs `CFBundleLocalizations` in `project.yml` (checked in the running app), and
+how `typos` treats translated values (an exclusion would be a gate change).
 
 ## Testing
 
@@ -487,7 +521,7 @@ framework, view structure, file and type layout, test helpers, log messages.
 
 **A new screen or feature**
 
-1. Domain values and their invariants in `MyAppCore` (TDD — the `tdd` skill).
+1. Domain values and their invariants in `MyAppCore` (test first — `.claude/rules/core.md`).
 2. A port in `MyAppCore` if the feature needs storage or an OS service; its fake and
    contract in `Tests/MyAppTestSupport`.
 3. A `@MainActor @Observable` view model in `MyAppCore`, tested against the fake. A

@@ -52,7 +52,7 @@ public struct APIClient: Sendable {
     ///     `https://api.example.com/v1`. The composition root decides it, so a staging
     ///     build points somewhere else without touching a feature.
     ///   - now: Today's date, read only to turn a `Retry-After` HTTP-date into a wait.
-    ///     Injected so a test pins it (the `designing-core-logic` skill).
+    ///     Injected so a test pins it (`.claude/rules/core.md`).
     public init(
         httpClient: any HTTPClient,
         baseURL: URL,

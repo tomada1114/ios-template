@@ -30,7 +30,7 @@ fix:
     mise exec -- swiftlint lint --fix --quiet
     just lint
 
-# Run formatters and linters in check mode (swiftformat, swiftlint, shellcheck, actionlint, typos, skills mirror)
+# Run formatters and linters in check mode (swiftformat, swiftlint, shellcheck, actionlint, typos)
 lint:
     mise exec -- scripts/lint.sh
 
@@ -45,7 +45,7 @@ test-scripts:
     mise exec -- scripts/tests/run.sh
 
 # Re-assert the harness's claims about itself: every check under scripts/checks/,
-# each listed in AGENTS.md's Enforcement layers
+# each listed in .claude/skills/changing-gates/references/enforcement-layers.md
 [doc("Re-assert the harness's claims about itself (scripts/checks/)")]
 check-harness:
     mise exec -- scripts/checks/run-all.sh
@@ -130,14 +130,6 @@ smoke:
 # (CI adds uitest, smoke, and test-ios)
 [doc("Run all checks: verify-hooks, fmt, lint, test-scripts, check-harness, test, build")]
 check: verify-hooks fmt lint test-scripts check-harness test build
-
-# Regenerate the .claude/skills/ mirror from .agents/skills/ (run after any skill edit)
-agents-sync:
-    scripts/sync-agents.sh
-
-# Fail if .claude/skills/ is not byte-identical to .agents/skills/ (writes nothing)
-agents-check:
-    scripts/sync-agents.sh --check
 
 # Remove build artifacts and the generated project
 clean:

@@ -4,8 +4,7 @@ The detail behind `smart-commit`'s "Pre-commit Hook Interaction" section.
 
 This project's pre-commit hook (`.githooks/pre-commit`) runs
 `swiftformat --lint` and `swiftlint lint --strict` on the staged Swift files, and
-the skills-mirror check when a staged path is under `.agents/skills/` or
-`.claude/skills/`, and the staged guard (`scripts/check-staged.sh`) on every commit
+the staged guard (`scripts/check-staged.sh`) on every commit
 that stages a change.
 It checks but never modifies files. The skill does NOT duplicate these checks —
 the hook handles code quality, while the skill handles commit workflow.

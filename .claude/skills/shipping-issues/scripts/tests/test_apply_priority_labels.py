@@ -558,9 +558,8 @@ class BackfillHonoursTheContractTest(unittest.TestCase):
 
 
 class NoBytecodeTest(unittest.TestCase):
-    """Run from the .claude/skills mirror, a sibling import would leave
-    __pycache__/ beside the scripts, which `just agents-check` reports as
-    drift and shipping-issues itself treats as a dirty tree."""
+    """A sibling import would leave __pycache__/ beside the scripts under
+    .claude/skills/, which shipping-issues itself treats as a dirty tree."""
 
     def test_scripts_with_a_sibling_import_write_no_bytecode(self):
         import os

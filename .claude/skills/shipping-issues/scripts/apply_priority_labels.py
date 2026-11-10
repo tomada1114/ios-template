@@ -58,8 +58,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Run from the .claude/skills mirror, a sibling import would leave __pycache__/
-# there, which `just agents-check` reports as drift.
+# A sibling import would leave __pycache__/ under .claude/skills/, a dirty tree
+# shipping-issues itself refuses to work in.
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from issue_digest import (DEPENDENCY_BLOCK_LABELS, DESIGN_BLOCK_LABELS, DESIGN_LABEL,

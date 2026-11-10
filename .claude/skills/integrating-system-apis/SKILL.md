@@ -23,10 +23,10 @@ permission as Core state, where a usage description and an `Info.plist` key live
 what can be tested where. **Does not own:** which capabilities and entitlements the app
 takes (`starting-an-app`, written as present state in `AGENTS.md` › Architecture and
 `docs/architecture.md`); the
-red-green loop for the Core decision the port serves (`tdd`); the Core error enum an
-adapter maps into (`designing-errors`); running the app and the evidence a pull request
-carries (`running-the-app`); a picker or other control that lives in a view
-(`building-swiftui-screens`).
+test-first loop for the Core decision the port serves and the Core error enum an adapter
+maps into (`.claude/rules/core.md`); the mapping itself (`.claude/rules/platform.md`);
+running the app and the evidence a pull request carries (`running-the-app`); a picker or
+other control that lives in a view (`.claude/rules/ui.md`).
 
 ## The shape, before any OS code
 
@@ -111,13 +111,10 @@ signing change (`AGENTS.md` › "Security and human approval").
 
 ## Two platforms at compile time
 
-`MyAppPlatform` also builds for macOS, because `swift test` runs the package on the host
-(`docs/architecture.md` › Why the package also builds for macOS). An iOS-only framework
-call — `BGTaskScheduler`, a UIKit type, `UIApplication.openSettingsURLString` — sits
-inside `#if os(iOS)`, and so does its test; `just test-ios` runs that test on the iOS
-Simulator, and CI's `Package Tests (iOS Simulator)` job runs it on every pull request.
-Keep the `#if` around the smallest translation that needs it, never around a decision:
-a Core decision is tested on the host, where the coverage floor sees it.
+The `#if os(iOS)` rules are `.claude/rules/swift.md` and `.claude/rules/platform.md`.
+For a system API that means `BGTaskScheduler`, a UIKit type, or
+`UIApplication.openSettingsURLString` sits behind the guard with its test, which
+`just test-ios` and CI's `Package Tests (iOS Simulator)` job run.
 
 A framework that compiles on macOS may still refuse to run in a test process.
 `UNUserNotificationCenter.current()` raises `bundleProxyForCurrentProcess is nil` in a
@@ -140,8 +137,8 @@ AVFoundation, HealthKit — adds it to both in the same pull request as the adap
 ## Never reach for `@unchecked Sendable` or `nonisolated(unsafe)`
 
 They turn the build green and leave the race, with the reason it was safe written
-nowhere; using either to silence a diagnostic needs a human's sign-off (`AGENTS.md` ›
-"Security and human approval"). The actual fix, in this order:
+nowhere, which is why using either needs sign-off (`.claude/rules/swift.md` ›
+Concurrency). The actual fix, in this order:
 
 | The compiler says | The fix |
 |---|---|

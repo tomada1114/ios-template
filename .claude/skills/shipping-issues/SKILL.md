@@ -15,7 +15,8 @@ description: >-
 # Shipping Issues
 
 **Owns:** taking open issues to a merged PR and a CLOSED issue. **Does not own:** the
-label vocabulary and issue-body rules (`triaging-issues`); test-first Core work (`tdd`).
+label vocabulary and issue-body rules (`triaging-issues`); the coding conventions
+(`.claude/rules/`).
 
 **Done means all three:** the PR is merged, the issue is CLOSED, and nothing was deleted
 or weakened to get there. **Invoking this skill authorizes every write it makes, merge
@@ -55,7 +56,7 @@ foundational implementation, priority research, the review fallback, a CI failur
 survived two attempts, and design decisions; `scout` for read-only research that only collects or
 enumerates; `worker` for tool-free drafting from a complete brief ([cost-discipline.md](references/cost-discipline.md#model-tiers)).
 **Reuse before respawn:** a resume or next repair attempt goes to the same agent via
-`SendMessage` while reachable. Codex CLI has no tiers or `SendMessage`: run it inline.
+`SendMessage` while reachable.
 
 Everything generated lives under `<runstate>` =
 `${AGENT_SKILL_STATE_DIR:-$HOME/.local/state/agent-skills}/shipping-issues/<owner>__<repo>/`,
@@ -99,7 +100,9 @@ Take the narrower grouping on disagreement; shrinking never needs asking.
 
 ## 3. Implement
 
-One issue, one branch, one PR; the plan's `next:` line is the command. Take a baseline
+One issue, one branch, one PR; the plan's `next:` line is the command. A rule under
+`.claude/rules/` loads only once a matching file is opened, so the implementer reads the
+rule for each area the issue touches before designing. Take a baseline
 of the confirmed verify command (serial: once on the branch; parallel: through
 `worktree_setup.sh`, the first worktree alone). Spawn
 [agents/implementation.md](references/agents/implementation.md) per issue, a batch's
@@ -119,7 +122,7 @@ second.** **`medium` is the standing default**, `high` only on the triggers in
 [cost-discipline.md](references/cost-discipline.md#code-review-effort), never `low` or
 `ultra`. `--fix` is serial-only; in parallel, numbered findings go to one `executor` per
 branch ([agents/review-fix.md](references/agents/review-fix.md)). Read what the fix
-changed, re-verify, push, record `--event review`
+changed, run the narrowest check that covers it (the touched area's `.claude/rules/` file, else AGENTS.md's Validating table), push, record `--event review`
 ([implement-and-review.md](references/implement-and-review.md#4-review-the-branch)).
 
 ## 5. Open the PR
@@ -136,7 +139,7 @@ Once the new head commit shows among the PR's runs, watch it with output redirec
 `ci_watch.sh <pr> --timeout 1800` with `run_in_background` and wait for its completion
 notification -- never a hand-rolled sleep/poll loop -- or in the foreground with
 `--timeout 540` or less, re-run on `TIMEOUT`
-([pr-ci-merge.md](references/pr-ci-merge.md#6-ci-to-green), Codex CLI included).
+([pr-ci-merge.md](references/pr-ci-merge.md#6-ci-to-green)).
 `FAIL` -> [agents/ci-repair.md](references/agents/ci-repair.md), 3 attempts at most.
 Anything else -> [recovery.md](references/recovery.md#no_checks-error-timeout-and-other-non-verdicts).
 `PASS` -> step 7 in the same turn.

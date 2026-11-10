@@ -10,7 +10,7 @@ struct ResourceDeclaration {
     /// Everything between the call's parentheses.
     let arguments: Substring
 
-    /// Whether the call follows `localizing-the-app`'s declaration: an explicit key, a
+    /// Whether the call follows `.claude/rules/core.md`'s declaration: an explicit key, a
     /// `defaultValue`, and Core's own bundle.
     var followsTheConvention: Bool {
         key != nil && arguments.contains("defaultValue:") && arguments.contains("bundle: .module")

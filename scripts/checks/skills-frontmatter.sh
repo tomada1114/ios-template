@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Every skill's SKILL.md opens with a frontmatter block both hosts can load: a
+# Every skill's SKILL.md opens with a frontmatter block Claude Code can load: a
 # SKILL.md with a stray key, a `name` that disagrees with its directory, or an
-# empty description mirrors cleanly and then silently never loads.
+# empty description silently never loads.
 #
 #   scripts/checks/skills-frontmatter.sh [--root DIR]
 #
-# For each directory <root>/.agents/skills/<dir>/:
+# For each directory <root>/.claude/skills/<dir>/:
 #   - <dir>/SKILL.md exists and its first line is exactly `---`, and a later line
 #     that is exactly `---` closes the block;
 #   - the block's top-level keys (a key at column 0) are exactly `name` and
@@ -15,22 +15,21 @@
 #     multi-line scalar with at least one non-blank indented line.
 # Indented lines continue the key above them, and blank lines and `#` comments are
 # ignored; any other line in the block fails as unparsable. The check is
-# line-based, not a full YAML parser. Only .agents/skills/ is read: .claude/skills/
-# is its byte-identical mirror (scripts/sync-agents.sh --check).
+# line-based, not a full YAML parser.
 #
 # Git work tree: not required — the check reads files under --root, which defaults
 # to the checkout containing this script (scripts/checks/lib.sh).
 #
 # Errors (each followed by Expected:/Actual:/Next: lines, exit 1):
 #   ERR_CHECK_USAGE              unknown argument, or a --root DIR that does not exist
-#   ERR_CHECK_INPUT_MISSING      <root>/.agents/skills/ does not exist
+#   ERR_CHECK_INPUT_MISSING      <root>/.claude/skills/ does not exist
 #   ERR_CHECK_SKILL_FRONTMATTER  a SKILL.md frontmatter breaks one of the rules above
 set -euo pipefail
 
 # shellcheck source=scripts/checks/lib.sh
 . "$(dirname "$0")/lib.sh"
 check_parse_args "scripts/checks/skills-frontmatter.sh" "$@"
-check_require_file ".agents/skills"
+check_require_file ".claude/skills"
 
 # Prints one problem per line for the SKILL.md given, whose directory is `dir`.
 frontmatter_problems() { # frontmatter_problems <dir name> <SKILL.md path>
@@ -78,23 +77,23 @@ frontmatter_problems() { # frontmatter_problems <dir name> <SKILL.md path>
     ' "$2"
 }
 
-for skill_dir in "${CHECK_ROOT}"/.agents/skills/*/; do
+for skill_dir in "${CHECK_ROOT}"/.claude/skills/*/; do
     [ -d "${skill_dir}" ] || continue
     dir=$(basename "${skill_dir}")
     skill_file="${skill_dir}SKILL.md"
     if [ ! -f "${skill_file}" ]; then
-        check_problem ".agents/skills/${dir}: no SKILL.md"
+        check_problem ".claude/skills/${dir}: no SKILL.md"
         continue
     fi
     while IFS= read -r problem; do
         [ -n "${problem}" ] || continue
-        check_problem ".agents/skills/${dir}: ${problem}"
+        check_problem ".claude/skills/${dir}: ${problem}"
     done <<EOF
 $(frontmatter_problems "${dir}" "${skill_file}")
 EOF
 done
 
 check_report ERR_CHECK_SKILL_FRONTMATTER "a SKILL.md frontmatter would not load as a skill" \
-    "each .agents/skills/<dir>/SKILL.md to open with a --- block holding exactly \`name: <dir>\` and a non-empty \`description\`" \
-    "fix the frontmatter in .agents/skills/ (see the authoring-skills skill), then run \`just agents-sync\`"
+    "each .claude/skills/<dir>/SKILL.md to open with a --- block holding exactly \`name: <dir>\` and a non-empty \`description\`" \
+    "fix the frontmatter in .claude/skills/<dir>/SKILL.md to the rules in this check's header (scripts/checks/skills-frontmatter.sh)"
 check_finish "skills-frontmatter: every SKILL.md has exactly a matching name and a description."

@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Codex CLI is no longer supported: skills live only under `.claude/skills/` and are
+  edited there directly. The `.agents/skills/` tree, its byte-identical mirror, `just
+  agents-sync`/`just agents-check`, `scripts/sync-agents.sh`, the pre-commit hook's
+  "Skills mirror" section, and the Codex-YAML frontmatter rule are removed; `typos` and
+  `shellcheck` now cover `.claude/skills/`. The `steering-the-roadmap`, `updating-docs`,
+  and `authoring-skills` skills and `docs/architecture/roadmap.md` are removed.
+- Coding conventions now live in path-scoped rules that load with the files they govern:
+  new `.claude/rules/core.md`, `ui.md`, `platform.md`, and `shell.md` replace the
+  `designing-core-logic`, `designing-errors`, `tdd`, `localizing-the-app`,
+  `building-swiftui-screens`, and `writing-repo-scripts` skills, and `swift.md` and
+  `testing.md` keep only what applies to every module. `designing-ui` now covers only
+  the design lock, token values, Liquid Glass, and Refero research. `AGENTS.md` drops
+  its Skills table (and `scripts/checks/skills-index-complete.sh` with it), its
+  "Repository scripts", "Enforcement layers", and "What no local gate sees" sections
+  (now the `changing-gates` skill's `references/enforcement-layers.md`), and "GitHub
+  settings a new repository must enable" (now the `starting-an-app` skill).
 - The design is now kept as its present state instead of numbered decision records:
   the record index and template under `docs/architecture/`, and the skill that wrote
   them, are removed. A design change rewrites

@@ -46,8 +46,6 @@ of implementation still runs one PR at a time in the parent.
 `subagent_type` -- `executor`, `architect`, `scout`, or `worker` -- never a bare
 `model`, which loses the tier's settings and instructions. Which step
 takes which tier, and why: [cost-discipline.md](cost-discipline.md#model-tiers).
-Under Codex CLI, which has neither the tiers nor `SendMessage`, read the prompt
-body below as the brief for doing that step inline in the main session.
 
 ## Standing prohibitions for every spawn
 

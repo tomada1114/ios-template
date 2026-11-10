@@ -17,9 +17,10 @@ description: >
 `.swiftformat`, `Package.swift`'s `strictSettings`, `mise.toml`, `.githooks/pre-commit`,
 `scripts/lint.sh`, `scripts/coverage.sh`, the commit-time guard under `scripts/guard/`,
 the harness checks under `scripts/checks/`, and `.github/workflows/*.yml` — and which
-gate can see a given change at all. **Does not own:** adding a package dependency (the Dependency Policy in `.claude/rules/project.md`);
+gate can see a given change at all, recorded in
+[references/enforcement-layers.md](references/enforcement-layers.md). **Does not own:** adding a package dependency (the Dependency Policy in `.claude/rules/project.md`);
 the content of a repository-specific lint rule; how a script under `scripts/` is written
-(`writing-repo-scripts`); the label set in `.github/labels.yml` (`triaging-issues`).
+(`.claude/rules/shell.md`); the label set in `.github/labels.yml` (`triaging-issues`).
 
 Never weaken a gate to make a check pass: that rule is stated in `AGENTS.md`'s
 "Security and human approval" and "Important Reminders" sections, and this skill does
@@ -54,8 +55,8 @@ A check in `scripts/lint.sh` is three edits, not one:
 `scripts/tests/run.sh` (`just test-scripts`) is a gate on the gates:
 `scripts/tests/lint_test.sh` pins `scripts/lint.sh`, one test file pins each hook
 section, and `scripts/tests/checks_test.sh` pins every harness check. A change to one of
-those files keeps its test green, and a new script gets a test as `AGENTS.md`'s
-"Repository scripts" requires.
+those files keeps its test green, and a new script gets a test as
+`.claude/rules/shell.md` › Tests requires.
 
 ## `.swiftlint.yml`
 
@@ -132,7 +133,7 @@ for why only Core is gated and why the function floor sits lower.
 
 ## `.githooks/pre-commit`
 
-Independent sections — "Swift lint", "Skills mirror", "Staged guard" — each scoped by
+Independent sections — "Swift lint" and "Staged guard" — each scoped by
 the staged paths it cares about, none exiting early, each calling a shared script on the
 staged content rather than the worktree. The hook stays lint-only by decision: it never
 formats and re-stages, compiles, or runs tests. It only reaches clones that ran
@@ -157,16 +158,17 @@ is built.
 
 Removing a pattern or a path rule is weakening a gate. `git commit --no-verify` skips
 this guard with every other hook section, and no CI job reruns it: that gap is written
-down under `AGENTS.md`'s "Enforcement layers".
+down in [references/enforcement-layers.md](references/enforcement-layers.md) › Gaps.
 
 ## `scripts/checks/`
 
 `scripts/checks/run-all.sh` (`just check-harness`) runs every check in the directory,
-each re-asserting one claim the harness makes about itself; `AGENTS.md`'s "Enforcement
-layers" row for it is the full list, and each check's header states what it reads and
-what it cannot see. A new check takes `--root DIR` through `scripts/checks/lib.sh`, gets
-its failure-mode fixtures in `scripts/tests/checks_test.sh`, and extends that row in the
-same pull request. Deleting a check, or narrowing what it reads, is weakening a gate; an
+each re-asserting one claim the harness makes about itself;
+[references/enforcement-layers.md](references/enforcement-layers.md) › What
+`just check-harness` holds is the full list, and each check's header states what it
+reads and what it cannot see. A new check takes `--root DIR` through
+`scripts/checks/lib.sh`, gets its failure-mode fixtures in
+`scripts/tests/checks_test.sh`, and its line in that list, in the same pull request. Deleting a check, or narrowing what it reads, is weakening a gate; an
 exception added to `scripts/checks/just-check-matches-ci.sh` carries its reason.
 
 ## `.github/workflows/`
@@ -176,7 +178,8 @@ exception added to `scripts/checks/just-check-matches-ci.sh` carries its reason.
 bumps the pinned `uses:` SHAs. A job or workflow added later is added to
 [references/ci-jobs.md](references/ci-jobs.md) — what each runs, which contexts are
 required, and when each fires — by the change that adds it.
-Which layer holds what is `AGENTS.md`'s "Enforcement layers" table; read it rather than
+Which layer holds what is the table in
+[references/enforcement-layers.md](references/enforcement-layers.md); read it rather than
 re-deriving it.
 
 Every workflow follows a set of conventions — remote `uses:` pinned to a full SHA, a
@@ -201,4 +204,7 @@ the app or the package tests on a physical device, or on any iOS release but the
 pinned Xcode ships: CI's simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,
 entitlements, and signing settings are unchecked. Each is a place a change can be wrong
 while every gate passes; a gate proposed to close one is a real gate change and belongs
-in the PR as one.
+in the PR as one. What every local layer misses — a skipped hook, an edit on GitHub, a
+tool other than Claude Code — is listed in
+[references/enforcement-layers.md](references/enforcement-layers.md) › What no local
+gate sees.

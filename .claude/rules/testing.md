@@ -52,18 +52,13 @@ translation-only, and outside the coverage floor, precisely so that stays true.
 - Shared values and builders for one subject's suites go in one fixture enum beside them
   — `TodoListViewModelFixture` is the worked example: fixed dates and identifiers, and a
   view model whose clock and identifier source are pinned
-- TDD is required: write the failing test first, then implement to green (the `tdd` skill)
-- A Core test uses plain `import MyAppCore`, never `@testable import`: it exercises the
-  public API the rest of the app calls, so an internal can be renamed without touching a
-  test. A test that seems to need an internal is either testing a detail (test the
-  behavior it produces) or has found a declaration another module legitimately needs —
-  make that `package`, which every target in `Packages/MyAppKit` sees (`swift.md` ›
-  Access Control)
+- A behavior change in Core is written test-first, and a Core test imports the public
+  API only (`core.md` › Test first)
 
 ## What to Test
 
 - Test *behavior and contracts*, not implementation details
-- Always test the happy path AND the error path for every public API
+- Always test the happy path and the error path for every public API
 - Error-path tests assert the thrown error's payload with `#expect(throws:)`, not just its
   type — `TodoRepositoryError.corruptedRecord(item.id)`, not any `TodoRepositoryError`
 
@@ -91,8 +86,8 @@ operation throw, `calls` and `snapshot` to read what happened, `onSave(_:)` and
 `onFetch(_:)` to act while a save or a fetch is in flight. It is `package`, not
 `public`, and matches its port's shape — an
 actor for an async port (`InMemoryTodoRepository`), a final class over a `Mutex` for a
-synchronous one (`InMemoryPreferences`) — so it is `Sendable` the honest way, never
-`@unchecked Sendable`. Every test of a given port
+synchronous one (`InMemoryPreferences`) — so it is `Sendable` without an escape hatch
+(`swift.md` › Concurrency). Every test of a given port
 uses that one fake, so the port's test-time behavior is defined in one place rather than
 re-stubbed per test. Asserting on the recorded calls is for the cases where *asking* is
 the behavior (not asking the repository before `load()`); otherwise assert on the state
@@ -141,12 +136,12 @@ protocol, not over either implementation, and every clause it checks is one the 
   runs them in parallel by default
 - No `sleep` or timing-based assertion in a unit test; that flakiness belongs to no one.
   When time must pass, the type under test takes its time as a parameter (`now:`, a
-  `Clock`, a delay — the `designing-core-logic` skill), and the test hands it a pinned
-  value, a zero `Duration`, or a manually advanced test clock — never `Task.sleep` to
-  wait for something to happen
+  `Clock`, a delay — `core.md` › Inject what Core would read from the world), and the
+  test hands it a pinned value, a zero `Duration`, or a manually advanced test clock —
+  never `Task.sleep` to wait for something to happen
 - A test that touches the file system gets its own directory:
   `FileManager.default.temporaryDirectory.appending(path: "MyAppTests-\(UUID().uuidString)")`,
   created in the test and removed in a `defer`. Never a fixed shared path, the checkout,
   or the home directory — parallel tests would collide, and a leftover file changes the
   next run
-- NEVER weaken an assertion to make a test pass — fix the code
+- Never weaken an assertion to make a test pass — fix the code

@@ -47,7 +47,7 @@ The template sets `INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES`, an
 manifest Xcode generates from it sets `UIApplicationSupportsMultipleScenes` to `true`:
 an iPad user can open the app in more than one window. There is no `INFOPLIST_KEY_…`
 build setting for that one key — Xcode's build-setting specification lists only the
-`…_Generation` switch for the manifest (checked in Xcode 26.5,
+`…_Generation` switch for the manifest (checked in Xcode 26.5 and again in Xcode 27.0,
 `CoreBuildSystem.xcspec`). To turn multiple windows off, drop the generation switch and
 declare the manifest through XcodeGen's `info:` on the app target instead:
 
@@ -59,7 +59,8 @@ declare the manifest through XcodeGen's `info:` on the app target instead:
           UIApplicationSupportsMultipleScenes: false
 ```
 
-Measured on a clone of this template with Xcode 26.5: with the generation switch still
+Measured on a clone of this template with Xcode 26.5 (not re-measured on the pinned
+Xcode 27.0): with the generation switch still
 set, the generated manifest wins and the built `Info.plist` still reads `true`; with it
 removed and the `info:` block above added, the built `Info.plist` reads `false` and the
 other generated keys (`CFBundleShortVersionString` from `MARKETING_VERSION` among them)
@@ -100,5 +101,5 @@ identifier and label, not by position.
 ## Not this reference's subject
 
 How a screen adapts between compact and regular size classes, and which layouts an
-iPad screen owes, is `building-swiftui-screens`'s subject. Recording the choice is
+iPad screen owes, is `.claude/rules/ui.md`'s subject. Recording the choice is
 `SKILL.md` › "Recording both decisions".
