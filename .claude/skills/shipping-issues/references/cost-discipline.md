@@ -156,10 +156,6 @@ agent by `SendMessage` while it is reachable
 agent is also the only sub-agent here that writes to GitHub (one comment, one
 label) and the only one that writes no code at all.
 
-Under Codex CLI, which reads nothing under `.claude/agents/`, there is no tier
-to name: each of these steps runs inline in the main session, with the same
-prompt body as its brief.
-
 ### The foundation exception: `architect` for what the backlog builds on
 
 Some issues are not "fully specified work with a clear pass/fail" even when

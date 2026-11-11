@@ -3,7 +3,8 @@
 Ways to watch a running build on the iOS Simulator: screenshots in the states a person
 may put the device in, deep links and pushes, a launch into a known state, and a
 throwaway UI test that drives a flow. Every command here was run against this
-template's app on Xcode 26.5 with the iOS 26.5 simulator (checked 2026-09-30); each
+template's app on Xcode 26.5 with the iOS 26.5 simulator (last verified 2026-09-30;
+not re-run on the pinned Xcode 27.0); each
 subcommand's own `xcrun simctl help <subcommand>` is the authority when an Xcode
 changes it. Write every artifact under `build/` — it is gitignored, and nothing below
 belongs in a commit.
@@ -102,7 +103,7 @@ SIMCTL_CHILD_PROBE_STATE=known-state \
 
 **Do not add a launch hook to the app just to look at a state.** A state a Core test can
 construct is a state a `#Preview` can show by injecting a view model already in it
-(`building-swiftui-screens`). A hook is warranted only for a state that is expensive to
+(`.claude/rules/ui.md` › Previews). A hook is warranted only for a state that is expensive to
 reach by hand and wanted from both a UI test and a person; it is read in `App/`, the
 composition root, and turned into one value a Core type takes, as `-uiTesting` is.
 

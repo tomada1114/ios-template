@@ -9,14 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Codex CLI is no longer supported: skills live only under `.claude/skills/` and are
+  edited there directly. The `.agents/skills/` tree, its byte-identical mirror, `just
+  agents-sync`/`just agents-check`, `scripts/sync-agents.sh`, the pre-commit hook's
+  "Skills mirror" section, and the Codex-YAML frontmatter rule are removed; `typos` and
+  `shellcheck` now cover `.claude/skills/`. The `steering-the-roadmap`, `updating-docs`,
+  and `authoring-skills` skills and `docs/architecture/roadmap.md` are removed.
+- Coding conventions now live in path-scoped rules that load with the files they govern:
+  new `.claude/rules/core.md`, `ui.md`, `platform.md`, and `shell.md` replace the
+  `designing-errors`, `tdd`, `localizing-the-app`, `building-swiftui-screens`, and
+  `writing-repo-scripts` skills, and `swift.md` and `testing.md` keep only what applies
+  to every module. `designing-core-logic` keeps only design judgment on Core: why the
+  layers are split, view-model ownership and reentrancy, the composition root, and what
+  each build does with the String Catalog. `designing-ui` now covers only
+  the design lock, token values, Liquid Glass, Refero research, and why navigation is
+  shaped as it is. `AGENTS.md` drops
+  its Skills table (and `scripts/checks/skills-index-complete.sh` with it), its
+  "Repository scripts", "Enforcement layers", and "What no local gate sees" sections
+  (now the `changing-gates` skill's `references/enforcement-layers.md`), and "GitHub
+  settings a new repository must enable" (now the `starting-an-app` skill).
 - How the app is built and why now lives only in the skill that owns each subject, plus
   `AGENTS.md`'s Architecture section: `docs/architecture.md`, the
   `docs/architecture/roadmap.md` skeleton, the `steering-the-roadmap` skill, and
   README's Design Philosophy are removed. A new `persisting-data` skill owns the
   repository port, the SwiftData store and its schema versions, and preferences; view
-  models and the composition root, navigation, the HTTP client, and the design lock
-  move into references of `designing-core-logic`, `building-swiftui-screens`,
-  `integrating-system-apis`, and `designing-ui`; "What is contract and what is
+  models and the composition root, the HTTP client, and navigation and the design lock
+  move into references of `designing-core-logic`, `integrating-system-apis`, and
+  `designing-ui`; "What is contract and what is
   private" moves into `AGENTS.md`. The app's direction is the `## Product` section and
   the open issues, and "what is next?" is answered by `triaging-issues`.
 - The design is now kept as its present state instead of numbered decision records:

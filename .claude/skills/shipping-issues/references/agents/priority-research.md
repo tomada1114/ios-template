@@ -1,7 +1,7 @@
 # Priority research and labeling (sub-agent prompt)
 
-Filled and handed to an `architect` sub-agent (or read and run inline under
-Codex CLI, or wherever the runtime exposes no delegation) from `references/delegation-templates.md`'s
+Filled and handed to an `architect` sub-agent (or read and run inline wherever
+the runtime exposes no delegation) from `references/delegation-templates.md`'s
 "Priority research and labeling" section -- the spawn condition, the return
 contract, and what the caller does with each section live there. This file
 is only the prompt body.

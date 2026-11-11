@@ -51,7 +51,10 @@ Likely files: {paths from step 2's triage, or -- when step 2 was skipped on a
                labeled backlog -- a short grep/glob the parent runs against
                the issue's own keywords right before spawning; never blank}
 Project conventions: read {workdir}/CLAUDE.md and
-{workdir}/AGENTS.md before writing code.
+{workdir}/AGENTS.md before writing code, and, before designing,
+the {workdir}/.claude/rules/ file for each area the issue touches
+(core.md, ui.md, platform.md, shell.md, ...): a rule loads only once
+a file it matches is opened, which is too late to shape the design.
 Decisions already made: {anything step 2/2b resolved, so it is not re-opened}
 Verification command: {verify_command, from step 3's smoke run -- if that
                         smoke run found none, say so explicitly here rather

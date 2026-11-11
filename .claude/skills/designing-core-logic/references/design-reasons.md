@@ -30,7 +30,7 @@ gate honest for a UI app instead of an invitation to write meaningless view test
 
 The view model is plain Swift that `swift test` drives in milliseconds, so every decision
 a screen makes is unit-tested and coverage-gated; the view stays a thin renderer. How a
-view model is shaped, owned, and wired: `SKILL.md`'s "Action-shaped view models" and
+view model is shaped: `.claude/rules/core.md` › View models; how it is owned and wired:
 [view-models.md](view-models.md).
 
 ## No package dependencies
@@ -44,12 +44,8 @@ and passes the Dependency Policy in `.claude/rules/project.md`.
 
 ## Patterns not adopted
 
-- **The Composable Architecture**, or any architecture framework — a dependency and a
-  learning curve for what `@Observable` plus ports already give.
 - **Combine for state** — the Observation framework replaces it.
-- **Singletons or a global service locator** — the composition root passes everything
-  explicitly, by named initializer parameters ([view-models.md](view-models.md) › "The
-  composition root").
 - **Core Data** — SwiftData is its successor on this OS floor (`persisting-data`).
 
-`SKILL.md`'s "Deliberately not adopted" table lists the rest, each with its reason.
+`.claude/rules/core.md`'s "Deliberately not adopted" table lists the rest, each with its
+reason; an app that adopts one rewrites that row and, where it has one, the entry here.

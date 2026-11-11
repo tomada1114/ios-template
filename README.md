@@ -4,8 +4,8 @@
 [![License: MIT][license-mit]](LICENSE)
 
 An iOS 27+ SwiftUI app built with XcodeGen and a local Swift package, with SwiftData
-behind a repository port, and quality gates and an agent harness (Claude Code, Codex
-CLI) from the first commit. It ships a small to-do list that exercises every seam an
+behind a repository port, and quality gates and an agent harness (Claude Code) from the
+first commit. It ships a small to-do list that exercises every seam an
 app needs: `@Observable` view models, a port with a SwiftData adapter, a fake and a
 contract suite run against both, typed navigation with deep links, and an XCUITest.
 
@@ -49,11 +49,12 @@ project.yml               # XcodeGen manifest; MyApp.xcodeproj is generated and 
 ```
 
 [AGENTS.md](AGENTS.md)'s Architecture section holds the layer rules and what is contract.
-How each part is built, and why, lives in the skill under
-[`.agents/skills/`](.agents/skills) that owns the subject — `designing-core-logic` for
-the layers, `persisting-data` for storage, `building-swiftui-screens` and `designing-ui`
-for screens, `changing-gates` for the toolchain — indexed by `AGENTS.md`'s Skills table.
-There is no separate architecture or roadmap document.
+Each area's conventions are a path-scoped rule under [`.claude/rules/`](.claude/rules),
+and why each part is built the way it is lives in the skill under
+[`.claude/skills/`](.claude/skills) that owns the subject — `designing-core-logic` for
+the layers, `persisting-data` for storage, `designing-ui` for screens and navigation,
+`changing-gates` for the toolchain. There is no separate architecture or roadmap
+document.
 
 ## Development
 
@@ -64,7 +65,7 @@ run each without Just.
 |---|---|
 | `just install` | Install pinned tools, git hooks, and generate the Xcode project |
 | `just test` | Package tests on the host Mac, with the coverage floor on `MyAppCore` |
-| `just lint` | SwiftFormat, SwiftLint, ShellCheck, actionlint, typos, and the skills mirror |
+| `just lint` | SwiftFormat, SwiftLint, ShellCheck, actionlint, and typos |
 | `just run` | Build, then launch in the iOS Simulator |
 | `just run-device` | Build, then launch on your connected iPhone |
 | `just uitest` | The XCUITest launch test on an iOS Simulator |
@@ -135,7 +136,7 @@ run each without Just.
    (they need a public repository or GitHub Advanced Security), and drop the
    `Dependency Review` context from `.github/rulesets/main.json` — otherwise no
    pull request can merge. Details:
-   [private-repository.md](.agents/skills/starting-an-app/references/private-repository.md)
+   [private-repository.md](.claude/skills/starting-an-app/references/private-repository.md)
 
 To find any placeholders the script left untouched (the pattern uses `.`
 wildcards so the rename cannot rewrite this very command into your new names):

@@ -93,8 +93,7 @@ own diff, and a new spawn would pay for all of that again from a cold start. Spa
 fresh agent -- on the same tier as the first run -- only when that agent is gone, or when
 its own context is what went wrong (it misread the issue and every later turn builds on
 the misreading). A resume never changes tier: a foundational issue the first run got
-half-right is exactly where the remaining judgment sits. Under Codex CLI there is no
-`SendMessage` and no named tier: finish the resume inline in the main session.
+half-right is exactly where the remaining judgment sits.
 
 A run that returned without a report, stopped before pushing, or missed or widened the
 spec: [recovery.md](recovery.md). Never re-spawn an agent that returned without its

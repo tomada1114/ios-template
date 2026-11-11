@@ -49,29 +49,6 @@ fi
 # about, and no section may exit early — a commit that skips one section must
 # still reach every other. Append later sections below this comment.
 
-# --- Skills mirror -----------------------------------------------------------
-# Only fires when a staged path is under .agents/skills/ or .claude/skills/. Exports
-# the *staged* (index) versions of both trees and compares those, not the working
-# tree: `.agents/skills/x/SKILL.md` edited, `just agents-sync` run, but only the
-# `.agents` side staged, looks in sync on disk yet is still a drifted commit — the
-# same rule the Swift section above applies to `git diff --cached`. diff and git are
-# ordinary tools already on PATH, so this needs no `mise exec --`.
-# Its own query rather than STAGED_FILES: a deletion (or a rename out of the tree)
-# drifts the mirror too, and STAGED_FILES leaves out D because the Swift section
-# cannot export a deleted blob.
-STAGED_SKILLS_FILES=()
-while IFS= read -r -d '' file; do
-    STAGED_SKILLS_FILES+=("${file}")
-done < <(git diff --cached --name-only -z --no-renames -- .agents/skills .claude/skills)
-
-if [ ${#STAGED_SKILLS_FILES[@]} -gt 0 ]; then
-    echo "pre-commit: Skills mirror — checking the staged content of .agents/skills/ and .claude/skills/"
-    STAGED_SKILLS_TREE=$(new_temp_dir)
-    git ls-files -z -- .agents/skills .claude/skills |
-        xargs -0 git checkout-index --prefix="${STAGED_SKILLS_TREE}/" --
-    scripts/sync-agents.sh --check --root "${STAGED_SKILLS_TREE}"
-fi
-
 # --- Staged guard ------------------------------------------------------------
 # Fires on every commit that stages any change — not only commits with a Swift
 # file. scripts/check-staged.sh reads the index itself: it refuses a secret-shaped

@@ -88,7 +88,7 @@ public struct URLSessionHTTPClient: HTTPClient {
     }
 
     /// Maps `error`, logging it unless it is the caller's own cancellation — which is not
-    /// a failure (the `designing-errors` skill).
+    /// a failure (`.claude/rules/core.md` › Cancellation).
     private static func failure(
         _ error: any Error,
         sending request: HTTPRequest,

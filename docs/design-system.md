@@ -6,7 +6,7 @@ of tokens every screen draws from — `DesignTokens` in
 and type to the system, so a screen built from the template is correct in light, dark,
 every Dynamic Type size, and Increase Contrast before anyone decides a brand. Every brand
 decision belongs to the app's own design lock, which lives in the `designing-ui` skill
-(`.agents/skills/designing-ui/references/design-lock.md`): the template ships its
+(`.claude/skills/designing-ui/references/design-lock.md`): the template ships its
 reference lock there, and an app rewrites it for itself after the bootstrap. This page is
 the research record behind the lock, never a copy of it; the skill's
 `references/refero-workflow.md` is how an app researches its own.

@@ -126,8 +126,8 @@ Two issues may share a batch only when **all** of these hold:
   `Package.resolved`, `project.yml`, `mise.toml`, CI config, a persisted schema.
   Anything touching those is serialized, always, even when the code paths are
   disjoint. An append-only list is not shared infrastructure: every user-facing
-  change adds a `CHANGELOG.md` entry, and a new skill adds a row to `AGENTS.md`'s
-  Skills table, so serializing on them would serialize nearly every batch. Two
+  change adds a `CHANGELOG.md` entry, so serializing on it would serialize nearly
+  every batch. Two
   branches that each append there conflict only mechanically -- keep both entries
   when bringing the later branch up to date ([recovery.md](recovery.md#a-merge-conflict)).
 - Neither is a `blocked: design` issue taken on deliberately. Step 2b's
@@ -226,9 +226,7 @@ backlog (step 1's `needs-design:`), gets one `architect` from
   treating the issue as ready.
 
 An issue returned `DECIDED` is ordinary backlog from that moment: ready for the
-next run, or for this one at step 8c. Under Codex CLI there is no background
-spawn: decide held designs inline between issues, one at a time, or leave them
-for the next run and say so at step 10.
+next run, or for this one at step 8c.
 
 ### Clearing a stale `blocked: dependency`
 

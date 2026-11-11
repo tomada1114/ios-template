@@ -4,118 +4,78 @@ paths:
   - "App/**/*.swift"
 ---
 
+Module-specific rules: `core.md` (MyAppCore), `ui.md` (MyAppUI, `App/`, LaunchUITests),
+`platform.md` (MyAppPlatform and its tests), `testing.md` (every test target).
+
 ## Design
 
-- One logical concern per file. SwiftLint enforces its default limits under `strict: true`
-  (warnings fail): a file over 400 lines (`file_length`), a function body over 50 lines
-  (`function_body_length`), or more than 5 parameters (`function_parameter_count`) fails
-  `just lint` — group related parameters in a struct long before that
+- One logical concern per file. `just lint` enforces SwiftFormat and SwiftLint's length
+  and parameter limits under `strict: true` (`just fix` applies what is auto-fixable);
+  group related parameters in a struct long before `function_parameter_count` fires
 - Value types first: reach for `struct`/`enum`; use `class` only for identity or reference semantics
-- `MyAppCore` must never import SwiftUI, UIKit, AppKit, Cocoa, SwiftData, CoreData,
-  CloudKit, UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, or WidgetKit —
-  it stays free of UI, persistence, and OS-integration frameworks (enforced by
-  `.swiftlint.yml`'s `no_ui_import_in_core` and `ArchitectureBoundaryTests`).
-  `Foundation`, `Observation`, and `os` are allowed: logging is neither a UI nor an
-  OS-integration framework, so Core imports `os` directly (see Logging below)
-- Storage and OS services go in `MyAppPlatform`, as an adapter behind a `Sendable` port
-  Core declares: value types in and out, translation only, no branching domain logic
-  (that belongs in Core, where the coverage floor sees it)
-- Views in `MyAppUI` stay thin: no business logic, delegate everything to Core view models
-- `MyAppUI` and `MyAppPlatform` are siblings and never import each other; `App/` is the
-  composition root that hands a `MyAppPlatform` adapter, as a port, to Core's `AppModel`,
-  which builds the view models over it
-- How Core logic is shaped (injected time, locale, and randomness; action-shaped view
-  models, reentrancy, the composition root) and why the code is split this way is the
-  `designing-core-logic` skill
 - `///` doc comments on all public API; document *why*, not what the signature already says
 - A `switch` over an enum `MyAppCore` declares lists every case and has no `default:`
   (group cases with `case .a, .b:` instead), so adding a case is a compile error at each
   switch that must decide about it rather than a silent fall into `default`. An enum the
-  SDK owns (an imported C enum, an `NSError` code) is the exception: map the cases you
-  know and send the rest to `default:` or `@unknown default:` (the `designing-errors`
-  skill). No SwiftLint rule enforces this; review does
+  SDK owns is the exception (`platform.md` › Mapping framework errors). No SwiftLint
+  rule enforces this; review does
 
 ## Two platforms at compile time
 
 - `Package.swift` lists `.macOS(.v27)` beside `.iOS(.v27)` so `swift test` runs the
-  package on the host. `MyAppUI` and `MyAppPlatform` therefore also compile for macOS
-  under `swift build`/`swift test`, not only for the iOS Simulator
+  package on the host. `MyAppUI` and `MyAppPlatform` therefore also compile for macOS,
+  not only for the iOS Simulator
 - An iOS-only API (`.navigationBarTitleDisplayMode`, `UIApplication`, a `UIKit` type)
   goes inside `#if os(iOS)`
-- `cd Packages/MyAppKit && swift build` is the check that catches a missing guard;
-  `just build` alone compiles only for iOS and will not
-- The why: AGENTS.md › Architecture
-
-## Persistence
-
-- `@Model` types, `ModelContainer`, and `ModelContext` appear only in
-  `Sources/MyAppPlatform/Persistence/` — never in Core, a view, or `App/`. `App/` opens
-  the app's one container through `PersistenceStore.makeContainer(storage:)` and hands it
-  to each repository's `init(modelContainer:)` without importing SwiftData or naming the
-  type; no repository opens a container of its own
-- The adapter is a `@ModelActor` actor and maps a record to a Core value type inside the
-  actor, so no `@Model` object crosses the port
-  (the `persisting-data` skill)
-- A shipped `VersionedSchema` (`AppSchemaV1`, the whole app's) is never edited: a change
-  to a stored model, or a new one, is a new schema version plus an `AppMigrationPlan`
-  stage, with a test that opens a store the previous version wrote
-  (AGENTS.md › What is contract and what is private)
+- `just test` (which builds the package for macOS) catches a missing guard; `just build`
+  compiles only for iOS and will not. Code behind `#if os(iOS)`, and behavior that
+  differs on the iOS runtime, is tested only by `just test-ios`
+- The why: `AGENTS.md` › Architecture
 
 ## Access Control
 
 - Narrowest first: `private`, then internal (the default, unwritten), then `package`,
   then `public`
-- `package` (Swift 5.9+; `Packages/MyAppKit/Package.swift` is tools-version 6.4) is for
-  a declaration another target *in* `Packages/MyAppKit` needs — a sibling module or a
-  test target — that is not app API. It replaces `@testable import` in a Core test
-  (`testing.md` › Framework and Structure). `App/` is an Xcode target outside the
-  package and cannot see it: whatever `App/` calls is `public`
+- `package` is for a declaration another target *in* `Packages/MyAppKit` needs — a
+  sibling module or a test target — that is not app API. It replaces `@testable import`
+  in a Core test (`core.md` › Test first). `App/` is an Xcode target outside the package
+  and cannot see it: whatever `App/` calls is `public`
 - `package` does not loosen the module boundaries: `MyAppUI` and `MyAppPlatform` still
   never import each other, and a view still does not mutate Core state directly
 
 ## Constants
 
-- A view's spacing, corner radius, and hit-target size: `DesignTokens`
-  (`Sources/MyAppUI/DesignSystem/DesignTokens.swift`) — `TodoListView.swift` is the
-  worked example. A number only one view needs and the scale does not cover: a
-  `private enum Layout` at the top of that view's file. A test's timeouts likewise
-  (`LaunchTests.swift`'s `Timeout`)
-- A number someone might tune (a delay, a threshold, a limit): one tuning type in Core
-  (the `designing-core-logic` skill); a domain invariant is a parameter or a `static` on
-  its type (`TodoItem.normalizedTitle(_:)`), not a tunable
-- User-visible wording Core decides: a `static` on a caseless enum in Core
-  (`TodoListStrings`), backed by the String Catalog; the logging subsystem: `AppLog`, once
 - A type holding only `static` members is a caseless `enum` (SwiftLint's
   `convenience_type`). No global `let`, and no `Constants.swift` grab bag: a constant
   lives beside the one concern that uses it
+- Where each kind lives: a view's spacing, radius, or hit target in `DesignTokens`
+  (`ui.md`); a number someone might tune in Core's one `Tuning` type (`core.md`);
+  user-visible wording as a `static` on a caseless enum in Core (`TodoListStrings`); the
+  logging subsystem in `AppLog`, once; a test's timeouts in a caseless enum in the test
+  file (`LaunchTests.swift`'s `Timeout`)
 
 ## Error Handling
 
-- Define typed errors per module (an `enum ... : Error, Equatable` with payload), thrown
-  with context — `TodoRepositoryError` is the worked example; its payloads carry
-  identifiers, never a title
-- NEVER `try!` or force-unwrap (`!`) in production code; `guard let`/`throws` instead
-- Never swallow errors silently; if catching, handle meaningfully or rethrow
+- No `try!` or force-unwrap (`!`) in production code; `guard let`/`throws` instead
+- Never swallow an error: handle it meaningfully or rethrow it
 - Never use errors for control flow
-- Typed vs. plain `throws`, cancellation, payload privacy, and mapping a framework error
-  in an adapter: the `designing-errors` skill
+- Designing an error type, typed vs. plain `throws`, and cancellation: `core.md` ›
+  Errors. Mapping a framework error in an adapter: `platform.md`
 
 ## Logging
 
-- `os.Logger` is the only logging facility. NEVER `print`, `debugPrint`, or `NSLog`
-  anywhere under `Packages/*/Sources/` or `App/`: an app launched from the Home Screen
-  has nowhere to send stdout, so those lines are lost exactly when they matter. Enforced
-  by `.swiftlint.yml`'s `no_print_in_sources`; test targets are exempt
+- Shipped code logs only through `os.Logger` (`no_print_in_sources` rejects `print`,
+  `debugPrint`, and `NSLog`; test targets are exempt)
 - Every logger is declared in `AppLog` (`Sources/MyAppCore/AppLog.swift`), never built
   inline: `subsystem` is the app's bundle identifier, spelled once as a literal there
   (`Bundle.main.bundleIdentifier` answers for the test runner under `swift test` and for
   the preview agent in a preview), and one `category` names one concern. `just logs`
   streams that subsystem; `AppLogTests` fails if it drifts from `project.yml`
-- Anything user-derived carries a privacy annotation — a to-do's title, anything typed,
-  a file path — is `.private`. Only values that are safe in anyone's log, such as an
-  identifier, a count, or an operation name, are `.public`. `os.Logger` defaults
-  interpolated strings to `.private`, so say which one you mean rather than relying on
-  the default
+- Every interpolation carries an explicit privacy annotation. Anything user-derived — a
+  to-do's title, anything typed, a file path — is `.private`; only values safe in
+  anyone's log, such as an identifier, a count, an error code, or an operation name, are
+  `.public`. `os.Logger` defaults dynamic strings to `.private`; never mark one `.public`
+  to make a log easier to read
 - Level by intent: `.debug` for the development stream `just logs` shows, `.info` for a
   milestone worth keeping, `.error`/`.fault` for something that went wrong. See
   `TodoListViewModel.load()` for the worked example
@@ -130,10 +90,13 @@ paths:
   they cross actors
 - Ports are `Sendable`. The repository and HTTP ports are `async`; `PreferencesStoring` is
   deliberately synchronous (the `persisting-data` skill's `references/preferences.md`)
-- Adapters and fakes are actors (`SwiftDataTodoRepository`, `InMemoryTodoRepository`), or
+- Adapters and fakes are actors (`SwiftDataTodoRepository`, `InMemoryTodoRepository`),
   `Sendable` structs holding only `Sendable` values (`URLSessionHTTPClient`,
-  `UserDefaultsPreferences`) and final classes guarding their state with a `Mutex`
-  (`InMemoryPreferences`) — never `@unchecked Sendable`
+  `UserDefaultsPreferences`), or final classes guarding their state with a `Mutex`
+  (`InMemoryPreferences`)
 - A closure a test injects (`now`, `makeID`, the fake's `onSave` and `onFetch`) is
   `@Sendable`; it captures values, not a `@MainActor` static
-- No `@unchecked Sendable` without a comment proving the invariant it papers over
+- `@unchecked Sendable` and `nonisolated(unsafe)` are not used to silence a diagnostic:
+  doing so needs a human's sign-off (`AGENTS.md` › Security and human approval), and a
+  comment explaining the invariant does not replace it. The usual fixes are in the
+  `integrating-system-apis` skill

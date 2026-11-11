@@ -10,9 +10,6 @@ calls a shared script:
 
 - "Swift lint" exports the staged Swift blobs with `git checkout-index --prefix=` and
   runs `scripts/lint.sh --staged-tree` on them (`scripts/tests/pre-commit-swift_test.sh`);
-- "Skills mirror" exports both skill trees from the index and runs
-  `scripts/sync-agents.sh --check --root` on the export
-  (`scripts/tests/pre-commit-skills_test.sh`);
 - "Staged guard" runs `scripts/check-staged.sh` on every commit that stages any change
   (`scripts/tests/check-staged_test.sh`; the rules live in `scripts/guard/`).
 

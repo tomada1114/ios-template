@@ -9,9 +9,9 @@
 # that the config stuck or that the hook file kept its executable bit — a clone
 # whose hook silently failed to install looked identical to one that succeeded.
 # This runs at the end of `just install` and as the first step of `just check`,
-# closing that gap there; it does not close it everywhere (AGENTS.md's
-# Enforcement layers names it as narrowed): a contributor who runs neither still
-# commits without hooks, and CI remains the backstop.
+# closing that gap there; it does not close it everywhere (the changing-gates
+# skill's references/enforcement-layers.md names it as narrowed): a contributor
+# who runs neither still commits without hooks, and CI remains the backstop.
 #
 # The hooks directory is resolved with `git rev-parse --git-path hooks` rather
 # than assuming `.git/hooks`, so both `core.hooksPath` and a linked worktree's

@@ -31,10 +31,10 @@ if ! command -v just >/dev/null 2>&1; then
     exit 1
 fi
 
-# write_skill ROOT NAME — a well-formed .agents/skills/NAME/SKILL.md.
+# write_skill ROOT NAME — a well-formed .claude/skills/NAME/SKILL.md.
 write_skill() {
-    mkdir -p "$1/.agents/skills/$2"
-    cat >"$1/.agents/skills/$2/SKILL.md" <<EOF
+    mkdir -p "$1/.claude/skills/$2"
+    cat >"$1/.claude/skills/$2/SKILL.md" <<EOF
 ---
 name: $2
 description: >
@@ -48,7 +48,7 @@ EOF
 # Prints the path of a fixture tree every check passes on. It deliberately holds
 # the near misses each check must not flag: a `just --list` and a `just <recipe>`
 # placeholder, `just` in prose outside backticks, a local `uses:`, a quoted pin,
-# a `### Rules` table after the Skills table, a composite action, a SwiftLint rule
+# a composite action, a SwiftLint rule
 # after no_ui_import_in_core with a group of its own, a quoted module in a comment
 # inside forbiddenModules and in a second array, a CI step that reaches a recipe
 # through its script, a CI-only recipe run both by name and through its script, a
@@ -118,19 +118,6 @@ just check     # Everything
 
 Run `just --list` to see recipes, then `just generate && just build`. A
 `just <recipe>` placeholder names nothing, and this is just prose: just bogus.
-
-## Skills
-
-| Skill | Load it when you are working on |
-|---|---|
-| `alpha` | the first thing |
-| `beta` | the second thing |
-
-### Rules
-
-| Rule | Loads when you touch |
-|---|---|
-| `.claude/rules/project.md` | `project.yml` |
 
 ## Enforcement layers
 
@@ -422,7 +409,7 @@ case_run_all_passes() {
     root=$(make_fixture)
     capture "${BASH}" "${CHECKS}/run-all.sh" --root "${root}"
     assert_exit 0
-    assert_stdout_contains "harness checks: 12 check(s) passed"
+    assert_stdout_contains "harness checks: 11 check(s) passed"
 }
 
 case_run_all_reports_every_failure() {
@@ -435,10 +422,10 @@ case_run_all_reports_every_failure() {
     assert_exit 1
     assert_stderr_contains "ERR_CHECK_RECIPE_MISSING"
     assert_stderr_contains "ERR_CHECK_WORKFLOW_PERMISSIONS"
-    assert_stderr_contains "ERR_CHECKS_FAILED: 2 of 12 harness check(s) failed: just-recipes-exist.sh workflow-pins-and-permissions.sh"
+    assert_stderr_contains "ERR_CHECKS_FAILED: 2 of 11 harness check(s) failed: just-recipes-exist.sh workflow-pins-and-permissions.sh"
     assert_stderr_not_contains "skills-frontmatter.sh" "a passing check named as failed"
-    assert_stderr_not_contains "skills-index-complete.sh" "a passing check named as failed"
-    assert_stdout_contains "==> scripts/checks/skills-index-complete.sh"
+    assert_stderr_not_contains "labels-declared.sh" "a passing check named as failed"
+    assert_stdout_contains "==> scripts/checks/labels-declared.sh"
 }
 
 case_run_all_rejects_unknown_argument() {
@@ -636,64 +623,64 @@ case_frontmatter_pass() {
 case_frontmatter_third_key() {
     local root
     root=$(make_fixture)
-    { head -n 2 "${root}/.agents/skills/alpha/SKILL.md"; echo 'paths: "**/*.swift"'; tail -n +3 "${root}/.agents/skills/alpha/SKILL.md"; } >"${CASE_DIR}/x"
-    mv "${CASE_DIR}/x" "${root}/.agents/skills/alpha/SKILL.md"
+    { head -n 2 "${root}/.claude/skills/alpha/SKILL.md"; echo 'paths: "**/*.swift"'; tail -n +3 "${root}/.claude/skills/alpha/SKILL.md"; } >"${CASE_DIR}/x"
+    mv "${CASE_DIR}/x" "${root}/.claude/skills/alpha/SKILL.md"
     capture "${BASH}" "${CHECKS}/skills-frontmatter.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_FRONTMATTER
-    assert_stderr_contains ".agents/skills/alpha: unexpected key \`paths\`"
-    assert_stderr_not_contains ".agents/skills/beta:" "a well-formed skill reported"
+    assert_stderr_contains ".claude/skills/alpha: unexpected key \`paths\`"
+    assert_stderr_not_contains ".claude/skills/beta:" "a well-formed skill reported"
 }
 
 case_frontmatter_name_mismatch() {
     local root
     root=$(make_fixture)
-    sed 's/^name: beta$/name: gamma/' "${root}/.agents/skills/beta/SKILL.md" >"${CASE_DIR}/x"
-    mv "${CASE_DIR}/x" "${root}/.agents/skills/beta/SKILL.md"
+    sed 's/^name: beta$/name: gamma/' "${root}/.claude/skills/beta/SKILL.md" >"${CASE_DIR}/x"
+    mv "${CASE_DIR}/x" "${root}/.claude/skills/beta/SKILL.md"
     capture "${BASH}" "${CHECKS}/skills-frontmatter.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_FRONTMATTER
-    assert_stderr_contains ".agents/skills/beta: \`name\` is \`gamma\`, but the directory is \`beta\`"
+    assert_stderr_contains ".claude/skills/beta: \`name\` is \`gamma\`, but the directory is \`beta\`"
 }
 
 case_frontmatter_empty_description() {
     local root
     root=$(make_fixture)
-    printf -- '---\nname: alpha\ndescription: >\n---\n\n# alpha\n' >"${root}/.agents/skills/alpha/SKILL.md"
+    printf -- '---\nname: alpha\ndescription: >\n---\n\n# alpha\n' >"${root}/.claude/skills/alpha/SKILL.md"
     capture "${BASH}" "${CHECKS}/skills-frontmatter.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_FRONTMATTER
-    assert_stderr_contains ".agents/skills/alpha: \`description\` is empty"
+    assert_stderr_contains ".claude/skills/alpha: \`description\` is empty"
 }
 
 case_frontmatter_missing_block() {
     local root
     root=$(make_fixture)
-    printf '# alpha\n\nname: alpha\n' >"${root}/.agents/skills/alpha/SKILL.md"
+    printf '# alpha\n\nname: alpha\n' >"${root}/.claude/skills/alpha/SKILL.md"
     capture "${BASH}" "${CHECKS}/skills-frontmatter.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_FRONTMATTER
-    assert_stderr_contains ".agents/skills/alpha: does not start with a \`---\` frontmatter line"
+    assert_stderr_contains ".claude/skills/alpha: does not start with a \`---\` frontmatter line"
 }
 
 case_frontmatter_unclosed_block() {
     local root
     root=$(make_fixture)
-    printf -- '---\nname: alpha\ndescription: A skill.\n' >"${root}/.agents/skills/alpha/SKILL.md"
+    printf -- '---\nname: alpha\ndescription: A skill.\n' >"${root}/.claude/skills/alpha/SKILL.md"
     capture "${BASH}" "${CHECKS}/skills-frontmatter.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_FRONTMATTER
-    assert_stderr_contains ".agents/skills/alpha: frontmatter block is never closed"
+    assert_stderr_contains ".claude/skills/alpha: frontmatter block is never closed"
 }
 
 case_frontmatter_missing_skill_file() {
     local root
     root=$(make_fixture)
-    mkdir "${root}/.agents/skills/gamma"
+    mkdir "${root}/.claude/skills/gamma"
     capture "${BASH}" "${CHECKS}/skills-frontmatter.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_FRONTMATTER
-    assert_stderr_contains ".agents/skills/gamma: no SKILL.md"
+    assert_stderr_contains ".claude/skills/gamma: no SKILL.md"
 }
 
 # --- skills-descriptions.sh ---------------------------------------------------
@@ -701,19 +688,19 @@ case_frontmatter_missing_skill_file() {
 # write_frontmatter ROOT NAME DESCRIPTION_LINES — replaces NAME's SKILL.md with a
 # frontmatter whose description is the given line(s), verbatim after `description:`.
 write_frontmatter() {
-    printf -- '---\nname: %s\ndescription:%s\n---\n\n# %s\n' "$2" "$3" "$2" >"$1/.agents/skills/$2/SKILL.md"
+    printf -- '---\nname: %s\ndescription:%s\n---\n\n# %s\n' "$2" "$3" "$2" >"$1/.claude/skills/$2/SKILL.md"
 }
 
 case_descriptions_pass() {
     local root
     root=$(make_fixture)
-    # Near misses: a quoted value with `: ` and ` #`, and a folded block holding both.
+    # A quoted value and a folded block, each holding `: ` and ` #`.
     write_frontmatter "${root}" alpha " \"Covers alpha: the fixture #1. Use when testing.\""
     write_frontmatter "${root}" beta " >
   Covers beta: the fixture #2.
   - Use when testing."
-    mkdir -p "${root}/.agents/skills/beta/references"
-    echo "# notes" >"${root}/.agents/skills/beta/references/failure-modes.md"
+    mkdir -p "${root}/.claude/skills/beta/references"
+    echo "# notes" >"${root}/.claude/skills/beta/references/failure-modes.md"
     capture "${BASH}" "${CHECKS}/skills-descriptions.sh" --root "${root}"
     assert_exit 0
 }
@@ -727,8 +714,8 @@ case_descriptions_too_long() {
     capture "${BASH}" "${CHECKS}/skills-descriptions.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_DESCRIPTION
-    assert_stderr_contains ".agents/skills/alpha: \`description\` is 1025 characters, over the 1024-character limit"
-    assert_stderr_not_contains ".agents/skills/beta:" "a well-formed skill reported"
+    assert_stderr_contains ".claude/skills/alpha: \`description\` is 1025 characters, over the 1024-character limit"
+    assert_stderr_not_contains ".claude/skills/beta:" "a well-formed skill reported"
 }
 
 case_descriptions_at_limit_passes() {
@@ -749,102 +736,19 @@ case_descriptions_non_ascii() {
     capture "${BASH}" "${CHECKS}/skills-descriptions.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_DESCRIPTION
-    assert_stderr_contains ".agents/skills/alpha: \`description\` contains a non-ASCII"
-}
-
-case_descriptions_unquoted_colon() {
-    local root
-    root=$(make_fixture)
-    write_frontmatter "${root}" alpha " Covers alpha: the fixture skill."
-    capture "${BASH}" "${CHECKS}/skills-descriptions.sh" --root "${root}"
-    assert_exit 1
-    assert_contract ERR_CHECK_SKILL_DESCRIPTION
-    assert_stderr_contains ".agents/skills/alpha: line 3 (\`description\`) is an unquoted value containing \`: \`"
-}
-
-case_descriptions_plain_continuation_colon() {
-    local root
-    root=$(make_fixture)
-    write_frontmatter "${root}" alpha " Covers alpha.
-  Use when: testing."
-    capture "${BASH}" "${CHECKS}/skills-descriptions.sh" --root "${root}"
-    assert_exit 1
-    assert_contract ERR_CHECK_SKILL_DESCRIPTION
-    assert_stderr_contains ".agents/skills/alpha: line 4 (\`description\`) is an unquoted value containing \`: \`"
-}
-
-case_descriptions_unquoted_comment() {
-    local root
-    root=$(make_fixture)
-    write_frontmatter "${root}" alpha " Covers alpha #1 fixture."
-    capture "${BASH}" "${CHECKS}/skills-descriptions.sh" --root "${root}"
-    assert_exit 1
-    assert_contract ERR_CHECK_SKILL_DESCRIPTION
-    assert_stderr_contains ".agents/skills/alpha: line 3 (\`description\`) is an unquoted value containing \` #\`"
-}
-
-case_descriptions_indicator_start() {
-    local root
-    root=$(make_fixture)
-    write_frontmatter "${root}" alpha " *alpha covers the fixture."
-    capture "${BASH}" "${CHECKS}/skills-descriptions.sh" --root "${root}"
-    assert_exit 1
-    assert_contract ERR_CHECK_SKILL_DESCRIPTION
-    assert_stderr_contains ".agents/skills/alpha: line 3 (\`description\`) starts with a YAML indicator character"
+    assert_stderr_contains ".claude/skills/alpha: \`description\` contains a non-ASCII"
 }
 
 case_descriptions_nested_skill_file() {
     local root
     root=$(make_fixture)
-    mkdir -p "${root}/.agents/skills/alpha/references"
-    cp "${root}/.agents/skills/alpha/SKILL.md" "${root}/.agents/skills/alpha/references/SKILL.md"
+    mkdir -p "${root}/.claude/skills/alpha/references"
+    cp "${root}/.claude/skills/alpha/SKILL.md" "${root}/.claude/skills/alpha/references/SKILL.md"
     capture "${BASH}" "${CHECKS}/skills-descriptions.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_SKILL_NESTED
-    assert_stderr_contains ".agents/skills/alpha/references/SKILL.md"
+    assert_stderr_contains ".claude/skills/alpha/references/SKILL.md"
     assert_stderr_not_contains "ERR_CHECK_SKILL_DESCRIPTION" "a well-formed description reported"
-}
-
-# --- skills-index-complete.sh -------------------------------------------------
-
-case_index_pass_ignores_rules_table() {
-    local root
-    root=$(make_fixture)
-    capture "${BASH}" "${CHECKS}/skills-index-complete.sh" --root "${root}"
-    assert_exit 0
-    assert_stderr_not_contains ".claude/rules/project.md" "the ### Rules table read as skills"
-}
-
-case_index_directory_without_row() {
-    local root
-    root=$(make_fixture)
-    write_skill "${root}" delta
-    capture "${BASH}" "${CHECKS}/skills-index-complete.sh" --root "${root}"
-    assert_exit 1
-    assert_contract ERR_CHECK_SKILL_INDEX
-    assert_stderr_contains ".agents/skills/delta/: no row for \`delta\`"
-}
-
-case_index_row_without_directory() {
-    local root
-    root=$(make_fixture)
-    mv "${root}/.agents/skills/beta" "${CASE_DIR}/beta"
-    capture "${BASH}" "${CHECKS}/skills-index-complete.sh" --root "${root}"
-    assert_exit 1
-    assert_contract ERR_CHECK_SKILL_INDEX
-    assert_stderr_contains "AGENTS.md:$(grep -n "^| ${BT}beta${BT}" "${root}/AGENTS.md" | cut -d: -f1): \`beta\` has a Skills table row but no .agents/skills/beta/ directory"
-    assert_stderr_not_contains "\`alpha\`" "an indexed skill with a directory reported"
-}
-
-case_index_no_skills_table() {
-    local root
-    root=$(make_fixture)
-    sed 's/^## Skills$/## Capabilities/' "${root}/AGENTS.md" >"${CASE_DIR}/x"
-    mv "${CASE_DIR}/x" "${root}/AGENTS.md"
-    capture "${BASH}" "${CHECKS}/skills-index-complete.sh" --root "${root}"
-    assert_exit 1
-    assert_contract ERR_CHECK_SKILL_INDEX
-    assert_stderr_contains "no table under a \`## Skills\` heading"
 }
 
 # --- product-section-filled.sh ------------------------------------------------
@@ -1920,15 +1824,7 @@ run_case "descriptions: passes, including quoted and block-scalar near misses" c
 run_case "descriptions: a description over 1024 characters fails" case_descriptions_too_long
 run_case "descriptions: a description of exactly 1024 characters passes" case_descriptions_at_limit_passes
 run_case "descriptions: a non-ASCII description fails" case_descriptions_non_ascii
-run_case "descriptions: an unquoted value containing a colon-space fails" case_descriptions_unquoted_colon
-run_case "descriptions: a plain continuation line containing a colon-space fails" case_descriptions_plain_continuation_colon
-run_case "descriptions: an unquoted value containing space-hash fails" case_descriptions_unquoted_comment
-run_case "descriptions: a value starting with a YAML indicator fails" case_descriptions_indicator_start
 run_case "descriptions: a nested SKILL.md fails" case_descriptions_nested_skill_file
-run_case "index: passes, and ignores the ### Rules table" case_index_pass_ignores_rules_table
-run_case "index: a skill directory without a row fails" case_index_directory_without_row
-run_case "index: a row without a directory fails" case_index_row_without_directory
-run_case "index: no Skills table fails" case_index_no_skills_table
 run_case "product: passes on the template's TODO skeleton" case_product_pass_in_template
 run_case "product: passes on a renamed app with the section written" case_product_pass_in_renamed_app
 run_case "product: a TODO marker left in a renamed app fails" case_product_marker_survived_the_rename

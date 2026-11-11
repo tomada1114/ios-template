@@ -1,36 +1,22 @@
 # View models, reentrancy, and the composition root
 
-How the template's view models are owned, how they survive a re-entered `await`, and how
-`App/` and `AppModel` wire them. The worked example is the to-do list:
-`TodoListViewModel`, `TodoDetailViewModel`, `AppModel`, and `App/MyAppApp.swift`. The
-shape every view model takes — action-shaped, injected time and identity, no side effects
-in `init` — is `SKILL.md`'s "Action-shaped view models"; this file is the rest.
+Why the template's view models are owned the way they are, how they survive a re-entered
+`await`, and how `App/` and `AppModel` wire them. The shape every view model takes —
+action-shaped, derived state computed, injected time and identity, no side effects in
+`init`, built by `AppModel` — is `.claude/rules/core.md` › View models; how a view holds
+one is `.claude/rules/ui.md` › Views and their models. The worked example is the to-do
+list: `TodoListViewModel`, `TodoDetailViewModel`, `AppModel`, and `App/MyAppApp.swift`.
 
-## View models
+## Why this shape
 
-A view model is a `@MainActor @Observable final class` in Core. The template's is
-`TodoListViewModel`.
-
-- **Action-shaped.** The view calls one method per user intent — `addDraft()`,
-  `toggle(_:)`, `delete(atOffsets:)` — and never mutates published state itself. State is
-  `public private(set)`; the only settable property is what a control binds to
-  (`draftTitle`).
-- **Derived state lives here.** `canAdd`, `showsEmptyState`, `showsLoadFailure`,
-  `showsProgress` are computed in Core so the view has no `if` of its own worth testing.
-- **Wording lives here.** Core returns `LocalizedStringResource` from its String Catalog
-  (`TodoListStrings`, `TodoListFailure.message`); a view renders it with `Text(_:)` and
-  shows user data with `Text(verbatim:)` (`localizing-the-app`).
-- **Time and identity are injected** (`now: () -> Date`, `makeID: () -> UUID`) so a test
-  pins both. The same goes for anything nondeterministic an app adds: a `Clock`, a
-  `Locale`, a random number generator.
-- **Construction has no side effects.** Nothing is read until `load()`; the view calls it
-  from `.task` on first appearance.
-- **Ownership.** A view model every scene shares (`TodoListViewModel`) is built once by
-  Core's `AppModel`, which `App/` creates in `@State` (so it outlives any one view tree);
-  the view holds it with `@Bindable` only to bind controls. A pushed screen's own view
-  model (`TodoDetailViewModel`) is built by an `AppModel` factory when the route is
-  pushed, and the screen keeps it in `@State` for as long as it is shown ("The
-  composition root", below).
+- Derived state (`canAdd`, `showsEmptyState`, `showsLoadFailure`, `showsProgress`) and
+  wording are computed in Core so the view has no `if` of its own worth testing, and the
+  coverage floor sees every decision a screen makes.
+- A shared view model is built once by `AppModel`, which `App/` creates in `@State`, so
+  it outlives any one view tree. A pushed screen's model is built when its route is
+  pushed and kept in the screen's `@State` while it is shown ("The composition root",
+  below); construction having no side effects is what lets a re-render build a spare one
+  and discard it.
 
 ## Reentrancy
 
@@ -52,12 +38,11 @@ The view model is written for that:
   replayed over the loaded items — a save replaces or adds by identifier, a delete
   removes — which changes nothing when the fetch already saw the write. Replaying, rather
   than loading again after the edit, costs no second fetch and cannot loop.
-- A cancelled load is a no-op: no failure, `items` untouched, and `phase` back to what it
-  was before the load, so a first load cancelled when its screen left leaves the list
-  `idle` and the next appearance asks again. The view model reads `Task.isCancelled`
-  after the fetch rather than a port case: `TodoRepositoryError` has no cancellation
-  case, so a store that sees its caller cancel can only report a failure, which the
-  cancelled caller no longer wants (`designing-errors`, Cancellation propagates).
+- A cancelled load leaves `items` untouched and `phase` back to what it was before the
+  load, so a first load cancelled when its screen left leaves the list `idle` and the
+  next appearance asks again. It reads `Task.isCancelled` after the fetch because
+  `TodoRepositoryError` has no cancellation case (`.claude/rules/core.md` ›
+  Cancellation).
 
 Each of these has a test in `TodoListViewModelTests` that drives the interleaving through
 the fake's `onSave` hook, or its `onFetch` hook, which runs after a fetch has read the
@@ -74,23 +59,18 @@ scene's root (`SceneRoot`) owns that scene's `NavigationModel`, forwards opened 
 it (`.onOpenURL`), and renders `MyAppUI`'s `RootView` over the app model and the
 navigation model. `App/` chooses adapters and nothing else.
 
-`AppModel` (`Sources/MyAppCore/AppModel.swift`) is a `@MainActor @Observable final
-class` in Core that does the rest of the wiring:
+`AppModel` (`Sources/MyAppCore/AppModel.swift`) does the rest of the wiring — the shared
+models as stored properties, one factory per route that needs a model of its own. Why it
+is shaped that way:
 
-- **It holds the view models every scene shares** — today `todoList`, the one
-  `TodoListViewModel` every window shows — built once over the ports it was handed.
-- **It has one `make…ViewModel(…)` factory per route whose screen needs a view model of
-  its own** — today `makeTodoDetailViewModel(id:)`, which builds a
-  `TodoDetailViewModel` over the shared list. A factory whose model needs a port builds
-  it over a port `AppModel`'s initializer was handed and keeps as a named stored
-  property.
 - **It is not a service locator.** There is no registry, no lookup by type, and no
   global: every dependency is a named initializer parameter `App/` passes, and every
-  model is built by a named method. A second port is a new initializer parameter.
+  model is built by a named method. A second port is a new initializer parameter, which
+  a factory needing it keeps as a named stored property.
 - **It is in Core, not `App/`,** so `AppModelTests` builds a route's view model over the
   fakes in `MyAppTestSupport` and the coverage floor sees the wiring. Factory closures
   assembled in `App/` were the alternative: they would leave the wiring where no
   coverage-gated test reaches it.
 - **It is app-level, never per scene.** Per-window state — the navigation path — stays
-  in the scene's own `NavigationModel` (`building-swiftui-screens`'
+  in the scene's own `NavigationModel` (the `designing-ui` skill's
   `references/navigation.md`).

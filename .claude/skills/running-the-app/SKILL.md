@@ -19,9 +19,9 @@ description: >
 
 **Owns:** launching this app on the iOS Simulator to observe a change, reading what it
 emits, and the evidence that lands in the pull request. **Does not own:** whether a
-behavior belongs in a test at all (`.claude/rules/testing.md`, `tdd`); how a system API
-is structured behind a port (`integrating-system-apis`); how a view is written
-(`building-swiftui-screens`); what a pull request looks like (`create-pr`).
+behavior belongs in a test at all (`.claude/rules/testing.md`, `.claude/rules/core.md`);
+how a system API is structured behind a port (`integrating-system-apis`); how a view is
+written (`.claude/rules/ui.md`); what a pull request looks like (`create-pr`).
 
 Running the app proves wiring, not logic. Every decision is owned by `MyAppCore` and
 gated by `just test`; `just build`, `just uitest`, and `just smoke` prove the app
@@ -124,8 +124,8 @@ message:
 No gate runs any of this, so the pull request is where it lands. State the exact
 commands, not a paraphrase, and attach:
 
-- **A screenshot per changed state**, taken with the commands in the reference — light
-  and dark, and the largest Dynamic Type size for a screen that shows text.
+- **A screenshot per changed state**, taken with the commands in the reference, in the
+  set `.claude/rules/ui.md` › Verifying a screen names.
 - **A log excerpt** with the predicate above it, for behavior whose only observable is a
   log line.
 

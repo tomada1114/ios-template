@@ -138,7 +138,7 @@ three outcomes:
 A parked issue leaves the lane only by a decision, never by age:
 
 - **Promote** it by removing `on hold` once its reason no longer holds — the use it
-  was waiting on has happened, or the decision it needed was made. Re-check its tier;
+  was waiting on has happened, or the decision it needed was made. Reassess its tier;
   it may now warrant `blocked: design` instead, if a real choice remains.
 - **Close** it as not planned when its reason became permanent — the app moved away
   from it, or a later issue superseded it (link that one).

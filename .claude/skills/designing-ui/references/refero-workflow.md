@@ -9,8 +9,8 @@ to copy — its brief, query table, reviewed screens, reference lock, and ledger
 - **`/refero-design` and the `refero_*` tools are available** (Claude Code with the
   owner's user-level `refero-design` skill and a signed-in Refero MCP server): follow the
   steps below. Neither is a project dependency; nothing in the repository calls them.
-- **Either is missing** (Codex CLI, or no Refero account): the rules in `designing-ui`'s
-  `SKILL.md` and the HIG pages it cites are the research. Write the lock from them, and
+- **Either is missing** (no Refero skill or account): the HIG, `designing-ui`'s
+  `SKILL.md`, and `.claude/rules/ui.md` are the research. Write the lock from them, and
   say beside the lock that research was HIG-only. Never write a Refero ID you did
   not get from a tool call.
 
@@ -45,9 +45,9 @@ to copy — its brief, query table, reviewed screens, reference lock, and ledger
    rewrite `design-lock.md`'s "The lock", beside this file, as one value per field.
    Choices the owner has not made and claims not yet checked (`Unverified:`) go in the
    pull request as open questions; the owner reviews the lock there.
-6. **Implement and look.** Land the values where `design-lock.md` says, then run
-   `designing-ui`'s review pass — light, dark, the largest text size, Increase Contrast —
-   and compare the screenshots against the reference lock. Fix drift before the pull
+6. **Implement and look.** Land the values where `design-lock.md` says, then take the
+   screenshot set `.claude/rules/ui.md` › Verifying a screen names and compare it
+   against the lock. Fix drift before the pull
    request, or name it there as accepted.
 
 ## Keep out of the lock

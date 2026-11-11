@@ -7,13 +7,13 @@ the main actor never waits on a write it did not ask for. Everything below lives
 
 ## One store, one container, for the whole app
 
-`PersistenceStore.makeContainer(storage:)` is the only place a `ModelContainer` is
-opened, from the app-wide `AppSchemaV1` and `AppMigrationPlan`. `App/` opens it once and
-hands it to every repository's `init(modelContainer:)` (the initializer `@ModelActor`
-generates); no repository opens a container of its own, because a second container with
-a different schema over the same default store file risks failing to open or damaging
-the store. Each repository is its own actor with its own `ModelContext` over the shared
-container, so two of them see each other's saved writes (`PersistenceStoreTests`).
+`PersistenceStore.makeContainer(storage:)` opens the one `ModelContainer`, from the
+app-wide `AppSchemaV1` and `AppMigrationPlan`, and every repository takes it through the
+`init(modelContainer:)` `@ModelActor` generates (`.claude/rules/platform.md` ›
+Persistence). The reason there is only one: a second container with a different schema
+over the same default store file risks failing to open or damaging the store. Each
+repository is its own actor with its own `ModelContext` over the shared container, so
+two of them see each other's saved writes (`PersistenceStoreTests`).
 
 - **`Storage`** picks the file: `.onDisk` (SwiftData's default store, for the app),
   `.inMemory` (UI tests under `-uiTesting`, and host tests), or `.file(URL)` (a test that
@@ -22,17 +22,16 @@ container, so two of them see each other's saved writes (`PersistenceStoreTests`
   fault (`.private`: it can quote a path) and throws it unchanged; `App/` answers with
   `UnavailableTodoRepository` for every port the store would have served (`SKILL.md`'s
   "A repository is a port").
-- **A failed save rolls the context back**, or the pending change would be written by
-  the next successful save.
+- **A failed save rolls the context back** (`.claude/rules/platform.md` › Mapping
+  framework errors).
 
 ## The schema is versioned from day one
 
 The schema (`AppSchemaV1`, `AppMigrationPlan`) is the whole app's, not one entity's. The
-stored shape is contract: every store already on a user's device depends on it. So:
+stored shape is contract: every store already on a user's device depends on it, which is
+why a shipped schema version is never edited (`.claude/rules/platform.md` ›
+Persistence) and the next change to `TodoRecord` is an `AppSchemaV2` with its stage.
 
-- The next change to `TodoRecord` adds `AppSchemaV2` and a migration stage instead of
-  editing V1, with a test that opens a store written by the previous version. Never edit
-  a shipped schema version.
 - A second entity is the same move: a `@Model` in `AppSchemaV2` plus a stage in
   `AppMigrationPlan`, and a repository over the shared container.
 - The store records the model's entities, attributes, and version identifier — never

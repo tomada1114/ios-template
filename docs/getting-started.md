@@ -204,8 +204,8 @@ once it has run).
 `rg -i 'todo'` then lists anything left — including the mentions in `AGENTS.md`,
 `.claude/rules/`, and the skills that cite the to-do list as the worked example — among
 them `persisting-data`, and the references `designing-core-logic`'s `view-models.md`,
-`building-swiftui-screens`' `navigation.md`, and `designing-ui`'s `design-lock.md`
-(skills are edited under `.agents/skills/`, then `just agents-sync`).
+and `designing-ui`'s `navigation.md` and `design-lock.md` (skills are edited under
+`.claude/skills/`).
 
 ## Open in Xcode
 
@@ -224,7 +224,7 @@ The template ships `App/Assets.xcassets/AppIcon.appiconset` with empty 1024×102
 catalog (Xcode › the App target's Assets), or as an Icon Composer `.icon` file, which
 gives the iOS 26 layered, Liquid Glass icon. Which one, and what it looks like, is an
 app decision: record it in the app's design lock, as the `designing-ui` skill
-([SKILL.md](../.agents/skills/designing-ui/SKILL.md)) says.
+([SKILL.md](../.claude/skills/designing-ui/SKILL.md)) says.
 
 [xcode]: https://developer.apple.com/xcode/
 [mise]: https://mise.jdx.dev/

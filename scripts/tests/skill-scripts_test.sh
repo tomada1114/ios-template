@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 # Runs the Python unittest suite each skill bundles for its own scripts: every
-# .agents/skills/<name>/scripts/tests/ directory holding a test_*.py file becomes one
+# .claude/skills/<name>/scripts/tests/ directory holding a test_*.py file becomes one
 # case, run with `python3 -m unittest discover`. A failing unittest fails its case, so
 # `just test-scripts` (scripts/tests/run.sh) and CI's lint job fail with it.
 #
-# The authored tree is tested, not the .claude/skills/ mirror: the two are byte-
-# identical (scripts/sync-agents.sh --check), and .agents/skills/ is the one edited.
-# PYTHONDONTWRITEBYTECODE=1 keeps __pycache__ out of that tree, and each case then
-# asserts none appeared, since a stray one would break the mirror check. Every write
+# PYTHONDONTWRITEBYTECODE=1 keeps __pycache__ out of the skills tree, and each case
+# then asserts none appeared, since a stray one would be untracked clutter there. Every write
 # the suite makes goes to its own temp directories.
 #
 # python3 is assumed on PATH like git (not a mise tool). Its absence fails the file.
@@ -18,7 +16,7 @@ set -euo pipefail
 trap cleanup_temp EXIT
 
 SUITES=()
-for dir in "${REPO_ROOT}"/.agents/skills/*/scripts/tests; do
+for dir in "${REPO_ROOT}"/.claude/skills/*/scripts/tests; do
     [ -d "${dir}" ] || continue
     for file in "${dir}"/test_*.py; do
         if [ -e "${file}" ]; then
@@ -41,7 +39,7 @@ run_suite() {
 }
 
 case_suites_found() {
-    [ "${#SUITES[@]}" -gt 0 ] || _fail "no .agents/skills/*/scripts/tests/test_*.py found"
+    [ "${#SUITES[@]}" -gt 0 ] || _fail "no .claude/skills/*/scripts/tests/test_*.py found"
 }
 run_case "at least one skill bundles a unittest suite" case_suites_found
 

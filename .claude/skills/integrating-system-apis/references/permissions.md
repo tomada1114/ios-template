@@ -2,8 +2,9 @@
 
 Where each privacy-related declaration lives in this repository, how a permission is
 exercised on the Simulator, and what adding one owes. Apple's pages are linked, not
-restated; every link and command below was checked on 2026-09-30 against Xcode 26.5
-with the iOS 26.5 simulator.
+restated; every link and command below was last verified on 2026-09-30 against Xcode 26.5
+with the iOS 26.5 simulator, and has not been re-run on the pinned Xcode 27.0 except
+where a passage says so.
 
 ## The app's Info.plist is generated
 
@@ -108,9 +109,9 @@ The services `simctl privacy` accepts vary by Xcode. Print them first:
 xcrun simctl help privacy
 ```
 
-On Xcode 26.5 the help lists `all`, `calendar`, `contacts-limited`, `contacts`,
+On Xcode 26.5, and again on Xcode 27.0 (2026-11-10), the help lists `all`, `calendar`, `contacts-limited`, `contacts`,
 `location`, `location-always`, `photos-add`, `photos`, `media-library`, `microphone`,
-`motion`, `reminders`, and `siri`. Two findings from that version:
+`motion`, `reminders`, and `siri`. Two findings from Xcode 26.5, not re-checked on 27.0:
 
 - `grant camera` exited 0 although `camera` is not in the help. Unverified: whether it
   has any effect — the Simulator has no camera to test it against.

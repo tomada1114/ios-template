@@ -53,7 +53,9 @@ paths:
 
 - `project.yml` is the source of truth; `MyApp.xcodeproj` is generated and gitignored —
   never hand-edit or commit it
-- After changing `project.yml`, run `just generate` and build to verify
+- After changing `project.yml`, run `just generate && just build`. A change to the URL
+  scheme or the bundle identifier also runs `just test`: `DeepLinkTests` and `AppLogTests`
+  hold Core's copies to `project.yml`
 
 ## Local Signing Identity
 
@@ -66,7 +68,8 @@ paths:
 - Never read `Config/Local.xcconfig`; `scripts/run-device.sh` checks the resolved team
   through `xcodebuild -showBuildSettings`, for emptiness only, and never prints it
 - Editing `Config/Debug.xcconfig` or `project.yml`'s `configFiles` touches signing and
-  needs the owner's sign-off (AGENTS.md › Security and human approval)
+  needs the owner's sign-off (AGENTS.md › Security and human approval); verify it with
+  `just generate && just build`, then `just run-device` on a connected phone (owner-run)
 - See `docs/running-on-device.md`
 
 ## Toolchain Pinning
@@ -76,7 +79,8 @@ paths:
   pinned in `mise.toml`. The values live in those files — never restate one elsewhere
 - This section is the one statement of the pin-bump policy; `mise.toml`, the
   `changing-gates` skill, and `check-pr-title.yml` point here rather than restate it
-- A `mise.toml` pin is an exact version: never use `latest`, never bump by hand
+- A `mise.toml` pin is an exact version: never use `latest`, never bump by hand. After
+  any `mise.toml` change, `mise install`, then `just check`
 - Bot-bumped pins arrive as bot PRs, never by hand: Dependabot (`.github/dependabot.yml`)
   for SwiftPM (`Packages/MyAppKit/Package.resolved`, prefix `deps:`) and GitHub Actions
   (prefix `ci:`), Renovate (`.github/renovate.json`, `enabledManagers` `mise` and

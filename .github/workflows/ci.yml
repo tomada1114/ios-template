@@ -41,7 +41,7 @@ jobs:
           # just: scripts/checks/just-recipes-exist.sh (and its tests) call it.
           install_args: swiftlint swiftformat actionlint shellcheck typos just
 
-      - name: Lint (swiftformat, swiftlint, shellcheck, actionlint, typos, skills mirror)
+      - name: Lint (swiftformat, swiftlint, shellcheck, actionlint, typos)
         # The same script `just lint` and the pre-commit hook call. No `mise exec`:
         # mise-action already put the tools on PATH, and `mise exec` would try to
         # install the macOS-only tools this job leaves out.
@@ -54,7 +54,8 @@ jobs:
 
       - name: Harness checks (scripts/checks/run-all.sh)
         # The same runner `just check-harness` calls: every check under
-        # scripts/checks/, each listed in AGENTS.md's Enforcement layers.
+        # scripts/checks/, each listed in the changing-gates skill's
+        # references/enforcement-layers.md.
         run: scripts/checks/run-all.sh
 
   # This job calls scripts/coverage.sh (what `just test` runs); the app job calls the
@@ -349,9 +350,7 @@ jobs:
           check scripts/bootstrap.sh "#   MyApp        -> NewName"
           check scripts/bootstrap.sh "#   my-app       -> repo slug"
           check README.md "This replaces \`MyApp\` (and \`MyAppKit\`/\`MyAppCore\`/\`MyAppUI\`/\`MyAppPlatform\`), \`my-app\`,"
-          check .agents/skills/starting-an-app/SKILL.md "small set of literals — \`MyApp\`, \`my-app\`, \`com.example\`, \`your-username\`, \`Your Name\`,"
           check .claude/skills/starting-an-app/SKILL.md "small set of literals — \`MyApp\`, \`my-app\`, \`com.example\`, \`your-username\`, \`Your Name\`,"
-          check .agents/skills/starting-an-app/SKILL.md "- **Paths** named after the app (\`MyAppCore\`, \`MyAppUI\`, …) are renamed deepest-first,"
           check .claude/skills/starting-an-app/SKILL.md "- **Paths** named after the app (\`MyAppCore\`, \`MyAppUI\`, …) are renamed deepest-first,"
           # The header still prints as usage, without the marker lines (usage exits 1).
           usage_out=$(bash scripts/bootstrap.sh 2>/dev/null || true)

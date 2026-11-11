@@ -19,11 +19,14 @@ description: >
 **Owns:** how state survives a relaunch here — the repository port's shape, the SwiftData
 adapter and the one store it opens, the versioned schema and its migrations, what the app
 does when the store will not open, and the preferences port and its keys. **Does not
-own:** the view model that calls a repository (`designing-core-logic`); the Core error
-enum an adapter maps a SwiftData error into (`designing-errors`); an OS service or the
-HTTP client behind a port (`integrating-system-apis`); the fake-and-contract test pattern
-itself (`.claude/rules/testing.md`); a new package such as a database library (the
-Dependency Policy in `.claude/rules/project.md`).
+own:** the conventions an adapter and its schema follow (`.claude/rules/platform.md` ›
+Persistence, loaded with any file under `MyAppPlatform/`); the view model that calls a
+repository (`.claude/rules/core.md` › View models); the Core error enum an adapter maps a
+SwiftData error into, and the mapping (`.claude/rules/core.md` › Errors,
+`.claude/rules/platform.md` › Mapping framework errors); an OS service or the HTTP client
+behind a port (`integrating-system-apis`); the fake-and-contract test pattern itself
+(`.claude/rules/testing.md`); a new package such as a database library (the Dependency
+Policy in `.claude/rules/project.md`).
 
 ## Why SwiftData behind a port
 
@@ -50,10 +53,10 @@ what is private"). A pull request that changes either rewrites this skill in pla
 | Fakes and contracts | `Tests/MyAppTestSupport/` (`InMemoryTodoRepository`, `TodoRepositoryContract`, `InMemoryPreferences`, `PreferencesContract`) |
 | Store, migration, and adapter tests | `Tests/MyAppPlatformTests/` |
 
-`@Model` types, `ModelContainer`, and `ModelContext` appear only in
-`Sources/MyAppPlatform/Persistence/` (`.claude/rules/swift.md`'s Persistence). Enforced
-by: `.swiftlint.yml`'s `no_ui_import_in_core` and `ArchitectureBoundaryTests` (Core never
-imports SwiftData or names `UserDefaults`).
+Where SwiftData may appear, the `@ModelActor` adapter, and never editing a shipped schema
+version are `.claude/rules/platform.md` › Persistence. Enforced by: `.swiftlint.yml`'s
+`no_ui_import_in_core` and `ArchitectureBoundaryTests` (Core never imports SwiftData or
+names `UserDefaults`).
 
 ## A repository is a port
 
@@ -75,10 +78,8 @@ public protocol TodoRepository: Sendable {
 - **`async` everywhere**, because an implementation is an actor with its own executor
   (SwiftData's `@ModelActor`, or the fake), and crossing into it is a suspension point.
 - **Typed throws with a closed Core error enum.** `TodoRepositoryError` has three cases;
-  the adapter maps every SwiftData error into one of them and logs the detail
-  (`.private`), so Core handles a closed set and never learns which store failed. Error
-  payloads carry identifiers, never titles — an error can reach a log or a crash report
-  (`designing-errors`).
+  the adapter maps every SwiftData error into one of them, so Core handles a closed set
+  and never learns which store failed (`.claude/rules/core.md` › Errors).
 - **The ordering is Core's.** `TodoItem.isOrderedBefore(_:_:)` defines display order and
   every implementation sorts by it, so a store's query language never decides behavior.
 - **A null object for "no store".** When the on-disk store cannot be opened, `App/` hands
@@ -113,10 +114,9 @@ changing a key.
 
 ## Before you call it done
 
-- [ ] No `@Model`, `ModelContainer`, or `UserDefaults` outside `MyAppPlatform`;
-      `just lint` and `just test` pass.
-- [ ] A changed stored shape is a new schema version plus a migration stage, with a test
-      that opens a store the previous version wrote — never an edit to a shipped version.
+- [ ] The change follows `.claude/rules/platform.md` › Persistence (a changed stored
+      shape is a new schema version with its migration test); `just lint` and
+      `just test` pass.
 - [ ] A changed preference key or default reads the old one and migrates it in Core, with
       a test that starts from the old value.
 - [ ] The contract runs against the fake and the adapter, and both pass.

@@ -12,8 +12,8 @@ description: >
   rename left a placeholder behind, filling in AGENTS.md's Product section (what the
   app is, its non-goals) or product-section-filled.sh failing, deciding whether the
   app supports iPad, adding a capability or an entitlements file, CI's bootstrap-smoke
-  job fails, or setting up a new repository's labels (just labels) and branch ruleset
-  (just ruleset).
+  job fails, or setting up a new repository's labels (just labels), ruleset (just
+  ruleset), and GitHub security settings.
 ---
 
 # Starting an App
@@ -21,10 +21,8 @@ description: >
 **Owns:** turning this repository into a new application — the rename
 `scripts/bootstrap.sh` performs, the order around it, the first two decisions after it,
 and what the new app keeps.
-**Does not own:** how a skill is authored or mirrored (`authoring-skills`); how a
-repository script is written or tested (`writing-repo-scripts`); what a gate file may
-contain (`changing-gates`);
-the README's own prose (`updating-docs`).
+**Does not own:** how a repository script is written or tested
+(`.claude/rules/shell.md`); what a gate file may contain (`changing-gates`).
 
 <!-- bootstrap:keep-begin -->
 This repository ships a bootstrap script on purpose. Its placeholders are a fixed,
@@ -64,7 +62,7 @@ scripts/bootstrap.sh CoolApp --bundle-id-prefix io.example --github-user janedoe
 - **`replace()`** walks `git ls-files`, so only tracked files are touched: commit or
   stage a new file first if it should be renamed too. Binary and empty files are
   skipped. This is why the script refuses to run outside a git checkout
-  (`ERR_BOOTSTRAP_NOT_A_REPO`; **BACKGROUND:** `writing-repo-scripts`).
+  (`ERR_BOOTSTRAP_NOT_A_REPO`; **BACKGROUND:** `.claude/rules/shell.md`).
 - **Keep markers:** a line containing the keep-begin marker (the text `bootstrap:keep-`
   followed by `begin`) through the next line containing the keep-end marker is never
   rewritten. The passages that explain the placeholders — the script's header,
@@ -147,7 +145,7 @@ while iPad stays, whether the iPad build supports multiple windows
 family, or a second window, costs far more than deciding it now.
 [references/device-families.md](references/device-families.md) holds what changes in
 `project.yml`, in `App/MyAppApp.swift`, and in `LaunchUITests` for each choice. How a
-screen adapts to size classes is `building-swiftui-screens`'s subject, not this one.
+screen adapts to size classes is `.claude/rules/ui.md`'s subject, not this one.
 
 ## Capabilities and entitlements
 
@@ -189,10 +187,9 @@ the rename unchanged and is most of what starting from this template buys:
   (`scripts/check-staged.sh`, with the rules in `scripts/guard/`), the one layer that
   stops a secret-shaped path or credential before it reaches history. It knows nothing
   about the app, so keep it whatever the app becomes.
-- **The skills** under `.agents/skills/` and their mirror in `.claude/skills/`. Drop one
-  only when the subject it owns actually leaves the repository — this one, for example,
-  once the rename has landed. **REQUIRED:** `authoring-skills` for the mirror loop and
-  the `AGENTS.md` Skills table row that `just check-harness` requires for every skill.
+- **The skills** under `.claude/skills/` and the rules under `.claude/rules/`. Drop a
+  skill only when the subject it owns actually leaves the repository — this one, for
+  example, once the rename has landed.
 - **The label taxonomy** — `.github/labels.yml`, created on the new repository by
   `just labels`. Run it early: GitHub silently drops a label that an issue form applies
   when the repository does not have it yet. **BACKGROUND:** `triaging-issues` for what
@@ -209,3 +206,20 @@ the rename unchanged and is most of what starting from this template buys:
 Both `just labels` and `just ruleset` write to the live repository, so they need a
 human's sign-off (`AGENTS.md`'s "Security and human approval") — for a brand-new
 repository, that is its owner deciding to run them.
+
+## GitHub settings a new repository must enable
+
+"Use this template" copies files, not settings, so a repository's admin turns these on
+once under Settings › Advanced Security (Code security on older UIs):
+
+- **Secret scanning** and **Push protection** — the server-side layer for secrets that
+  the staged guard misses or a bypass skips; push protection blocks a detected secret
+  at `git push`.
+- **Private vulnerability reporting** — `SECURITY.md` sends reporters to a private
+  security advisory, which this setting enables.
+- **Dependabot alerts** — `.github/dependabot.yml` configures version updates; alerts
+  for known-vulnerable dependencies are a separate switch.
+- The `main` ruleset, applied by `just ruleset` (above). `.github/rulesets/main.json`
+  deliberately lists no `bypass_actors`: a bypass lets an admin, or an agent acting
+  with an admin's token, merge without the PR and green checks the ruleset exists to
+  require, and an emergency change can still go through a PR.
