@@ -10,7 +10,7 @@ description: >
 
 # PR Creation Workflow
 
-All PR titles, bodies, and commit messages MUST be written in English.
+Write PR titles, bodies, and commit messages in English.
 
 ## Dynamic Context
 

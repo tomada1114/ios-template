@@ -33,7 +33,7 @@ authoritative over this summary."}
 
 {And, whenever the repository has moved under the issue since it was written --
 a dependency of it merged in this same run, a file it cites was rewritten:
-"IMPORTANT -- the issue body describes the OLD state. On current `main`: <what
+"Note: the issue body describes an older state of the code. On current `main`: <what
 changed>. Read the current files before designing anything, and if the body's
 premise no longer holds, say so under UNRESOLVED and implement what the issue
 is actually trying to achieve rather than its literal description of a file

@@ -2,12 +2,15 @@
 paths:
   - "scripts/**"
   - ".githooks/**"
+  - ".claude/skills/**/scripts/*.sh"
 ---
 
 # Repository scripts
 
 Every script under `scripts/` and `.githooks/pre-commit` follows these rules, whoever
-writes it. What a gate checks, and which gate sees a change, is the `changing-gates`
+writes it. A shell script bundled in a skill (`.claude/skills/<name>/scripts/`) follows
+the same language and failure rules; its tests are the skill's own `scripts/tests/`
+suite, which `just test-scripts` runs. What a gate checks, and which gate sees a change, is the `changing-gates`
 skill.
 
 ## Shell and dependencies

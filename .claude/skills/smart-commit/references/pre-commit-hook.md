@@ -23,4 +23,4 @@ the hook handles code quality, while the skill handles commit workflow.
 - `swiftlint`: fix the violation in the code. Disabling a rule in
   `.swiftlint.yml` requires explicit user approval (see `AGENTS.md` › Security
   and human approval), is limited to subjective style rules with a
-  reason comment, and NEVER applies to safety rules
+  reason comment, and never applies to safety rules

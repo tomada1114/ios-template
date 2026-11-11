@@ -10,7 +10,7 @@ description: >
 
 # Smart Commit Workflow
 
-All commit messages must be written in English.
+Write commit messages in English.
 
 ## Dynamic Context
 
@@ -119,7 +119,7 @@ happened through the commit history.
 **Special cases:**
 - `Package.resolved` changes must be in the same commit as the `Package.swift`
   dependency change that caused them
-- A source file and its corresponding test file MUST go in the same commit —
+- A source file and its corresponding test file go in the same commit —
   this project is TDD-first, and red tests are never committed alone
   (use `feat:` or `fix:` prefix)
 
