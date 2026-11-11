@@ -41,7 +41,11 @@ jobs:
       - name: Build the package for analysis
         # App/ is a thin @main shell; all logic lives in the local package
         # (AGENTS.md › Architecture), so building it covers every analyzable line.
-        run: swift build --package-path Packages/MyAppKit
+        # `--disable-sandbox` skips SwiftPM's `sandbox-exec` wrapper around the manifest
+        # build: CodeQL's tracer is injected into it and `posix_spawn` fails with "Bad
+        # CPU type in executable" (#99). Only the manifest evaluation loses its sandbox,
+        # on an ephemeral runner; the package's sources are still compiled and analyzed.
+        run: swift build --disable-sandbox --package-path Packages/MyAppKit
 
       - name: Analyze
         uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
