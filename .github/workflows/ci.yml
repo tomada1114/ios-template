@@ -35,7 +35,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with:
           # XcodeGen/xcbeautify are macOS-only; install just the Linux-capable linters here.
           # just: scripts/checks/just-recipes-exist.sh (and its tests) call it.
@@ -71,7 +71,7 @@ jobs:
 
       - uses: ./.github/actions/select-xcode
 
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
 
       - name: Run tests with coverage floor
         run: scripts/coverage.sh
@@ -140,7 +140,7 @@ jobs:
       - uses: ./.github/actions/select-xcode
         if: needs.changes.outputs.simulator != 'false'
 
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         if: needs.changes.outputs.simulator != 'false'
 
       - name: Show the simulator the UI test will use
@@ -201,7 +201,7 @@ jobs:
       - uses: ./.github/actions/select-xcode
         if: needs.changes.outputs.simulator != 'false'
 
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         if: needs.changes.outputs.simulator != 'false'
 
       # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
@@ -258,7 +258,7 @@ jobs:
       - uses: ./.github/actions/select-xcode
         if: needs.changes.outputs.simulator != 'false'
 
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         if: needs.changes.outputs.simulator != 'false'
 
       # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
@@ -308,7 +308,7 @@ jobs:
 
       - uses: ./.github/actions/select-xcode
 
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
 
       - name: Bootstrap a pristine copy as the demo app
         run: |
