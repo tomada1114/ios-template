@@ -51,7 +51,10 @@ fi
 
 cd "$(dirname "$0")/../Packages/MyAppKit"
 
-swift test --enable-code-coverage
+# The job cap scripts/run-throttled.sh exports (`just test`), when there is one.
+JOBS_ARGS=()
+if [ -n "${THROTTLE_JOBS:-}" ]; then JOBS_ARGS=(--jobs "${THROTTLE_JOBS}"); fi
+swift test --enable-code-coverage ${JOBS_ARGS[@]+"${JOBS_ARGS[@]}"}
 CODECOV_JSON="$(swift test --show-codecov-path)"
 
 python3 - "$CODECOV_JSON" "$COVERAGE_FLOOR" "$FUNCTION_COVERAGE_FLOOR" <<'PY'

@@ -105,18 +105,13 @@ jobs:
             echo "simulator=true" >>"${GITHUB_OUTPUT}"
             exit 0
           fi
-          # The paths the simulator jobs exercise, as one extended regex: anything
-          # matching sends them through in full. Keep this the only copy of the list.
-          relevant='^(App/|Packages/|LaunchUITests/|Config/|scripts/|\.github/actions/|project\.yml$|justfile$|mise\.toml$|\.xcode-version$|\.github/workflows/ci\.yml$)'
-          # The pull request's own change set (three dots: from the merge base). A
-          # failed diff fails this step, and the simulator jobs then run (see below).
-          files="$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")"
-          printf 'Changed files:\n%s\n' "${files}"
-          if [[ -n "${files}" ]] && ! grep -qE -- "${relevant}" <<<"${files}"; then
-            echo "simulator=false" >>"${GITHUB_OUTPUT}"
-          else
-            echo "simulator=true" >>"${GITHUB_OUTPUT}"
-          fi
+          # scripts/simulator-relevant.sh holds the only copy of the path list (`just
+          # check` asks it too). It diffs the pull request's own change set (three
+          # dots: from the merge base), logs the changed files, and prints `true` when
+          # the diff fails. If the script itself fails, this step fails before writing
+          # the output, and the simulator jobs then run (see below).
+          simulator="$(scripts/simulator-relevant.sh --base "${BASE_SHA}" --head "${HEAD_SHA}")"
+          echo "simulator=${simulator}" >>"${GITHUB_OUTPUT}"
 
   app:
     name: App Build & UI Test (iOS Simulator)

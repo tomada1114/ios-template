@@ -139,8 +139,10 @@ sys.exit(1)
         "connect and unlock the phone, tap Trust for this Mac, and enable Settings › Privacy & Security › Developer Mode; set IOS_DEVICE to a name from \`xcrun devicectl list devices\` to pick one"
 fi
 
-# 3. Build.
-if ! (set -o pipefail && xcodebuild build -project "${APP_NAME}.xcodeproj" -scheme "${APP_NAME}" \
+# 3. Build, with the job cap scripts/run-throttled.sh exports (`just run-device`), if any.
+JOBS_ARGS=()
+if [ -n "${THROTTLE_JOBS:-}" ]; then JOBS_ARGS=(-jobs "${THROTTLE_JOBS}"); fi
+if ! (set -o pipefail && xcodebuild build ${JOBS_ARGS[@]+"${JOBS_ARGS[@]}"} -project "${APP_NAME}.xcodeproj" -scheme "${APP_NAME}" \
     -configuration Debug -destination "id=${UDID}" -derivedDataPath "${DERIVED_DATA}" \
     -allowProvisioningUpdates -allowProvisioningDeviceRegistration | mise exec -- xcbeautify --quiet); then
     fail ERR_DEVICE_BUILD_FAILED "the Debug build for device ${UDID} failed" \

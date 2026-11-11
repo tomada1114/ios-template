@@ -81,7 +81,10 @@ if [ -z "${APP_BUNDLE}" ]; then
 
     echo "==> Building ${APP_NAME} (Release, iOS Simulator)"
     BUILD_STATUS=0
-    xcodebuild \
+    # The job cap scripts/run-throttled.sh exports (`just smoke`), when there is one.
+    JOBS_ARGS=()
+    if [ -n "${THROTTLE_JOBS:-}" ]; then JOBS_ARGS=(-jobs "${THROTTLE_JOBS}"); fi
+    xcodebuild ${JOBS_ARGS[@]+"${JOBS_ARGS[@]}"} \
         -project "${APP_NAME}.xcodeproj" \
         -scheme "${APP_NAME}" \
         -configuration Release \

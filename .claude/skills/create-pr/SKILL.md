@@ -44,13 +44,15 @@ Run the full quality check suite. This is the prerequisite for PR creation.
 just check
 ```
 
-`just check` runs `verify-hooks -> fmt -> lint -> test-scripts -> check-harness -> test -> build`
-sequentially (the justfile's `check` recipe is the source of truth).
+`just check` runs `verify-hooks -> fmt -> lint -> test-scripts -> check-harness -> test`, then
+`uitest-build -> uitest-run -> smoke -> test-ios` when the branch touches a simulator path
+(`scripts/simulator-relevant.sh`; `CHECK_ALL=1` forces them), sequentially (the justfile's `check` recipe is the source of truth).
 **If any step fails, abort PR creation** and report the failure.
 
 On success, the "All checks pass (`just check`)" checklist item is verified:
 formatting, SwiftLint strict, tests with the 80% coverage floor on MyAppCore,
-and a Debug build.
+and, for a simulator-relevant change, the Debug and Release builds, the UI test, and the
+package tests on the iOS Simulator.
 
 ## Step 3: Additional Verification
 

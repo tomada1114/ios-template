@@ -38,7 +38,9 @@ shape holds elsewhere: CI's `test` job calls `scripts/coverage.sh` (what `just t
 runs), its `lint` job calls `scripts/tests/run.sh` and `scripts/checks/run-all.sh`
 (what `just test-scripts` and `just check-harness` run), the `app` job calls
 `just uitest-build` and `just uitest-run`, the `smoke` job calls `just smoke`, and the
-`ios-tests` job calls `just test-ios`. `scripts/checks/just-check-matches-ci.sh` holds the two
+`ios-tests` job calls `just test-ios` — the same simulator recipes `just check` runs when
+`scripts/simulator-relevant.sh` (also what CI's `changes` job calls) says the change
+touches their paths. `scripts/checks/just-check-matches-ci.sh` holds the two
 sides to the same set of gates, in both directions, apart from its reasoned exception
 list.
 

@@ -50,34 +50,40 @@ test-scripts:
 check-harness:
     mise exec -- scripts/checks/run-all.sh
 
-# Run the MyAppKit tests on the host Mac with the 80% line / 75% function coverage floors on MyAppCore
+# Run the MyAppKit tests on the host Mac with the 80% line / 75% function coverage floors
+# on MyAppCore, at a lower QoS with half the cores (scripts/run-throttled.sh; no lock:
+# host `swift test` touches no simulator)
+[doc("Run the MyAppKit tests on the host with the 80% line / 75% function floors on MyAppCore")]
 test:
-    scripts/coverage.sh
+    scripts/run-throttled.sh -- scripts/coverage.sh
 
 # Run only the tests matching FILTER (swift test --filter), with no coverage floor —
 # for fast local iteration; `just test` is still the gate
 [doc("Run only the tests matching FILTER, with no coverage floor")]
 test-fast filter:
-    cd Packages/MyAppKit && swift test --filter '{{filter}}'
+    cd Packages/MyAppKit && ../../scripts/run-throttled.sh -- swift test --jobs "$(../../scripts/run-throttled.sh --print-jobs)" --filter '{{filter}}'
 
 # Build the app (Debug) for the iOS Simulator. The generic destination needs no
 # particular device installed, and its product installs on any simulator (`just run`).
+# Every xcodebuild and simulator recipe runs through `scripts/run-throttled.sh --lock`:
+# one at a time across every worktree on this Mac, at a lower QoS, with half the cores
+# (CHECK_JOBS and CHECK_QOS override; CI runs them at full speed, unlocked).
 build:
     mise exec -- xcodegen generate
-    set -o pipefail && xcodebuild -project MyApp.xcodeproj -scheme MyApp -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/dev-derived-data build | mise exec -- xcbeautify --quiet
+    set -o pipefail && scripts/run-throttled.sh --lock -- xcodebuild -jobs "$(scripts/run-throttled.sh --print-jobs)" -project MyApp.xcodeproj -scheme MyApp -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/dev-derived-data build | mise exec -- xcbeautify --quiet
 
 # Build (Debug), then install and launch it on an iOS Simulator, replacing any
 # running instance (scripts/run-simulator.sh; SIMULATOR_DEVICE picks the device)
 [doc("Build (Debug), then install and launch it on an iOS Simulator")]
 run: build
-    scripts/run-simulator.sh
+    scripts/run-throttled.sh --lock -- scripts/run-simulator.sh
 
 # Build (Debug) for a connected iPhone, then install and launch it there — needs
 # Config/Local.xcconfig (docs/running-on-device.md); IOS_DEVICE picks the device
 [doc("Build (Debug), then install and launch it on a connected iPhone")]
 run-device:
     mise exec -- xcodegen generate
-    scripts/run-device.sh
+    scripts/run-throttled.sh --lock -- scripts/run-device.sh
 
 # Stream this app's unified-log output from the booted simulator (subsystem == the
 # bundle identifier project.yml declares), until you stop it with Ctrl-C
@@ -98,11 +104,11 @@ reset-permissions:
 uitest: uitest-build uitest-run
 
 # Compile the app (Debug) and the launch UI test for the simulator uitest runs on,
-# without running it. CI's app job runs this as its one Debug compile (#58).
+# without running it. It is the one Debug compile in CI's app job and in `just check` (#58).
 [doc("Build the app and the launch UI test for an iOS Simulator, without running it")]
 uitest-build:
     mise exec -- xcodegen generate
-    set -o pipefail && xcodebuild build-for-testing -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data | mise exec -- xcbeautify
+    set -o pipefail && scripts/run-throttled.sh --lock -- xcodebuild build-for-testing -jobs "$(scripts/run-throttled.sh --print-jobs)" -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data | mise exec -- xcbeautify
 
 # Run the launch UI test that uitest-build compiled, without building it again
 [doc("Run the launch UI test uitest-build compiled, without rebuilding")]
@@ -111,25 +117,29 @@ uitest-run:
     # Boot the simulator and wait for it to finish first: a cold boot inside
     # xcodebuild's launch window is what timed out on CI (#32).
     xcrun simctl bootstatus "$(scripts/simulator-destination.sh --udid)" -b
-    set -o pipefail && xcodebuild test-without-building -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult | mise exec -- xcbeautify
+    set -o pipefail && scripts/run-throttled.sh --lock -- xcodebuild test-without-building -jobs "$(scripts/run-throttled.sh --print-jobs)" -parallel-testing-enabled NO -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult | mise exec -- xcbeautify
 
 # Run every MyAppKit test suite on an iOS Simulator, with no coverage floor (`just test`
 # holds the floor on the host). Exercises code behind `#if os(iOS)` and the iOS runtime.
 [doc("Run the package tests on an iOS Simulator (no coverage floor)")]
 test-ios:
     rm -rf build/MyAppKitTests-iOS.xcresult
-    set -o pipefail && cd Packages/MyAppKit && xcodebuild test -scheme MyAppKit-Package -destination "$(../../scripts/simulator-destination.sh)" -derivedDataPath ../../build/ios-test-derived-data -resultBundlePath ../../build/MyAppKitTests-iOS.xcresult | mise exec -- xcbeautify
+    set -o pipefail && cd Packages/MyAppKit && ../../scripts/run-throttled.sh --lock -- xcodebuild test -jobs "$(../../scripts/run-throttled.sh --print-jobs)" -parallel-testing-enabled NO -scheme MyAppKit-Package -destination "$(../../scripts/simulator-destination.sh)" -derivedDataPath ../../build/ios-test-derived-data -resultBundlePath ../../build/MyAppKitTests-iOS.xcresult | mise exec -- xcbeautify
 
 # Build Release, then assert the app launches and stays alive on an iOS Simulator
 # (scripts/smoke_launch.sh; SIMULATOR_DEVICE picks the device)
 [doc("Build Release and assert the app launches and stays alive on a simulator")]
 smoke:
-    mise exec -- scripts/smoke_launch.sh
+    mise exec -- scripts/run-throttled.sh --lock -- scripts/smoke_launch.sh
 
-# Run all checks: verify hooks, format, lint, script tests, harness checks, test, build
-# (CI adds uitest, smoke, and test-ios)
-[doc("Run all checks: verify-hooks, fmt, lint, test-scripts, check-harness, test, build")]
-check: verify-hooks fmt lint test-scripts check-harness test build
+# Run all checks: verify hooks, format, lint, script tests, harness checks, test, then
+# the simulator checks (uitest-build, uitest-run, smoke, test-ios) when the change since
+# origin/main touches a path they exercise (scripts/simulator-relevant.sh holds the
+# list). CHECK_ALL=1 runs them regardless; CHECK_JOBS and CHECK_QOS set the throttle
+# (scripts/run-throttled.sh). uitest-build is the Debug compile, so `build` is not run.
+[doc("Run all checks: verify-hooks, fmt, lint, test-scripts, check-harness, test, and the simulator checks when relevant")]
+check: verify-hooks fmt lint test-scripts check-harness test
+    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just test-ios; else echo "Skipped uitest-build, uitest-run, smoke, test-ios (CHECK_ALL=1 runs them)"; fi
 
 # Remove build artifacts and the generated project
 clean:

@@ -38,8 +38,9 @@ Four kinds of test, split by what is under test:
    waits on a predicate with a timeout (`waitForExistence(timeout:)`), never `sleep`.
 
 A test of kind 3 never becomes the only test of a decision: only `just test-ios` runs
-it — `just check` leaves that recipe out, and the coverage floor never measures it — so
-a decision it alone covers is untested on every local run. Adapters stay
+it — `just check` runs that recipe only for a change under the simulator paths, and the
+coverage floor never measures it — so a decision it alone covers goes untested whenever
+the simulator checks are skipped. Adapters stay
 translation-only, and outside the coverage floor, precisely so that stays true.
 
 ## Framework and Structure
