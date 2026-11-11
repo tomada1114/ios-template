@@ -87,7 +87,7 @@ just test-ios
 # Build Release and assert the app launches and stays alive on a simulator
 just smoke
 
-# Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → build
+# Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → test-ios, when simulator-relevant)
 just check
 
 # Remove build artifacts and the generated project
@@ -100,8 +100,22 @@ just labels
 just ruleset
 ```
 
+`just check` runs the simulator checks only when the change since `origin/main` (or
+`main`) touches a path they exercise — `scripts/simulator-relevant.sh` holds the list,
+the same one CI's `changes` job uses. Every xcodebuild and simulator recipe runs through
+`scripts/run-throttled.sh --lock`, so parallel worktrees on one Mac take turns instead of
+competing, at a lower CPU QoS with half the cores. Three environment variables adjust it:
+
+- `CHECK_ALL=1` — run the simulator checks whatever changed.
+- `CHECK_JOBS=N` — the job cap passed to `xcodebuild -jobs` and `swift test --jobs`
+  (default: half the logical CPUs; all of them under CI).
+- `CHECK_QOS=utility|background|off` — the `taskpolicy -c` clamp (default `utility`;
+  `off` runs at normal priority; never applied under CI).
+
 **Without Just**, run the equivalent commands (`just check` is the justfile's
-`check` recipe: verify-hooks, fmt, lint, test-scripts, check-harness, test, build):
+`check` recipe: verify-hooks, fmt, lint, test-scripts, check-harness, test, then
+uitest-build, uitest-run, smoke, and test-ios when `scripts/simulator-relevant.sh` prints
+`true`; the throttle wrapper is left out below):
 
 ```bash
 mise install

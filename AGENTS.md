@@ -59,7 +59,7 @@ just uitest-build  # Build the app and the launch UI test for an iOS Simulator, 
 just uitest-run    # Run the launch UI test uitest-build compiled, without rebuilding
 just test-ios      # Run the package tests on an iOS Simulator (no coverage floor)
 just smoke         # Build Release and assert the app launches and stays alive on a simulator
-just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → build
+just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → test-ios, when simulator-relevant)
 just clean         # Remove build artifacts and the generated project
 just labels        # Create/update GitHub labels from .github/labels.yml (never deletes)
 just ruleset       # Create/update the "main" branch ruleset from .github/rulesets/main.json (admin-only)
@@ -254,7 +254,8 @@ stops and asks.
 
 Before submitting a PR:
 
-1. `just check` passes, and `just uitest` when the change is visible in the running app
+1. `just check` passes (it runs `just uitest`, `just smoke`, and `just test-ios` when the change
+   touches a simulator path; `CHECK_ALL=1 just check` forces them)
 2. New public APIs have `///` doc comments explaining *why*
 3. Tests cover the new functionality (happy path and error path)
 4. No new dependencies without a human's sign-off

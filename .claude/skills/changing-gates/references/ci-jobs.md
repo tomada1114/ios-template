@@ -16,8 +16,9 @@ every package test suite on that simulator, with no coverage floor, uploading it
 `.xcresult` on failure), `bootstrap-smoke` (xcode-27, the required
 `Template Bootstrap Smoke`: `scripts/bootstrap.sh` renames a clone of the template, then
 the renamed tree is linted, tested, and built for the simulator — template-only, so the
-rename removes it from every app), `changes` (ubuntu, not required: a `git diff --name-only` of
-the pull request against one path list in `ci.yml`; `app`, `smoke`, and `ios-tests` need it,
+rename removes it from every app), `changes` (ubuntu, not required: `scripts/simulator-relevant.sh --base … --head …`, a
+`git diff --name-only` of the pull request against the one path list that script holds and
+`just check` also reads; `app`, `smoke`, and `ios-tests` need it,
 always run under their required names, and skip their steps only on its exact output
 `simulator=false` — a push to `main` always says true, and a failed `changes` leaves the
 output empty so they run in full; a job skipped outright would report as passing), and `zizmor` (ubuntu: the required `Workflow Security Lint`, zizmor's audit of

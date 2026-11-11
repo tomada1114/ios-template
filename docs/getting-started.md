@@ -29,7 +29,7 @@ SwiftFormat, XcodeGen, xcbeautify, actionlint, ShellCheck, typos — all pinned)
 ## Everyday Commands
 
 ```bash
-just check     # the full local gate: verify-hooks → fmt → lint → test-scripts → check-harness → test → build
+just check     # the full local gate: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → test-ios, when simulator-relevant)
 just test      # Swift Testing suites on the host Mac + 80% line / 75% function coverage floors on MyAppCore
 just test-fast TodoItemTests   # only the matching tests, no coverage floor (while iterating)
 just uitest    # the XCUITest launch test on an iOS Simulator

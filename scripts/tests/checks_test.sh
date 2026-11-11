@@ -97,8 +97,8 @@ test-ios:
 smoke:
     mise exec -- scripts/smoke_launch.sh
 
-check: verify-hooks fmt lint build
-    echo check
+check: verify-hooks fmt lint
+    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just test-ios; else echo "Skipped (CHECK_ALL=1 runs them)"; fi
 EOF
     cat >"${root}/AGENTS.md" <<'EOF'
 # Project Guide
@@ -186,8 +186,7 @@ jobs:
       - run: scripts/simulator-destination.sh
       - name: Build and UI test
         run: |
-          # just check leaves uitest out
-          just build
+          # the simulator recipes just check runs when relevant
           just uitest-build
           just uitest-run
       - name: Smoke launch
@@ -1013,7 +1012,7 @@ case_ci_gate_missing_from_ci() {
     local root
     root=$(make_fixture)
     printf '\ntest:\n    scripts/coverage.sh\n' >>"${root}/justfile"
-    replace_in "${root}" justfile "^check: verify-hooks fmt lint build" "check: verify-hooks fmt lint test build"
+    replace_in "${root}" justfile "^check: verify-hooks fmt lint$" "check: verify-hooks fmt lint test"
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_JUST_CI_DIVERGED
@@ -1056,20 +1055,38 @@ case_ci_step_runs_nothing_shared() {
 case_ci_stale_local_only() {
     local root
     root=$(make_fixture)
-    replace_in "${root}" justfile "^check: verify-hooks fmt lint build" "check: verify-hooks lint build"
+    replace_in "${root}" justfile "^check: verify-hooks fmt lint$" "check: verify-hooks lint"
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_JUST_CI_STALE
     assert_stderr_contains "LOCAL_ONLY names \`fmt\`, which \`just check\` no longer runs"
 }
 
+# with_ci_only LIST — copies just-check-matches-ci.sh and its lib.sh into this case,
+# with CI_ONLY set to LIST, and prints the copy's path. The real CI_ONLY is empty, so
+# the stale-entry and through-its-script logic is exercised on a copy.
+with_ci_only() {
+    mkdir -p "${CASE_DIR}/checks"
+    cp "${CHECKS}/lib.sh" "${CASE_DIR}/checks/lib.sh"
+    grep -qx 'CI_ONLY=""' "${CHECKS}/just-check-matches-ci.sh" || return 1
+    sed "s#^CI_ONLY=\"\"\$#CI_ONLY=\"$1\"#" "${CHECKS}/just-check-matches-ci.sh" >"${CASE_DIR}/checks/just-check-matches-ci.sh"
+    echo "${CASE_DIR}/checks/just-check-matches-ci.sh"
+}
+
+# drop_check_call ROOT RECIPE — removes `just RECIPE` from the fixture check's body.
+drop_check_call() {
+    replace_in "$1" justfile "just $2 \&\& " ""
+}
+
 case_ci_stale_ci_only() {
-    local root
+    local root script
     root=$(make_fixture)
+    script=$(with_ci_only "uitest-run")
+    drop_check_call "${root}" uitest-run
     sed '/^          just uitest-run$/d; /^      - run: scripts\/simulator-destination.sh$/d' \
         "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
     mv "${CASE_DIR}/ci.yml" "${root}/.github/workflows/ci.yml"
-    capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
+    capture "${BASH}" "${script}" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_JUST_CI_STALE
     assert_stderr_contains "CI_ONLY names \`uitest-run\`, which no .github/workflows/ci.yml step runs any more"
@@ -1078,31 +1095,33 @@ case_ci_stale_ci_only() {
 # A step that calls only the script the uitest-run recipe calls still counts as
 # running uitest-run.
 case_ci_only_reached_through_its_script() {
-    local root
+    local root script
     root=$(make_fixture)
+    script=$(with_ci_only "uitest-run")
+    drop_check_call "${root}" uitest-run
     sed '/^          just uitest-run$/d' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
     mv "${CASE_DIR}/ci.yml" "${root}/.github/workflows/ci.yml"
-    capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
+    capture "${BASH}" "${script}" --root "${root}"
     assert_exit 0
     assert_stdout_contains "just-check-matches-ci: "
 }
 
-# ios-template's app job compiles the Debug app once, through uitest-build, so CI
-# never runs `just build` itself (#58).
-case_ci_build_is_local_only() {
+# The simulator recipes are `just check` gates through its conditional body; one
+# dropped from that body while CI still runs it is a divergence, not an exception.
+case_ci_simulator_recipe_dropped_from_check() {
     local root
     root=$(make_fixture)
-    sed '/^          just build$/d' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
-    mv "${CASE_DIR}/ci.yml" "${root}/.github/workflows/ci.yml"
+    drop_check_call "${root}" smoke
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
-    assert_exit 0
-    assert_stdout_contains "just-check-matches-ci: "
+    assert_exit 1
+    assert_contract ERR_CHECK_JUST_CI_DIVERGED
+    assert_stderr_contains "job \`app\` runs \`just smoke\` (or its script), which \`just check\` does not run"
 }
 
 case_ci_no_check_recipe() {
     local root
     root=$(make_fixture)
-    replace_in "${root}" justfile "^check: verify-hooks fmt lint build" "all: verify-hooks fmt lint build"
+    replace_in "${root}" justfile "^check: verify-hooks fmt lint$" "all: verify-hooks fmt lint"
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_JUST_CI_NO_CHECK
@@ -1853,7 +1872,7 @@ run_case "ci: a CI step running no recipe or script fails" case_ci_step_runs_not
 run_case "ci: a stale LOCAL_ONLY exception fails" case_ci_stale_local_only
 run_case "ci: a stale CI_ONLY exception fails" case_ci_stale_ci_only
 run_case "ci: a CI_ONLY recipe reached only through its script is not stale" case_ci_only_reached_through_its_script
-run_case "ci: CI may leave the LOCAL_ONLY build gate to uitest-build" case_ci_build_is_local_only
+run_case "ci: a simulator recipe dropped from check's body fails" case_ci_simulator_recipe_dropped_from_check
 run_case "ci: no check recipe fails" case_ci_no_check_recipe
 run_case "ci: a missing ci.yml fails" case_ci_missing_workflow
 run_case "labels: passes on a conforming tree" case_labels_pass

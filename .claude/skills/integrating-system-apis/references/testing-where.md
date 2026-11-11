@@ -18,10 +18,10 @@ states the four kinds; this is the same split applied to a system API.
 - **The top row is the default.** If an adapter seems to need a test for a decision,
   the decision is in the wrong module: move it into Core. Adapters stay
   translation-only precisely so the rows below it never hold the only test of a rule.
-- **`just test-ios` is not part of `just check`.** Only CI's
-  `Package Tests (iOS Simulator)` job and a local `just test-ios` run it, and the
-  coverage floor never measures it. Run it yourself before the pull request when you
-  touched code behind `#if os(iOS)`.
+- **`just check` runs `just test-ios` only for a simulator-relevant change.** It runs
+  when the branch touches a path `scripts/simulator-relevant.sh` lists (`Packages/`
+  among them, so code behind `#if os(iOS)` always qualifies), and the coverage floor
+  never measures it. `CHECK_ALL=1 just check` or a plain `just test-ios` forces it.
 - **"Runs on the host" is checked, not assumed.** A framework can compile for macOS and
   still refuse a test process: `UNUserNotificationCenter.current()` raises
   `bundleProxyForCurrentProcess is nil` without an app bundle (checked 2026-09-30).

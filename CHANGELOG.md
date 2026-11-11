@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `just check` now also runs `uitest-build`, `uitest-run`, `smoke`, and `test-ios` when
+  the change since `origin/main` touches a simulator path (`CHECK_ALL=1` forces them),
+  and no longer runs `build`, which `uitest-build` covers. The path list moves out of
+  `ci.yml` into `scripts/simulator-relevant.sh`, which CI's `changes` job and `just
+  check` both call. Every xcodebuild and simulator recipe now runs through
+  `scripts/run-throttled.sh --lock`: one at a time across every worktree on the Mac, at
+  `utility` QoS with half the cores (`CHECK_JOBS`, `CHECK_QOS`), and at full speed,
+  unlocked, under CI.
 - Codex CLI is no longer supported: skills live only under `.claude/skills/` and are
   edited there directly. The `.agents/skills/` tree, its byte-identical mirror, `just
   agents-sync`/`just agents-check`, `scripts/sync-agents.sh`, the pre-commit hook's
