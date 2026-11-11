@@ -12,7 +12,8 @@ paths:
 
 ## Dependency Policy
 
-- The template ships with ZERO package dependencies — keep it that way unless the app truly needs one
+- The template ships with no package dependencies, and stays that way unless the app
+  truly needs one: each one adds supply-chain risk and a platform floor to track
 - Before adding a dependency, record in the pull request why it passes each of these
   (a new dependency also needs human sign-off — AGENTS.md › Security and human approval):
   - **Need** — why a small hand-written type, the Swift standard library, or Foundation
@@ -32,7 +33,8 @@ paths:
   `.github/workflows/dependency-review.yml` enforces this exact list (`allow-licenses`) on
   every pull request — change both together; a per-package exception goes in its
   `allow-dependencies-licenses` with a comment giving the reason
-- `Package.resolved` MUST be committed alongside any dependency change
+- Commit `Package.resolved` in the same commit as the dependency change, so the pinned
+  versions always match `Package.swift`
 
 ## Version Requirements
 
@@ -46,8 +48,9 @@ paths:
 
 ## Gates
 
-- NEVER lower a coverage floor (currently 80% of lines and 75% of functions on MyAppCore)
-- NEVER remove SwiftLint rules without explicit user approval
+Lowering a coverage floor or relaxing a SwiftLint or SwiftFormat rule is weakening a
+gate: it needs the sign-off in AGENTS.md › Security and human approval, and the
+`changing-gates` skill covers how to make such a change.
 
 ## Project Generation
 
