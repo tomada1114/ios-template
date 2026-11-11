@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    # ready_for_review: a draft pull request skips the macOS work (see `changes`), so
+    # marking it ready starts a fresh run that does it.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -58,28 +61,50 @@ jobs:
         # references/enforcement-layers.md.
         run: scripts/checks/run-all.sh
 
-  # This job calls scripts/coverage.sh (what `just test` runs); the app job calls the
-  # just recipes itself.
+  # The one macOS gate on this tree: scripts/coverage.sh (what `just test` runs), then
+  # `just build`. The UI test, the Release smoke launch, and the iOS Simulator package
+  # tests run only in local `just check`, to keep CI's macOS minutes minimal.
   test:
     name: Test & Coverage Gate
-    runs-on: xcode-27
-    timeout-minutes: 20
+    # A run with nothing for this job to do (a push to main, a draft, or a pull request
+    # `changes` calls irrelevant) skips every step, so it takes a cheap Ubuntu runner
+    # instead of waiting for a macOS one; any other output (true, or empty after a
+    # failed `changes`) keeps macOS.
+    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'xcode-27' }}
+    # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
+    # failed, and its steps skip only on the exact output 'false' — a failed `changes`
+    # leaves the output empty, so everything runs. A job skipped outright would report
+    # as passing.
+    needs: changes
+    if: ${{ !cancelled() }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.simulator != 'false'
         with:
           persist-credentials: false
 
       - uses: ./.github/actions/select-xcode
+        if: needs.changes.outputs.simulator != 'false'
 
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        if: needs.changes.outputs.simulator != 'false'
 
       - name: Run tests with coverage floor
+        if: needs.changes.outputs.simulator != 'false'
         run: scripts/coverage.sh
 
-  # Decides whether a pull request touches anything the simulator jobs (app, smoke,
-  # ios-tests) exercise. Those jobs are required checks, so they always run and report
-  # under their own names; they only skip their steps when this job says
-  # `simulator=false`. A push (main) always says true.
+      - name: Build app (Debug, iOS Simulator)
+        if: needs.changes.outputs.simulator != 'false'
+        run: just build
+
+  # Decides whether this run has macOS work: the `test` job (and, in the template,
+  # `bootstrap-smoke`).
+  # Those jobs are required checks, so they always run and report under their own
+  # names; they only skip their steps when this job says `simulator=false` (the output
+  # keeps its name: scripts/simulator-relevant.sh's path list decides it). A push to
+  # main and a draft pull request always say false: main is verified by the pull
+  # request that reached it, and a draft runs its macOS work once marked ready.
   changes:
     name: Detect Simulator-Relevant Changes
     runs-on: ubuntu-latest
@@ -88,207 +113,42 @@ jobs:
       simulator: ${{ steps.detect.outputs.simulator }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && !github.event.pull_request.draft
         with:
           persist-credentials: false
           # Full history so the merge base of the pull request's base and head exists.
           fetch-depth: 0
 
-      - name: Decide whether the simulator jobs have work
+      - name: Decide whether the macOS jobs have work
         id: detect
         env:
           EVENT_NAME: ${{ github.event_name }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          if [[ "${EVENT_NAME}" != "pull_request" ]]; then
-            echo "simulator=true" >>"${GITHUB_OUTPUT}"
+          if [[ "${EVENT_NAME}" != "pull_request" || "${IS_DRAFT}" == "true" ]]; then
+            echo "simulator=false" >>"${GITHUB_OUTPUT}"
             exit 0
           fi
           # scripts/simulator-relevant.sh holds the only copy of the path list (`just
           # check` asks it too). It diffs the pull request's own change set (three
           # dots: from the merge base), logs the changed files, and prints `true` when
           # the diff fails. If the script itself fails, this step fails before writing
-          # the output, and the simulator jobs then run (see below).
+          # the output, and the macOS jobs then run (see below).
           simulator="$(scripts/simulator-relevant.sh --base "${BASE_SHA}" --head "${HEAD_SHA}")"
           echo "simulator=${simulator}" >>"${GITHUB_OUTPUT}"
-
-  app:
-    name: App Build & UI Test (iOS Simulator)
-    # A pull request with nothing for this job to do skips every step, so it takes a
-    # cheap Ubuntu runner instead of waiting for a macOS one; any other output
-    # (true, or empty after a failed `changes`) keeps macOS.
-    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'xcode-27' }}
-    # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
-    # failed, and its steps skip only on the exact output 'false' — a failed `changes`
-    # leaves the output empty, so everything runs. A job skipped outright would report
-    # as passing.
-    needs: changes
-    if: ${{ !cancelled() }}
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.simulator != 'false'
-        with:
-          persist-credentials: false
-
-      - uses: ./.github/actions/select-xcode
-        if: needs.changes.outputs.simulator != 'false'
-
-      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
-        if: needs.changes.outputs.simulator != 'false'
-
-      - name: Show the simulator the UI test will use
-        if: needs.changes.outputs.simulator != 'false'
-        run: scripts/simulator-destination.sh
-
-      # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
-      # it overlaps the build; the later `bootstatus -b` waits then return at once.
-      # Same device the recipes pick; a device already booted is left as it is.
-      - name: Boot the simulator in the background
-        if: needs.changes.outputs.simulator != 'false'
-        run: |
-          udid="$(scripts/simulator-destination.sh --udid)"
-          devices="$(xcrun simctl list devices)"
-          line="$(grep -F -- "${udid}" <<<"${devices}")"
-          if [[ "${line}" == *"(Booted)"* ]]; then
-            echo "Simulator ${udid} is already booted."
-          else
-            xcrun simctl boot "${udid}"
-          fi
-
-      - name: Build app and UI tests (Debug, iOS Simulator)
-        if: needs.changes.outputs.simulator != 'false'
-        run: just uitest-build
-
-      - name: Run launch UI test
-        if: needs.changes.outputs.simulator != 'false'
-        run: just uitest-run
-
-      - name: Upload result bundles on failure
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: xcresult-bundles
-          path: build/*.xcresult
-          if-no-files-found: ignore
-          retention-days: 7
-
-  smoke:
-    name: Release Smoke Launch (iOS Simulator)
-    # A pull request with nothing for this job to do skips every step, so it takes a
-    # cheap Ubuntu runner instead of waiting for a macOS one; any other output
-    # (true, or empty after a failed `changes`) keeps macOS.
-    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'xcode-27' }}
-    # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
-    # failed, and its steps skip only on the exact output 'false' — a failed `changes`
-    # leaves the output empty, so everything runs. A job skipped outright would report
-    # as passing.
-    needs: changes
-    if: ${{ !cancelled() }}
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.simulator != 'false'
-        with:
-          persist-credentials: false
-
-      - uses: ./.github/actions/select-xcode
-        if: needs.changes.outputs.simulator != 'false'
-
-      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
-        if: needs.changes.outputs.simulator != 'false'
-
-      # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
-      # it overlaps the build; the later `bootstatus -b` waits then return at once.
-      # Same device the recipes pick; a device already booted is left as it is.
-      - name: Boot the simulator in the background
-        if: needs.changes.outputs.simulator != 'false'
-        run: |
-          udid="$(scripts/simulator-destination.sh --udid)"
-          devices="$(xcrun simctl list devices)"
-          line="$(grep -F -- "${udid}" <<<"${devices}")"
-          if [[ "${line}" == *"(Booted)"* ]]; then
-            echo "Simulator ${udid} is already booted."
-          else
-            xcrun simctl boot "${udid}"
-          fi
-
-      - name: Smoke launch (Release)
-        if: needs.changes.outputs.simulator != 'false'
-        run: just smoke
-
-      # smoke_launch.sh writes no result bundle: what is left after a failure is the
-      # Release build's logs and, for a crash, the simulator app's crash report.
-      - name: Upload smoke logs on failure
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: smoke-logs
-          path: |
-            build/smoke-derived-data/Logs
-            ~/Library/Logs/DiagnosticReports/*.ips
-          if-no-files-found: ignore
-          retention-days: 7
-
-  ios-tests:
-    name: Package Tests (iOS Simulator)
-    # A pull request with nothing for this job to do skips every step, so it takes a
-    # cheap Ubuntu runner instead of waiting for a macOS one; any other output
-    # (true, or empty after a failed `changes`) keeps macOS.
-    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'xcode-27' }}
-    # Fail-safe: `!cancelled()` keeps this required job running even when `changes`
-    # failed, and its steps skip only on the exact output 'false' — a failed `changes`
-    # leaves the output empty, so everything runs. A job skipped outright would report
-    # as passing.
-    needs: changes
-    if: ${{ !cancelled() }}
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.simulator != 'false'
-        with:
-          persist-credentials: false
-
-      - uses: ./.github/actions/select-xcode
-        if: needs.changes.outputs.simulator != 'false'
-
-      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
-        if: needs.changes.outputs.simulator != 'false'
-
-      # Starts the cold boot (~70 s, mostly data migration) without waiting for it, so
-      # it overlaps the build; the later `bootstatus -b` waits then return at once.
-      # Same device the recipes pick; a device already booted is left as it is.
-      - name: Boot the simulator in the background
-        if: needs.changes.outputs.simulator != 'false'
-        run: |
-          udid="$(scripts/simulator-destination.sh --udid)"
-          devices="$(xcrun simctl list devices)"
-          line="$(grep -F -- "${udid}" <<<"${devices}")"
-          if [[ "${line}" == *"(Booted)"* ]]; then
-            echo "Simulator ${udid} is already booted."
-          else
-            xcrun simctl boot "${udid}"
-          fi
-
-      - name: Run the package tests on an iOS Simulator
-        if: needs.changes.outputs.simulator != 'false'
-        run: just test-ios
-
-      - name: Upload result bundles on failure
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: xcresult-bundles-ios-tests
-          path: build/*.xcresult
-          if-no-files-found: ignore
-          retention-days: 7
 
   bootstrap-smoke:
     # Template-only: scripts/bootstrap.sh removes this job, and its required context in
     # .github/rulesets/main.json, from every app it renames.
     name: Template Bootstrap Smoke
-    runs-on: xcode-27
+    # Gated like `test`: skips its steps on an Ubuntu runner when `changes` says
+    # false, and runs everything when `changes` failed. Nothing else may `needs:` this
+    # job, so ci.yml stays valid once bootstrap deletes it.
+    runs-on: ${{ needs.changes.outputs.simulator == 'false' && 'ubuntu-latest' || 'xcode-27' }}
+    needs: changes
+    if: ${{ !cancelled() }}
     timeout-minutes: 30
     env:
       # 19 characters: long enough to push lines past SwiftFormat's width, so the lint
@@ -296,16 +156,20 @@ jobs:
       DEMO_NAME: LongDemoApplication
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.simulator != 'false'
         with:
           persist-credentials: false
           # Full history so the local `git clone` below works from a non-shallow source.
           fetch-depth: 0
 
       - uses: ./.github/actions/select-xcode
+        if: needs.changes.outputs.simulator != 'false'
 
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        if: needs.changes.outputs.simulator != 'false'
 
       - name: Bootstrap a pristine copy as the demo app
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           git clone . "$RUNNER_TEMP/bootstrap-smoke"
           mise trust "$RUNNER_TEMP/bootstrap-smoke/mise.toml"
@@ -313,6 +177,7 @@ jobs:
           scripts/bootstrap.sh "$DEMO_NAME" --bundle-id-prefix io.example --github-user demo
 
       - name: Assert no placeholders remain
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
           # Author/email placeholders are intentionally kept (no --author/--email above).
@@ -334,6 +199,7 @@ jobs:
           fi
 
       - name: Assert the placeholder-explaining passages survived
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
           # These passages sit between keep markers, so the rename must leave them naming
@@ -358,6 +224,7 @@ jobs:
           exit "$status"
 
       - name: Assert the template-only passages were removed
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
           # The marker name is split so this file never holds one.
@@ -371,6 +238,7 @@ jobs:
           fi
 
       - name: Assert CHANGELOG was reset
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
           grep -qF 'Initial project scaffold from' CHANGELOG.md || {
@@ -383,6 +251,7 @@ jobs:
           fi
 
       - name: Assert the template origin was recorded
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
           test -f .template-origin || {
@@ -402,6 +271,7 @@ jobs:
           }
 
       - name: Assert the template-only job was retired
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
           if grep -nE '^  bootstrap-smoke:$|Template Bootstrap Smoke' .github/workflows/ci.yml .github/rulesets/main.json; then
@@ -412,6 +282,7 @@ jobs:
           bash scripts/tests/apply-ruleset_test.sh
 
       - name: Assert the Product section check now fires
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
           # The rename cannot write the new app's product intent, and this check is the
@@ -430,6 +301,7 @@ jobs:
           }
 
       - name: Lint the renamed tree
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
           # What the pre-commit hook runs on the bootstrap commit; a renamed tree that
@@ -437,11 +309,13 @@ jobs:
           scripts/lint.sh
 
       - name: Test the renamed package
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke/Packages/${DEMO_NAME}Kit"
           swift test
 
       - name: Build the renamed app
+        if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
           xcodegen generate

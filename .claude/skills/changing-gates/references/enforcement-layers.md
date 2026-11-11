@@ -16,7 +16,7 @@ narrows a layer updates this file in the same pull request.
 | `DeepLinkTests` | `just test`, CI `test` | the scheme Core parses is the one `project.yml` registers |
 | `PreferenceKeysTests` | `just test`, CI `test` | stored preference key names and defaults never change silently |
 | `LocalizationTests` | `just test`, CI `test` | every `LocalizedStringResource(…)` in Core has a key, a `defaultValue`, and `bundle: .module`; its keys are exactly the catalog's; the catalog's English is what Core renders |
-| CI (`.github/workflows/ci.yml`) | push to `main`, every pull request | `lint` (format, lint, shellcheck, actionlint, typos; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (package tests + coverage floor), `app` (iOS Simulator build + XCUITest), `smoke` (`Release Smoke Launch (iOS Simulator)`, in parallel with `app`: the Release smoke launch, `just smoke`), `ios-tests` (`Package Tests (iOS Simulator)`: every package test suite on an iOS Simulator, `just test-ios`, no coverage floor), `bootstrap-smoke` (`Template Bootstrap Smoke`: `scripts/bootstrap.sh` renames a clone of the template, which is then linted, tested, and built for the simulator — template-only, so the rename removes it from every app), `changes` (ubuntu: diffs a pull request's files; when none matches the path list in `scripts/simulator-relevant.sh`, `app`, `smoke`, and `ios-tests` still run and report but skip their steps — a push to `main`, or a failed detection, runs them in full), and the `zizmor` workflow lint (`Workflow Security Lint`) |
+| CI (`.github/workflows/ci.yml`) | push to `main` and every pull request (`lint`, `zizmor`); a non-draft pull request whose diff `scripts/simulator-relevant.sh` calls relevant (macOS work in `test`, `bootstrap-smoke`) | `lint` (format, lint, shellcheck, actionlint, typos; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (`Test & Coverage Gate`: package tests + coverage floor, then `just build`), `bootstrap-smoke` (`Template Bootstrap Smoke`: `scripts/bootstrap.sh` renames a clone of the template, which is then linted, tested, and built for the simulator — template-only, so the rename removes it from every app), `changes` (ubuntu: says false on a push to `main` or a draft, else diffs a pull request's files against `scripts/simulator-relevant.sh`; on false `test` and `bootstrap-smoke` still run and report on Ubuntu but skip their steps — a failed detection runs them in full), and the `zizmor` workflow lint (`Workflow Security Lint`). The UI test, Release smoke launch, and iOS Simulator package tests run in no CI job |
 | Security workflows (`codeql.yml`, `gitleaks.yml`, `osv-scan.yml`, `dependency-review.yml`, `scorecard.yml`) | every pull request (OSV, dependency review), push to `main` (CodeQL), a pull request that edits `gitleaks.yml`, and weekly schedules (CodeQL, gitleaks, OSV, Scorecard) | CodeQL for the package's Swift, a checksum-verified full-history gitleaks scan, OSV and dependency-review checks of SwiftPM dependencies, OpenSSF Scorecard |
 | `.github/workflows/check-pr-title.yml` (job `Validate PR title`) | every pull request (opened, reopened, edited, synchronize) | the PR title is a Conventional Commit whose type is in its `types` list |
 
@@ -93,7 +93,14 @@ agent (exit 2) — a convenience on that host, not a gate. Another agent and a
 human at a shell are bound by the instructions in `AGENTS.md` and by the gates above.
 
 **No gate runs the app on a device, or on any iOS release but the one the pinned Xcode
-ships: CI's simulators run the Xcode-pinned runtime only.**
+ships: the local simulators run the Xcode-pinned runtime only.**
+
+**The simulator checks are local only.** `just uitest`, `just smoke`, and `just
+test-ios` (and so every `#if os(iOS)` test) run in `just check` on the author's Mac and
+in no CI job; CI records coverage and the Debug compile alone, so a pull request whose
+author skipped `just check` carries no simulator evidence. Nothing re-verifies `main` on
+macOS after a merge, and a draft pull request runs no macOS work until it is marked
+ready, so two pull requests that pass separately can break `main` together.
 
 ## What no local gate sees
 

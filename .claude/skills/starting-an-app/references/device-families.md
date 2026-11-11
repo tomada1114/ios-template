@@ -92,8 +92,8 @@ xcrun simctl list devices available | grep iPad   # pick a name from this list
 SIMULATOR_DEVICE="iPad (A16)" just uitest
 ```
 
-Device names change with each Xcode's runtimes, which is why nothing pins one. CI's
-`app` job runs the iPhone destination only, so an iPad layout is asserted by no gate
+Device names change with each Xcode's runtimes, which is why nothing pins one. `just
+uitest` runs the iPhone destination only, and no CI job runs it, so an iPad layout is asserted by no gate
 unless the app adds a step for it — a gate change (`changing-gates`). The launch test
 itself needs no edit for either family: it finds its elements by accessibility
 identifier and label, not by position.

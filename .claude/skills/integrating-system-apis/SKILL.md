@@ -122,7 +122,7 @@ service over `APIClient`, or a change to either.
 The `#if os(iOS)` rules are `.claude/rules/swift.md` and `.claude/rules/platform.md`.
 For a system API that means `BGTaskScheduler`, a UIKit type, or
 `UIApplication.openSettingsURLString` sits behind the guard with its test, which
-`just test-ios` and CI's `Package Tests (iOS Simulator)` job run.
+`just test-ios` runs (inside local `just check`; no CI job runs it).
 
 A framework that compiles on macOS may still refuse to run in a test process.
 `UNUserNotificationCenter.current()` raises `bundleProxyForCurrentProcess is nil` in a
