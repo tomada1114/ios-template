@@ -59,18 +59,22 @@ check_require_file "${CI}"
 #                 hook runs, scripts/lint.sh, directly.
 #   fmt           rewrites files; CI checks the same formatting read-only through
 #                 scripts/lint.sh's `swiftformat --lint` (`just lint`).
-LOCAL_ONLY="verify-hooks fmt"
-# CI_ONLY — recipes CI runs that `just check` deliberately leaves out: none at present.
-# `just check` runs the simulator recipes CI's app, smoke, and ios-tests jobs run, under
-# the same scripts/simulator-relevant.sh condition. A recipe added here carries its
-# reason beside it, as LOCAL_ONLY's do.
-CI_ONLY=""
+#   uitest-build, uitest-run, smoke, test-ios
+#                 the simulator checks run only here, to keep CI's macOS minutes
+#                 minimal: CI is the merge record for coverage and the app's compile
+#                 alone, and `just check` runs these when scripts/simulator-relevant.sh
+#                 calls the change relevant.
+LOCAL_ONLY="verify-hooks fmt uitest-build uitest-run smoke test-ios"
+# CI_ONLY — recipes CI runs that `just check` deliberately leaves out:
+#   build  CI compiles the Debug app once for the generic iOS Simulator destination;
+#          `just check` compiles it through `uitest-build`, which CI does not run.
+CI_ONLY="build"
 # CI_ONLY_JOBS — whole jobs outside the comparison:
 #   bootstrap-smoke  renames a throwaway clone of the template and builds it; it is a
 #                    test of scripts/bootstrap.sh, not a gate on this tree, and
 #                    bootstrap removes the job from every app cut from the template.
-#   changes          diffs a pull request's files to decide whether the simulator
-#                    jobs have work (#54); a CI scheduling decision, not a gate on
+#   changes          decides whether the macOS jobs have work (a pull request's
+#                    files, its draft state, the event; #54); a CI scheduling decision, not a gate on
 #                    this tree, so no local recipe could run it.
 CI_ONLY_JOBS="bootstrap-smoke changes"
 

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- CI now runs one macOS job: `Test & Coverage Gate` runs the coverage floor and then
+  `just build`. The `App Build & UI Test (iOS Simulator)`, `Release Smoke Launch (iOS
+  Simulator)`, and `Package Tests (iOS Simulator)` jobs and their required contexts are
+  removed; the UI test, smoke launch, and iOS package tests run in local `just check`
+  only. A push to `main`, a draft pull request, and a pull request with no
+  simulator-relevant change skip the macOS work on an Ubuntu runner (as does
+  `Template Bootstrap Smoke`); marking a draft ready for review starts a fresh run.
 - `just check` now also runs `uitest-build`, `uitest-run`, `smoke`, and `test-ios` when
   the change since `origin/main` touches a simulator path (`CHECK_ALL=1` forces them),
   and no longer runs `build`, which `uitest-build` covers. The path list moves out of

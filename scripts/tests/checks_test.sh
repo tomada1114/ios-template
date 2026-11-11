@@ -81,7 +81,7 @@ lint:
     mise exec -- scripts/lint.sh
 
 build:
-    echo build
+    mise exec -- scripts/build-app.sh
 
 uitest: uitest-build uitest-run
 
@@ -183,18 +183,10 @@ jobs:
       run:
         shell: bash
     steps:
-      - run: scripts/simulator-destination.sh
-      - name: Build and UI test
+      - name: Build app
         run: |
-          # the simulator recipes just check runs when relevant
-          just uitest-build
-          just uitest-run
-      - name: Smoke launch
-        run: just smoke
-  ios-tests:
-    runs-on: macos-26
-    steps:
-      - run: just test-ios
+          # CI compiles the app; just check compiles it through uitest-build
+          just build
   bootstrap-smoke:
     runs-on: macos-26
     steps:
@@ -1028,7 +1020,7 @@ case_ci_recipe_missing_from_check() {
     assert_exit 1
     assert_contract ERR_CHECK_JUST_CI_DIVERGED
     assert_stderr_contains ".github/workflows/ci.yml:$(grep -n 'run: just generate' "${root}/.github/workflows/ci.yml" | cut -d: -f1): job \`lint\` runs \`just generate\`"
-    assert_stderr_not_contains "\`just uitest\`" "a CI_ONLY recipe reported"
+    assert_stderr_not_contains "\`just build\`" "a CI_ONLY recipe reported"
 }
 
 case_ci_script_no_recipe_calls() {
@@ -1062,60 +1054,56 @@ case_ci_stale_local_only() {
     assert_stderr_contains "LOCAL_ONLY names \`fmt\`, which \`just check\` no longer runs"
 }
 
-# with_ci_only LIST — copies just-check-matches-ci.sh and its lib.sh into this case,
-# with CI_ONLY set to LIST, and prints the copy's path. The real CI_ONLY is empty, so
-# the stale-entry and through-its-script logic is exercised on a copy.
-with_ci_only() {
-    mkdir -p "${CASE_DIR}/checks"
-    cp "${CHECKS}/lib.sh" "${CASE_DIR}/checks/lib.sh"
-    grep -qx 'CI_ONLY=""' "${CHECKS}/just-check-matches-ci.sh" || return 1
-    sed "s#^CI_ONLY=\"\"\$#CI_ONLY=\"$1\"#" "${CHECKS}/just-check-matches-ci.sh" >"${CASE_DIR}/checks/just-check-matches-ci.sh"
-    echo "${CASE_DIR}/checks/just-check-matches-ci.sh"
-}
-
 # drop_check_call ROOT RECIPE — removes `just RECIPE` from the fixture check's body.
 drop_check_call() {
     replace_in "$1" justfile "just $2 \&\& " ""
 }
 
 case_ci_stale_ci_only() {
-    local root script
+    local root
     root=$(make_fixture)
-    script=$(with_ci_only "uitest-run")
-    drop_check_call "${root}" uitest-run
-    sed '/^          just uitest-run$/d; /^      - run: scripts\/simulator-destination.sh$/d' \
-        "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
+    sed '/^      - name: Build app$/,/^          just build$/d' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
     mv "${CASE_DIR}/ci.yml" "${root}/.github/workflows/ci.yml"
-    capture "${BASH}" "${script}" --root "${root}"
+    capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_JUST_CI_STALE
-    assert_stderr_contains "CI_ONLY names \`uitest-run\`, which no .github/workflows/ci.yml step runs any more"
+    assert_stderr_contains "CI_ONLY names \`build\`, which no .github/workflows/ci.yml step runs any more"
 }
 
-# A step that calls only the script the uitest-run recipe calls still counts as
-# running uitest-run.
+# A step that calls only the script the build recipe calls still counts as running
+# build.
 case_ci_only_reached_through_its_script() {
-    local root script
+    local root
     root=$(make_fixture)
-    script=$(with_ci_only "uitest-run")
-    drop_check_call "${root}" uitest-run
-    sed '/^          just uitest-run$/d' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
+    sed 's#^          just build$#          scripts/build-app.sh#' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
     mv "${CASE_DIR}/ci.yml" "${root}/.github/workflows/ci.yml"
-    capture "${BASH}" "${script}" --root "${root}"
+    capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 0
     assert_stdout_contains "just-check-matches-ci: "
 }
 
-# The simulator recipes are `just check` gates through its conditional body; one
-# dropped from that body while CI still runs it is a divergence, not an exception.
+# The simulator recipes are LOCAL_ONLY `just check` gates through its conditional
+# body; one dropped from that body leaves its exception stale.
 case_ci_simulator_recipe_dropped_from_check() {
     local root
     root=$(make_fixture)
     drop_check_call "${root}" smoke
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 1
+    assert_contract ERR_CHECK_JUST_CI_STALE
+    assert_stderr_contains "LOCAL_ONLY names \`smoke\`, which \`just check\` no longer runs"
+}
+
+# CI running a simulator recipe `just check` does not run is still a divergence.
+case_ci_runs_a_recipe_check_dropped() {
+    local root
+    root=$(make_fixture)
+    drop_check_call "${root}" smoke
+    append_ci_step "${root}" "just smoke"
+    capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
+    assert_exit 1
     assert_contract ERR_CHECK_JUST_CI_DIVERGED
-    assert_stderr_contains "job \`app\` runs \`just smoke\` (or its script), which \`just check\` does not run"
+    assert_stderr_contains "job \`lint\` runs \`just smoke\` (or its script), which \`just check\` does not run"
 }
 
 case_ci_no_check_recipe() {
@@ -1873,6 +1861,7 @@ run_case "ci: a stale LOCAL_ONLY exception fails" case_ci_stale_local_only
 run_case "ci: a stale CI_ONLY exception fails" case_ci_stale_ci_only
 run_case "ci: a CI_ONLY recipe reached only through its script is not stale" case_ci_only_reached_through_its_script
 run_case "ci: a simulator recipe dropped from check's body fails" case_ci_simulator_recipe_dropped_from_check
+run_case "ci: CI running a recipe check dropped fails" case_ci_runs_a_recipe_check_dropped
 run_case "ci: no check recipe fails" case_ci_no_check_recipe
 run_case "ci: a missing ci.yml fails" case_ci_missing_workflow
 run_case "labels: passes on a conforming tree" case_labels_pass

@@ -100,10 +100,11 @@ A PR is on the allow-list only if **all** hold: `gh pr checks` shows every check
 unrecognised does not), its merge state is `CLEAN`, and the checklist found nothing.
 An unknown CI state holds a PR; it is never waved through.
 
-A SwiftPM PR's checks include the `Package Tests (iOS Simulator)` job (`just test-ios`)
-and the `App Build & UI Test (iOS Simulator)` job (`just uitest`): a package bump can
-behave differently on the iOS runtime than in the host `swift test`, so a SwiftPM PR
-with either job missing or not yet `pass` is not eligible.
+CI runs no simulator check: a package bump can behave differently on the iOS runtime
+than in the host `swift test`, so a bot PR whose diff `scripts/simulator-relevant.sh`
+calls relevant (a SwiftPM `Package.resolved` bump, for one) is eligible only after a
+local `just check` passes on its branch (or the combined branch), which runs
+`just test-ios`, `just uitest`, and `just smoke`.
 
 **Merge individually** when the eligible PRs share no file. In practice this is the
 Actions PRs and a lone SwiftPM or mise PR.
@@ -168,7 +169,7 @@ the plan named it.
 | `lint` fails on a SwiftLint/SwiftFormat PR | New rule or formatting default | Fix code on that PR or the combined branch; never skip the bump |
 | `check-harness` fails on an Actions PR | SHA or `# v…` comment dropped or mismatched | Hold; restore the pin format in the combined branch |
 | `test` fails after a SwiftPM bump | Real API change in the package | Read the release notes; fix on the branch or hold with a reason |
-| `ios-tests` or `app` fails while `test` passes | The package behaves differently on the iOS runtime | Reproduce with `just test-ios` or `just uitest`; fix on the branch or hold with a reason |
+| Local `just test-ios` or `just uitest` fails while CI's `test` passes | The package behaves differently on the iOS runtime | Reproduce with `just test-ios` or `just uitest`; fix on the branch or hold with a reason |
 | `Gitleaks History Scan` fails on a gitleaks PR | `GITLEAKS_SHA256` still names the old release | The human copies the new linux_x64 hash into it; merge only once the run passes |
 | `swift package resolve` changes unrelated pins | A range in `Package.swift` was loose | Revert unrelated pin moves; resolve only what the PRs bumped |
 | mise PR green but `mise install` fails locally | Version not yet published for this platform | Hold until it is |

@@ -23,8 +23,8 @@ Four kinds of test, split by what is under test:
    Platform test is a gated test.
 3. **Translation through an iOS-only API → a test inside `#if os(iOS)` in
    `Tests/MyAppPlatformTests`.** `swift test` builds the package for macOS, where that
-   test compiles away; `just test-ios` runs it on the iOS Simulator (CI's
-   `Package Tests (iOS Simulator)` job). What only a real permission prompt, a
+   test compiles away; `just test-ios` runs it on the iOS Simulator (inside local `just check`; no CI
+   job runs it). What only a real permission prompt, a
    device, or push delivery shows is not a test at all: the pull request carries the
    evidence (a screenshot, the log lines from `just logs`).
 4. **What only the assembled app shows → `LaunchUITests`.** The one XCTest target holds

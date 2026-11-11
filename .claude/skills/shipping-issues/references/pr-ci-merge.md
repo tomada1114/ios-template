@@ -54,7 +54,8 @@ One watch per PR; keep the log's `failed_checks:` for repair. Record `--event ci
 ### Waiting inside the 600-second cap
 
 The Bash tool kills a foreground call after at most 600 seconds, while this repository's
-CI (lint, tests with coverage, build, UI test, Release smoke) routinely runs longer. A
+CI (lint, tests with coverage, the Debug build; the UI test and Release smoke run only
+in the local `just check` before the PR) routinely runs longer. A
 `--timeout 1800` watch in the foreground would be killed mid-wait, with no verdict and a
 truncated log. So pick one of these, in this order:
 

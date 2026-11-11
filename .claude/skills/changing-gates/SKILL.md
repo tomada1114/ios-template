@@ -35,12 +35,11 @@ own. `scripts/lint.sh` is the single lint script: `just lint`
 job all call it. A new check is therefore added to `scripts/lint.sh`, never inlined as a
 command into `justfile`, `.githooks/pre-commit`, or a workflow `run:` step. The same
 shape holds elsewhere: CI's `test` job calls `scripts/coverage.sh` (what `just test`
-runs), its `lint` job calls `scripts/tests/run.sh` and `scripts/checks/run-all.sh`
-(what `just test-scripts` and `just check-harness` run), the `app` job calls
-`just uitest-build` and `just uitest-run`, the `smoke` job calls `just smoke`, and the
-`ios-tests` job calls `just test-ios` — the same simulator recipes `just check` runs when
-`scripts/simulator-relevant.sh` (also what CI's `changes` job calls) says the change
-touches their paths. `scripts/checks/just-check-matches-ci.sh` holds the two
+runs) and then `just build`, and its `lint` job calls `scripts/tests/run.sh` and
+`scripts/checks/run-all.sh` (what `just test-scripts` and `just check-harness` run).
+The simulator recipes (`uitest-build`, `uitest-run`, `smoke`, `test-ios`) run only in
+local `just check`, when `scripts/simulator-relevant.sh` (also what CI's `changes` job
+calls to decide whether `test` has macOS work) says the change touches their paths. `scripts/checks/just-check-matches-ci.sh` holds the two
 sides to the same set of gates, in both directions, apart from its reasoned exception
 list.
 
@@ -177,8 +176,7 @@ exception added to `scripts/checks/just-check-matches-ci.sh` carries its reason.
 
 ## `.github/workflows/`
 
-`ci.yml` runs the jobs `lint`, `test`, `changes`, `app`, `smoke`, `ios-tests`,
-`bootstrap-smoke`, and `zizmor`; the PR-title, labeling, and security workflows run beside it, and Dependabot
+`ci.yml` runs the jobs `lint`, `test`, `changes`, `bootstrap-smoke`, and `zizmor`; the PR-title, labeling, and security workflows run beside it, and Dependabot
 bumps the pinned `uses:` SHAs. A job or workflow added later is added to
 [references/ci-jobs.md](references/ci-jobs.md) — what each runs, which contexts are
 required, and when each fires — by the change that adds it.
@@ -200,12 +198,16 @@ A Release build is only launched, not exercised: `just smoke` asserts that it st
 and stays alive for ten seconds on a simulator, and nothing more. The one XCUITest,
 `LaunchUITests/LaunchTests.swift`'s `testAddingAnItemShowsItInTheList` (`just uitest`),
 asserts only that the app launches and that one added item appears in the list, on the
-one simulator runtime CI's Xcode ships. Any other UI behavior, and every `MyAppUI` code
+one simulator runtime the pinned Xcode ships — and, like `just smoke`, it runs only in
+local `just check`, never in CI. Any other UI behavior, and every `MyAppUI` code
 path, is outside the coverage floor and asserted by no gate. Code under `#if os(iOS)` in
-the Swift package is tested only by `just test-ios` (CI's `ios-tests` job) — `swift test`
-builds the package for the host Mac — and the coverage floor never sees it. Nothing runs
+the Swift package is tested only by local `just test-ios` (inside `just check`) — `swift test`
+builds the package for the host Mac — and the coverage floor never sees it. CI records
+only coverage and the Debug compile: a pull request whose author skipped `just check`
+reaches review with no simulator evidence. Nothing re-verifies `main` on macOS after a
+merge, so two pull requests that pass separately can break `main` together. Nothing runs
 the app or the package tests on a physical device, or on any iOS release but the one the
-pinned Xcode ships: CI's simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,
+pinned Xcode ships: the local simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,
 entitlements, and signing settings are unchecked. Each is a place a change can be wrong
 while every gate passes; a gate proposed to close one is a real gate change and belongs
 in the PR as one. What every local layer misses — a skipped hook, an edit on GitHub, a

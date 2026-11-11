@@ -21,9 +21,11 @@ mise trust     # approve mise.toml (asked once per fresh clone)
 just install
 ```
 
-If your Xcode lacks the iOS platform, `just test` and `just lint` still run; the
-simulator steps run in CI's `App Build & UI Test (iOS Simulator)` and
-`Package Tests (iOS Simulator)` jobs.
+If your Xcode lacks the iOS platform, `just test` and `just lint` still run, but
+`just check`'s simulator steps (`uitest-build`, `uitest-run`, `smoke`, `test-ios`)
+need it: no CI job runs them. CI's one macOS job, `Test & Coverage Gate`, runs the
+coverage floor and `just build`; a draft pull request skips its macOS work, so mark the
+pull request ready for review to run it.
 
 ## Development Workflow
 

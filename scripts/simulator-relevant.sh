@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Prints `true` or `false`: whether a change set touches any path the simulator checks
 # (uitest-build, uitest-run, smoke, test-ios) exercise. `just check` runs those checks
-# only on `true`; CI's `changes` job passes the answer to its simulator jobs (#54).
+# only on `true`; CI's `changes` job uses the answer to decide whether its macOS jobs
+# (`test`, `bootstrap-smoke`) have work (#54).
 # This file holds the only copy of the path list.
 #
 #   scripts/simulator-relevant.sh --base REF --head REF   (CI: git diff BASE...HEAD)
