@@ -83,6 +83,11 @@ struct MyAppApp: App {
         /// fails (`UpdateFailingTodoRepository`), so a failure alert can be seen and
         /// UI-tested. Release builds neither read the argument nor contain the type.
         private static let failUpdatesArgument = "-failUpdates"
+
+        /// With `-failUpdates`, followed by a whole number of seconds: each failure arrives
+        /// that long after the save began, so `LaunchUITests` — which passes the value — can
+        /// open a sheet over a save still in flight. Missing or malformed, no delay.
+        private static let delayFailedUpdatesArgument = "-delayFailedUpdates"
     #endif
 
     /// Owned here, in `@State`, so the model outlives any one scene's view tree and every
@@ -119,8 +124,12 @@ struct MyAppApp: App {
             let container = try PersistenceStore.makeContainer(storage: storage)
             let repository = SwiftDataTodoRepository(modelContainer: container)
             #if DEBUG
-                if ProcessInfo.processInfo.arguments.contains(failUpdatesArgument) {
-                    return UpdateFailingTodoRepository(wrapping: repository)
+                let arguments = ProcessInfo.processInfo.arguments
+                if arguments.contains(failUpdatesArgument) {
+                    return UpdateFailingTodoRepository(
+                        wrapping: repository,
+                        failureDelay: failedUpdateDelay(in: arguments),
+                    )
                 }
             #endif
             return repository
@@ -129,6 +138,20 @@ struct MyAppApp: App {
             return UnavailableTodoRepository()
         }
     }
+
+    #if DEBUG
+        /// The seconds that follow `-delayFailedUpdates`, or no delay when they are missing
+        /// or not a whole number.
+        private static func failedUpdateDelay(in arguments: [String]) -> Duration {
+            guard let index = arguments.firstIndex(of: delayFailedUpdatesArgument),
+                  arguments.indices.contains(index + 1),
+                  let seconds = Int(arguments[index + 1])
+            else {
+                return .zero
+            }
+            return .seconds(seconds)
+        }
+    #endif
 
     /// The API client at this build's base URL (`Config/Debug.xcconfig` or
     /// `Config/Release.xcconfig`). A missing or malformed value is a build
