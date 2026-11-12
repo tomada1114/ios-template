@@ -151,6 +151,80 @@ case_base_head_mode() {
     answer_is true
 }
 
+# check_answers REPO UITEST TEST_IOS — asserts both per-check answers for REPO.
+check_answers() {
+    cd "$1"
+    capture "${BASH}" "${SCRIPT}" --check uitest
+    assert_exit 0
+    answer_is "$2"
+    capture "${BASH}" "${SCRIPT}" --check test-ios
+    assert_exit 0
+    answer_is "$3"
+}
+
+case_check_ui_change() {
+    local repo
+    unset CHECK_ALL
+    repo=$(repo_on_branch)
+    commit_file "${repo}" Packages/MyAppKit/Sources/MyAppUI/RootView.swift
+    check_answers "${repo}" true false
+    assert_stderr_contains "nothing test-ios exercise changed since main"
+}
+
+case_check_platform_change() {
+    local repo
+    unset CHECK_ALL
+    repo=$(repo_on_branch)
+    commit_file "${repo}" Packages/MyAppKit/Sources/MyAppPlatform/Store.swift
+    check_answers "${repo}" false true
+}
+
+# A Core change runs neither: the host `just test` covers it, and the CI list (no
+# --check) still calls it macOS work.
+case_check_core_change() {
+    local repo
+    unset CHECK_ALL
+    repo=$(repo_on_branch)
+    commit_file "${repo}" Packages/MyAppKit/Sources/MyAppCore/Model.swift
+    check_answers "${repo}" false false
+    capture "${BASH}" "${SCRIPT}"
+    answer_is true
+}
+
+case_check_shared_paths() {
+    local repo
+    unset CHECK_ALL
+    repo=$(repo_on_branch)
+    commit_file "${repo}" .xcode-version
+    check_answers "${repo}" true true
+}
+
+case_check_fail_safe() {
+    local repo
+    unset CHECK_ALL
+    repo=$(repo_on_branch)
+    check_answers "${repo}" false false
+    assert_stderr_contains "nothing changed since main"
+    commit_file "${repo}" Package.resolved
+    check_answers "${repo}" true true
+    CHECK_ALL=1 capture "${BASH}" "${SCRIPT}" --check uitest
+    answer_is true
+    cd "$(make_temp_dir)"
+    capture "${BASH}" "${SCRIPT}" --check test-ios
+    assert_exit 0
+    answer_is true
+}
+
+case_check_usage() {
+    capture "${BASH}" "${SCRIPT}" --check smoke
+    assert_exit 1
+    grep -q '^ERR_RELEVANT_USAGE: ' <<<"$(head -n 1 "${CASE_DIR}/stderr")" || _fail "not ERR_RELEVANT_USAGE"
+    capture "${BASH}" "${SCRIPT}" --check uitest --base a --head b
+    assert_exit 1
+    capture "${BASH}" "${SCRIPT}" --check
+    assert_exit 1
+}
+
 case_usage() {
     capture "${BASH}" "${SCRIPT}" --head HEAD
     assert_exit 1
@@ -163,11 +237,17 @@ run_case "a committed relevant change prints true" case_relevant_commit
 run_case "only irrelevant changes print false, with a notice" case_irrelevant_only
 run_case "an untracked relevant file prints true" case_untracked_relevant
 run_case "a staged relevant file prints true" case_staged_relevant
-run_case "a .swiftlint.yml change prints true (analyze reads its analyzer_rules)" case_swiftlint_config_relevant
+run_case "a .swiftlint.yml change prints true" case_swiftlint_config_relevant
 run_case "CHECK_ALL=1 prints true" case_check_all
 run_case "an empty change set prints true" case_empty_change_set
 run_case "a bad base ref prints true" case_bad_base
 run_case "outside a git checkout prints true" case_not_a_repo
 run_case "--base/--head diffs BASE...HEAD" case_base_head_mode
+run_case "--check: a MyAppUI change runs uitest alone" case_check_ui_change
+run_case "--check: a MyAppPlatform change runs test-ios alone" case_check_platform_change
+run_case "--check: a MyAppCore change runs neither" case_check_core_change
+run_case "--check: .xcode-version runs both" case_check_shared_paths
+run_case "--check: an empty change set prints false; Package.resolved, CHECK_ALL=1, and no checkout print true" case_check_fail_safe
+run_case "--check: an unknown name, --head, or a missing value fail" case_check_usage
 run_case "bad arguments fail" case_usage
 finish

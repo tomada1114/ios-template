@@ -179,6 +179,8 @@ omitting one is a defect, not a stylistic choice.
   Otherwise a repository that could not support worktrees reads as a slow run.
 - **The verification command actually used**, when the plan's suggestion was
   overridden.
+- **Step 8d's `just check-release` result** on the default branch: passed, or each
+  failure with the issue filed for it -- or, when it did not run, why.
 - **Issues whose ship contract had to be guessed at** -- the `PARTIAL` grouping's
   undeclared issues and anything `issue_digest.py --audit` flagged. This is what
   stops the next run paying the same judgement cost.

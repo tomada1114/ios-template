@@ -23,8 +23,8 @@ Four kinds of test, split by what is under test:
    Platform test is a gated test.
 3. **Translation through an iOS-only API → a test inside `#if os(iOS)` in
    `Tests/MyAppPlatformTests`.** `swift test` builds the package for macOS, where that
-   test compiles away; `just test-ios` runs it on the iOS Simulator (inside local `just check`; no CI
-   job runs it). What only a real permission prompt, a
+   test compiles away; `just test-ios` runs it on the iOS Simulator (inside local `just check` when the
+   change touches the platform-adapter paths, and `just check-release`; no CI job runs it). What only a real permission prompt, a
    device, push delivery, or an app process shows is not a test at all: the pull request
    carries the evidence (a screenshot, the log lines from `just logs`). The Keychain is
    the shipped case of the last — it refuses a test runner on the host and on the
@@ -42,7 +42,7 @@ Four kinds of test, split by what is under test:
    waits on a predicate with a timeout (`waitForExistence(timeout:)`), never `sleep`.
 
 A test of kind 3 never becomes the only test of a decision: only `just test-ios` runs
-it — `just check` runs that recipe only for a change under the simulator paths, and the
+it — `just check` runs that recipe only for a change under the platform-adapter paths, and the
 coverage floor never measures it — so a decision it alone covers goes untested whenever
 the simulator checks are skipped. Adapters stay
 translation-only, and outside the coverage floor, precisely so that stays true.

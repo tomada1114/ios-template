@@ -103,8 +103,8 @@ An unknown CI state holds a PR; it is never waved through.
 CI runs no simulator check: a package bump can behave differently on the iOS runtime
 than in the host `swift test`, so a bot PR whose diff `scripts/simulator-relevant.sh`
 calls relevant (a SwiftPM `Package.resolved` bump, for one) is eligible only after a
-local `just check` passes on its branch (or the combined branch), which runs
-`just test-ios`, `just uitest`, and `just smoke`.
+local `CHECK_ALL=1 just check` passes on its branch (or the combined branch), which runs
+`just test-ios` and `just uitest` whatever paths the diff touches.
 
 **Merge individually** when the eligible PRs share no file. In practice this is the
 Actions PRs and a lone SwiftPM or mise PR.

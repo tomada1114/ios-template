@@ -22,10 +22,11 @@ just install
 ```
 
 If your Xcode lacks the iOS platform, `just test` and `just lint` still run, but
-`just check`'s simulator steps (`uitest-build`, `uitest-run`, `smoke`, `build-device`,
-`analyze`, `test-ios`) need it; no CI job runs the first three or `test-ios`. CI's one macOS job,
-`Test & Coverage Gate`, runs the coverage floor, `just build-device`, and `just analyze` (whose clean Debug simulator build is the compile `just build` makes); a draft pull request skips its macOS work, so mark the
-pull request ready for review to run it.
+`just check`'s simulator steps (`uitest-build`, `uitest-run`, `test-ios`) and the
+release-only checks `just check-release` adds (`smoke`, `build-device`, `analyze`) need
+it; no CI job runs any of them. CI's one macOS job, `Test & Coverage Gate`, runs the
+coverage floor alone; a draft pull request skips its macOS work, so mark the pull
+request ready for review to run it.
 
 ## Development Workflow
 
@@ -95,8 +96,11 @@ just build-device
 # Run swiftlint analyze (unused declarations and imports) over a clean iOS Simulator build
 just analyze
 
-# Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → analyze → test-ios, when simulator-relevant)
+# Run the pull-request checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run, when the UI or app paths changed) → (test-ios, when the platform-adapter paths changed)
 just check
+
+# Run every check, on main before a release tag and after a batch of merges: CHECK_ALL=1 just check → smoke → build-device → analyze
+just check-release
 
 # Remove build artifacts and the generated project
 just clean
@@ -108,13 +112,17 @@ just labels
 just ruleset
 ```
 
-`just check` runs the simulator checks only when the change since `origin/main` (or
-`main`) touches a path they exercise — `scripts/simulator-relevant.sh` holds the list,
-the same one CI's `changes` job uses. Every xcodebuild and simulator recipe runs through
+`just check` runs each simulator check only when the change since `origin/main` (or
+`main`) touches a path it exercises — `scripts/simulator-relevant.sh --check uitest` and
+`--check test-ios` hold the lists, beside the wider one CI's `changes` job uses — and a
+git failure runs both (an empty change set runs neither). `smoke`, `build-device`, and `analyze` run
+in no pull request's checks: `just check-release` runs them, after `CHECK_ALL=1 just
+check`, on `main` before a release tag and after a batch of merges, so what they find
+was merged earlier. Every xcodebuild and simulator recipe runs through
 `scripts/run-throttled.sh --lock`, so parallel worktrees on one Mac take turns instead of
 competing, at a lower CPU QoS with half the cores. Three environment variables adjust it:
 
-- `CHECK_ALL=1` — run the simulator checks whatever changed.
+- `CHECK_ALL=1` — run both simulator checks whatever changed.
 - `CHECK_JOBS=N` — the job cap passed to `xcodebuild -jobs` and `swift test --jobs`
   (default: half the logical CPUs; all of them under CI).
 - `CHECK_QOS=utility|background|off` — the `taskpolicy -c` clamp (default `utility`;
@@ -122,8 +130,10 @@ competing, at a lower CPU QoS with half the cores. Three environment variables a
 
 **Without Just**, run the equivalent commands (`just check` is the justfile's
 `check` recipe: verify-hooks, fmt, lint, test-scripts, check-harness, test, then
-uitest-build, uitest-run, smoke, build-device, analyze, and test-ios when `scripts/simulator-relevant.sh` prints
-`true`; the throttle wrapper is left out below):
+uitest-build and uitest-run when `scripts/simulator-relevant.sh --check uitest` prints
+`true`, and test-ios when `--check test-ios` does; `just check-release` is that with
+`CHECK_ALL=1`, then smoke, build-device, and analyze; the throttle wrapper is left out
+below):
 
 ```bash
 mise install

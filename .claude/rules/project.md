@@ -44,7 +44,7 @@ paths:
 - Add or bump one by editing `Package.swift` and running `swift package resolve` (or
   `swift package update <Name>`) inside `Packages/MyAppKit` — never hand-edit
   `Package.resolved`: a hand-written entry states a revision nobody verified
-- Verify with `just check`
+- Verify with `CHECK_ALL=1 just check`: a dependency can break either simulator check
 
 ## Gates
 
@@ -107,7 +107,8 @@ gate: it needs the sign-off in AGENTS.md › Security and human approval, and th
 - This section is the one statement of the pin-bump policy; `mise.toml`, the
   `changing-gates` skill, and `check-pr-title.yml` point here rather than restate it
 - A `mise.toml` pin is an exact version: never use `latest`, never bump by hand. After
-  any `mise.toml` change, `mise install`, then `just check`
+  any `mise.toml` change, `mise install`, then `just check` (`mise.toml` is on both
+  simulator checks' path lists)
 - Bot-bumped pins arrive as bot PRs, never by hand: Dependabot (`.github/dependabot.yml`)
   for SwiftPM (`Packages/MyAppKit/Package.resolved`, prefix `deps:`) and GitHub Actions
   (prefix `ci:`), Renovate (`.github/renovate.json`, `enabledManagers` `mise` and

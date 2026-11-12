@@ -45,14 +45,16 @@ just check
 ```
 
 `just check` runs `verify-hooks -> fmt -> lint -> test-scripts -> check-harness -> test`, then
-`uitest-build -> uitest-run -> smoke -> test-ios` when the branch touches a simulator path
-(`scripts/simulator-relevant.sh`; `CHECK_ALL=1` forces them), sequentially (the justfile's `check` recipe is the source of truth).
+`uitest-build -> uitest-run` when the branch touches the UI or app paths and `test-ios` when
+it touches the platform-adapter paths (`scripts/simulator-relevant.sh --check`; `CHECK_ALL=1`
+forces both), sequentially (the justfile's `check` recipe is the source of truth).
 **If any step fails, abort PR creation** and report the failure.
 
 On success, the "All checks pass (`just check`)" checklist item is verified:
 formatting, SwiftLint strict, tests with the 80% coverage floor on MyAppCore,
-and, for a simulator-relevant change, the Debug and Release builds, the UI test, and the
-package tests on the iOS Simulator.
+and, for a change under their paths, the Debug build and UI test, or the package tests on
+the iOS Simulator. The Release launch, the Release device build, and the analyzer rules
+are not part of it: `just check-release` runs them on `main`, not per pull request.
 
 ## Step 3: Additional Verification
 

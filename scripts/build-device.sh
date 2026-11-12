@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Build the Release app for the iOS device SDK (`iphoneos`), unsigned, and assert the
-# linked executable and the privacy manifest are in the bundle. What `just build-device` runs after regenerating the
-# project, and what CI's `Test & Coverage Gate` runs through it.
+# linked executable and the privacy manifest are in the bundle. What `just build-device`
+# runs after regenerating the project, and what `just check-release` runs through it; no
+# pull request's checks run it.
 #
 #   scripts/build-device.sh [--root DIR]
 #

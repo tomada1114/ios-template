@@ -61,13 +61,12 @@ jobs:
         # references/enforcement-layers.md.
         run: scripts/checks/run-all.sh
 
-  # The one macOS gate on this tree: scripts/coverage.sh (what `just test` runs), then
-  # `just build-device`, the unsigned Release compile for the device SDK no simulator
-  # build sees, and `just analyze`, SwiftLint's analyzer rules over a clean Debug
-  # compile of the app for the generic iOS Simulator — the compile `just build` makes,
-  # so CI no longer runs `just build` itself. The UI test, the Release smoke launch, and the iOS
-  # Simulator package tests run only in local `just check`, to keep CI's macOS minutes
-  # minimal.
+  # The one macOS gate on this tree: scripts/coverage.sh (what `just test` runs), the
+  # package tests on the host with the coverage floors. Every xcodebuild check — the UI
+  # test, the iOS Simulator package tests, the Release smoke launch, the Release device
+  # build, the analyzer rules — runs locally: the first two in `just check` when the
+  # change touches their paths, all of them in `just check-release` before a release.
+  # That keeps a pull request's macOS minutes to one `swift test`.
   test:
     name: Test & Coverage Gate
     # A run with nothing for this job to do (a push to main, a draft, or a pull request
@@ -81,10 +80,7 @@ jobs:
     # as passing.
     needs: changes
     if: ${{ !cancelled() }}
-    # 60, not 30: the job gained a second full app compile (Release, device SDK), then
-    # `just analyze` — two clean build-for-testing compiles plus swiftlint analyze, which
-    # took about 10 minutes locally (#84), in place of the `just build` compile.
-    timeout-minutes: 60
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: needs.changes.outputs.simulator != 'false'
@@ -100,23 +96,6 @@ jobs:
       - name: Run tests with coverage floor
         if: needs.changes.outputs.simulator != 'false'
         run: scripts/coverage.sh
-
-      - name: Build app (Release, iOS device, unsigned)
-        # The one build for the iphoneos SDK: a device-only compile break or a Release
-        # device failure (asset catalog, linker) shows here and in no simulator build,
-        # and so does a bundle that ships without PrivacyInfo.xcprivacy.
-        # CODE_SIGNING_ALLOWED=NO, so it needs no team or secret; nothing is signed.
-        if: needs.changes.outputs.simulator != 'false'
-        run: just build-device
-
-      - name: Analyze (swiftlint analyze, unused declarations and imports)
-        # scripts/analyze.sh makes its own compiler log: a clean build-for-testing of the
-        # app scheme and of the package scheme for the iOS Simulator, since the analyzer
-        # needs every file's compile command (tests included, or an `internal` reached
-        # only through `@testable import` reads as unused). Its app build is the Debug
-        # simulator compile CI records, and it is clean, so it never passes on a cache.
-        if: needs.changes.outputs.simulator != 'false'
-        run: just analyze
 
   # Decides whether this run has macOS work: the `test` job (and, in the template,
   # `bootstrap-smoke`).
@@ -151,8 +130,8 @@ jobs:
             echo "simulator=false" >>"${GITHUB_OUTPUT}"
             exit 0
           fi
-          # scripts/simulator-relevant.sh holds the only copy of the path list (`just
-          # check` asks it too). It diffs the pull request's own change set (three
+          # scripts/simulator-relevant.sh holds the only copy of the path lists (`just
+          # check` asks it per check). It diffs the pull request's own change set (three
           # dots: from the merge base), logs the changed files, and prints `true` when
           # the diff fails. If the script itself fails, this step fails before writing
           # the output, and the macOS jobs then run (see below).
