@@ -27,7 +27,7 @@ git clone https://github.com/your-username/my-app.git
 cd my-app
 mise trust     # approve mise.toml once — mise refuses untrusted configs
 just install   # pinned tools via mise + git hooks + xcodegen generate
-just check     # verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → test-ios, when simulator-relevant)
+just check     # verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → analyze → test-ios, when simulator-relevant)
 just run       # build, then install and launch the app in the iOS Simulator
 ```
 
@@ -69,7 +69,7 @@ run each without Just.
 | `just run` | Build, then launch in the iOS Simulator |
 | `just run-device` | Build, then launch on your connected iPhone |
 | `just uitest` | The XCUITest launch test on an iOS Simulator |
-| `just check` | Everything: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → test-ios, when simulator-relevant) |
+| `just check` | Everything: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → analyze → test-ios, when simulator-relevant) |
 
 ## Documentation
 

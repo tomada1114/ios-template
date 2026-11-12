@@ -1,4 +1,3 @@
-import MyAppCore
 import SwiftUI
 
 /// The done toggle a to-do row and the detail screen share: a glyph with a full-size hit
