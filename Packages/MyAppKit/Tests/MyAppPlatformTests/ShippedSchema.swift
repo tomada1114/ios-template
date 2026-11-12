@@ -24,16 +24,35 @@ enum ShippedSchema {
         ),
     ]
 
-    /// A non-optional attribute with no uniqueness constraint.
+    /// A stored, non-optional attribute with no uniqueness constraint, no transformer or
+    /// coding, and no rename or hash modifier.
     private static func attribute(_ name: String, _ type: String) -> SchemaFingerprint.Attribute {
-        SchemaFingerprint.Attribute(name: name, type: type, isOptional: false, isUnique: false)
+        stored(name, type, isUnique: false)
     }
 
-    /// A non-optional `@Attribute(.unique)` attribute.
+    /// The same, under `@Attribute(.unique)`.
     private static func uniqueAttribute(
         _ name: String,
         _ type: String,
     ) -> SchemaFingerprint.Attribute {
-        SchemaFingerprint.Attribute(name: name, type: type, isOptional: false, isUnique: true)
+        stored(name, type, isUnique: true)
+    }
+
+    private static func stored(
+        _ name: String,
+        _ type: String,
+        isUnique: Bool,
+    ) -> SchemaFingerprint.Attribute {
+        SchemaFingerprint.Attribute(
+            name: name,
+            originalName: "",
+            type: type,
+            isOptional: false,
+            isUnique: isUnique,
+            isTransient: false,
+            isTransformable: false,
+            isCodable: false,
+            hashModifier: nil,
+        )
     }
 }

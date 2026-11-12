@@ -2,6 +2,7 @@ import CoreData
 import Foundation
 @testable import MyAppPlatform
 import SwiftData
+import Testing
 
 /// On-disk SwiftData stores for the tests that must close a store and open the same file
 /// again: a store written with one schema version, reopened through the production
@@ -33,7 +34,8 @@ enum StoreFiles {
     }
 
     /// Writes a store at `url` with `version`'s schema, under `plan` — a plan whose last
-    /// schema is `version`, as the build that shipped `version` had — inserting what
+    /// schema is `version`, as the build that shipped `version` had; any other plan fails
+    /// the test before anything is written — inserting what
     /// `populate` inserts, then lets the container go, so the next open is a second open
     /// of the file.
     static func write(
@@ -42,6 +44,17 @@ enum StoreFiles {
         at url: URL,
         populate: (ModelContext) throws -> Void,
     ) throws {
+        let last = try #require(
+            plan.schemas.last,
+            "\(plan) lists no schema, so it cannot be the plan \(version) shipped with",
+        )
+        try #require(
+            ObjectIdentifier(last) == ObjectIdentifier(version),
+            """
+            \(plan) ends at \(last), not \(version): write a store with the plan as it \
+            stood when \(version) shipped, a frozen copy ending at that version
+            """,
+        )
         let schema = Schema(versionedSchema: version)
         let container = try ModelContainer(
             for: schema,

@@ -4,15 +4,6 @@ import MyAppCore
 import SwiftData
 import Testing
 
-/// Fixed values for ``SwiftDataTodoRepositoryTests/SchemaMigrationTests``.
-private enum Fixture {
-    static let firstID = UUID(uuidString: "00000000-0000-0000-0000-00000000000A") ?? UUID()
-    static let secondID = UUID(uuidString: "00000000-0000-0000-0000-00000000000B") ?? UUID()
-    static let minute: TimeInterval = 60
-    static let firstCreatedAt = Date(timeIntervalSinceReferenceDate: minute)
-    static let secondCreatedAt = firstCreatedAt.addingTimeInterval(minute)
-}
-
 /// The two versions a migration stage joins, by the identity of their schema types.
 private struct StageEndpoints: Equatable {
     var source: ObjectIdentifier
@@ -52,14 +43,15 @@ extension SwiftDataTodoRepositoryTests {
         @Test
         func `every shipped schema version keeps the shape it shipped with`() {
             #expect(AppMigrationPlan.schemas.isEmpty == false)
+            var planVersions: Set<String> = []
             for version in AppMigrationPlan.schemas {
                 let actual = SchemaFingerprint(version)
+                planVersions.insert(actual.version)
                 guard let pinned = ShippedSchema.fingerprints[actual.version] else {
                     Issue.record("""
-                    \(version) (\(actual.version)) has no pinned fingerprint. Add its row to \
-                    ShippedSchema.fingerprints in ShippedSchema.swift, written out by \
-                    hand from its @Model classes:
-                    \(actual)
+                    \(version) (\(actual.version)) has no pinned fingerprint. Write its row \
+                    in ShippedSchema.fingerprints (ShippedSchema.swift) by hand, from \
+                    \(version)'s @Model source — never from this test's output.
                     """)
                     continue
                 }
@@ -73,6 +65,26 @@ extension SwiftDataTodoRepositoryTests {
                 \(actual)
                 """)
             }
+            for orphan in Set(ShippedSchema.fingerprints.keys).subtracting(planVersions).sorted() {
+                Issue.record("""
+                Schema version \(orphan) is pinned in ShippedSchema.fingerprints but is no \
+                longer in AppMigrationPlan.schemas. A shipped schema version is never \
+                removed or renamed, nor its version identifier changed: stores on users' \
+                devices were written with it. Restore it, and add a new VersionedSchema \
+                plus an AppMigrationPlan stage instead (the persisting-data skill).
+                """)
+            }
+        }
+
+        @Test
+        func `a type name drops the app's modules and the schema type, not Swift's or Foundation's`() {
+            let names = TypeNames(AppSchemaV1.self)
+            #expect(names.normalized(UUID.self) == "Foundation.UUID")
+            #expect(names.normalized(String?.self) == "Swift.Optional<Swift.String>")
+            #expect(names.normalized([AppSchemaV1.TodoRecord].self) == "Swift.Array<TodoRecord>")
+            #expect(names.normalized(TodoItem?.self) == "Swift.Optional<TodoItem>")
+            #expect(names
+                .normalized([String: TodoItem].self) == "Swift.Dictionary<Swift.String, TodoItem>")
         }
 
         @Test
@@ -110,40 +122,18 @@ extension SwiftDataTodoRepositoryTests {
         @Test
         func `a store written with the current schema reopens through the production container`(
         ) async throws {
+            let current = try #require(AppMigrationPlan.schemas.last)
             let directory = try StoreFiles.scratchDirectory()
             defer { try? FileManager.default.removeItem(at: directory) }
-            let url = directory.appending(path: "v1.store")
+            let url = directory.appending(path: "current.store")
 
-            try StoreFiles
-                .write(AppSchemaV1.self, plan: AppMigrationPlan.self, at: url) { context in
-                    try context.insert(AppSchemaV1.TodoRecord(
-                        TodoItem(
-                            id: Fixture.firstID,
-                            title: "Kept",
-                            createdAt: Fixture.firstCreatedAt,
-                        ),
-                    ))
-                    try context.insert(AppSchemaV1.TodoRecord(TodoItem(
-                        id: Fixture.secondID,
-                        title: "Also kept",
-                        createdAt: Fixture.secondCreatedAt,
-                        isDone: true,
-                    )))
-                }
+            try StoreFixture.writeCurrentStore(current, at: url)
             let written = try StoreFiles.modelVersion(of: url)
 
             let reopened = try StoreFiles.reopen(url)
             let items = try await SwiftDataTodoRepository(modelContainer: reopened).fetchAll()
 
-            #expect(try items == [
-                TodoItem(id: Fixture.firstID, title: "Kept", createdAt: Fixture.firstCreatedAt),
-                TodoItem(
-                    id: Fixture.secondID,
-                    title: "Also kept",
-                    createdAt: Fixture.secondCreatedAt,
-                    isDone: true,
-                ),
-            ])
+            #expect(try items == StoreFixture.storedItems())
             #expect(written.identifiers == ["1.0.0"])
             #expect(try StoreFiles.modelVersion(of: url) == written)
         }
