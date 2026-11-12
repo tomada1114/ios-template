@@ -98,7 +98,7 @@ struct NavigationModelRestorationTests {
         #""todoDetail""#,
         "null",
     ])
-    func `a route this build cannot read is skipped, and the routes around it restore`(
+    func `the path restores up to the first route this build cannot read`(
         unreadable: String,
     ) {
         let payload = """
@@ -107,7 +107,30 @@ struct NavigationModelRestorationTests {
         """
         let navigation = NavigationModel()
         navigation.restore(from: Data(payload.utf8))
-        #expect(navigation.path == [Self.first, Self.second])
+        #expect(navigation.path == [Self.first])
+    }
+
+    @Test
+    func `a path whose first route this build cannot read restores to the root`() {
+        let payload = """
+        {"routes":[{"id":"\(Self.firstID)","screen":"settings"},\
+        {"id":"\(Self.secondID)","screen":"todoDetail"}],"version":1}
+        """
+        let navigation = NavigationModel()
+        navigation.restore(from: Data(payload.utf8))
+        #expect(navigation.path.isEmpty)
+    }
+
+    @Test(arguments: [
+        "not json",
+        #"{"routes":[{"id":"00000000-0000-0000-0000-000000000001","screen":"todoDetail"}],"version":2}"#,
+        #"{"routes":[{"id":"00000000-0000-0000-0000-000000000001","screen":"settings"}],"version":1}"#,
+    ])
+    func `after a restore that ends at the root, the path to store is the root's`(payload: String) {
+        let navigation = NavigationModel()
+        navigation.restore(from: Data(payload.utf8))
+        #expect(String(bytes: navigation.encodedPath, encoding: .utf8) ==
+            #"{"routes":[],"version":1}"#)
     }
 
     @Test

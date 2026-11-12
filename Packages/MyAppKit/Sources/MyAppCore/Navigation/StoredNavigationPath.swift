@@ -27,8 +27,8 @@ enum StoredNavigationPath {
     }
 
     /// One element of `routes` that never fails to decode, so an element this build
-    /// cannot read — a screen a later build added, a damaged identifier — costs that
-    /// route and not the whole path.
+    /// cannot read — a screen a later build added, a damaged identifier — ends the path
+    /// there instead of failing all of it.
     private struct ReadableRoute: Decodable {
         let route: AppRoute?
 
@@ -37,14 +37,19 @@ enum StoredNavigationPath {
         }
     }
 
-    /// Data that is a stored path of a version this build does not read.
-    private struct UnknownVersion: Error {}
+    /// Why data did not yield a path.
+    enum ReadFailure: Error, Equatable {
+        /// The data is not a stored path at all: damaged, or something else's bytes.
+        case notAStoredPath
+        /// A stored path of a version this build does not read — what a build finds after
+        /// a newer one stored its path, so expected after a downgrade.
+        case unknownVersion(Int)
+    }
 
     /// The version this build writes, and the only one it reads.
     static let version = 1
 
-    /// `routes` in the stored form. Sorted keys make the same path the same bytes, so
-    /// observing the result sees a change only when the path changed.
+    /// `routes` in the stored form. Sorted keys make the same path the same bytes.
     static func data(for routes: [AppRoute]) -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
@@ -58,13 +63,27 @@ enum StoredNavigationPath {
         }
     }
 
-    /// The routes `data` stores, root first, without the ones this build cannot read.
-    /// Throws when `data` is not a stored path of a version this build knows.
-    static func routes(from data: Data) throws -> [AppRoute] {
+    /// The routes `data` stores, root first, up to the first one this build cannot read:
+    /// the screens above an unreadable one were pushed from it, so restoring them
+    /// without it would build a stack the person never saw.
+    static func routes(from data: Data) throws(ReadFailure) -> [AppRoute] {
         let decoder = JSONDecoder()
-        guard try decoder.decode(Header.self, from: data).version == version else {
-            throw UnknownVersion()
+        guard let header = try? decoder.decode(Header.self, from: data) else {
+            throw .notAStoredPath
         }
-        return try decoder.decode(Routes.self, from: data).routes.compactMap(\.route)
+        guard header.version == version else {
+            throw .unknownVersion(header.version)
+        }
+        guard let stored = try? decoder.decode(Routes.self, from: data) else {
+            throw .notAStoredPath
+        }
+        var routes: [AppRoute] = []
+        for element in stored.routes {
+            guard let route = element.route else {
+                break
+            }
+            routes.append(route)
+        }
+        return routes
     }
 }

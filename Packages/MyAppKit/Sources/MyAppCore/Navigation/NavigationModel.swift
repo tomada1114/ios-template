@@ -54,7 +54,7 @@ public final class NavigationModel {
 
     /// ``path`` in its stored form, for the scene root to keep in the scene's storage and
     /// hand back to ``restore(from:)`` at the next launch. The same path is always the
-    /// same bytes, so observing this sees a change only when the path changed.
+    /// same bytes.
     ///
     /// The format is contract (`AGENTS.md` › What is contract and what is private): a
     /// later build reads what this one stored. It holds the routes and nothing else — no
@@ -131,11 +131,16 @@ public final class NavigationModel {
     /// than what was stored and wins, whichever reaches the model first. Every later call
     /// does nothing, so the scene root may call it each time it appears.
     ///
-    /// A route this build cannot read — a screen a later build stored, a damaged
-    /// identifier — is skipped and the routes around it restore. Data that is not a
-    /// stored path at all, or is of a version this build does not know, restores nothing:
-    /// the window opens at the root, never a crash. Empty data is a scene that has stored
-    /// nothing yet, and is not logged.
+    /// The path restores up to the first route this build cannot read — a screen a later
+    /// build stored, a damaged identifier — and stops there: the screens above it were
+    /// pushed from it, and without it they are a stack the person never saw. Data that is
+    /// not a stored path at all, or is of a version this build does not know, restores
+    /// nothing: the window opens at the root, never a crash. An unknown version is what a
+    /// downgrade leaves behind, so it is logged as a notice with its number; bytes that
+    /// are not a stored path are logged as an error, by size only. Empty data is a scene
+    /// that has stored nothing yet, and is not logged. The scene root stores
+    /// ``encodedPath`` again right after this call, so stored bytes that restored
+    /// nothing are replaced and are reported once, not at every launch.
     ///
     /// A route is restored whether or not its item still exists — this model holds
     /// routes, not items, and the items have not loaded when a scene is rebuilt — so a
@@ -152,9 +157,16 @@ public final class NavigationModel {
         do {
             path = try StoredNavigationPath.routes(from: data)
         } catch {
-            // The size only: the bytes are whatever was stored, and name nothing useful.
-            let size = data.count
-            AppLog.navigation.error("restore: unreadable payload bytes=\(size, privacy: .public)")
+            switch error {
+            case let .unknownVersion(version):
+                AppLog.navigation.notice("restore: unknown version=\(version, privacy: .public)")
+
+            case .notAStoredPath:
+                // The size only: the bytes are whatever was stored, and name nothing
+                // useful.
+                let size = data.count
+                AppLog.navigation.error("restore: unreadable bytes=\(size, privacy: .public)")
+            }
         }
     }
 }

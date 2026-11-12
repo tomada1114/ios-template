@@ -16,7 +16,10 @@ import Foundation
 /// has left your machine — the next build reads what this one stored. Synthesized coding
 /// would take them from the Swift case and label names, so a rename here would silently
 /// stop every stored path from restoring. A case's Swift name is free to change; its
-/// stored name is not, and a case that gains a value keeps decoding the form without it.
+/// stored name is not. Nothing but review holds the next rule, so follow it: a case that
+/// gains a value reads it with `decodeIfPresent` and a default, so the form stored
+/// without it still decodes, and the literal test of the old form stays beside the new
+/// one (`NavigationModelRestorationTests`).
 public enum AppRoute: Hashable, Sendable {
     /// The detail screen of one to-do item.
     case todoDetail(TodoItem.ID)
@@ -35,7 +38,7 @@ extension AppRoute: Codable {
 
     /// Reads a route from its stored form, throwing a `DecodingError` for a screen name
     /// this build does not know or an identifier that is not a `UUID`: the caller decides
-    /// what an unreadable route means (``NavigationModel/restore(from:)`` skips it).
+    /// what an unreadable route means (``NavigationModel/restore(from:)`` ends the path there).
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let screen = try container.decode(String.self, forKey: .screen)

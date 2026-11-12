@@ -3,6 +3,44 @@ import MyAppPlatform
 import MyAppUI
 import SwiftUI
 
+/// Keeps one window's navigation path across launches: `@SceneStorage` holds the model's
+/// encoded path per scene, and the model takes it back when the scene is rebuilt, so a
+/// window the system ended in the background reopens on the screen it showed. It only
+/// carries the bytes: what a stored path restores to is Core's
+/// (`NavigationModel.restore(from:)`).
+private struct PathRestoration: ViewModifier {
+    let navigation: NavigationModel
+    /// The window's path as `NavigationModel.encodedPath` wrote it; empty until the
+    /// window first stores one. The key names a value the system stores per scene: under
+    /// a new key, each window opens at the root once.
+    @SceneStorage("navigation.path")
+    private var storedPath = Data()
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                // Core applies the stored path once, and only while nothing has moved the
+                // path, so a link that opened the window wins whichever arrives first.
+                // Without animation: the window opens on the restored screen, rather
+                // than on the list with that screen sliding in over it.
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    navigation.restore(from: storedPath)
+                }
+                // Whatever the restore made of the stored bytes is what is stored now, so
+                // bytes that restored nothing or only in part are gone: the next launch,
+                // and a later build that could read them, find the path the person saw.
+                storedPath = navigation.encodedPath
+            }
+            // On change only, never initially: the first value is the empty path, which
+            // would overwrite the stored one before it is restored.
+            .onChange(of: navigation.path) {
+                storedPath = navigation.encodedPath
+            }
+    }
+}
+
 /// One window's root: its own navigation over the app's shared models.
 ///
 /// A scene, not the app, owns the `NavigationModel`: the app supports multiple scenes
@@ -10,21 +48,13 @@ import SwiftUI
 /// lockstep, and a deep link would move them all instead of the window it arrived in.
 /// So does its `SceneLifecycleModel`, whose state lives exactly as long as the window.
 ///
-/// The path outlives the window's process: `@SceneStorage` keeps the model's encoded
-/// path per scene, and the model takes it back when the scene is rebuilt, so a window
-/// the system ended in the background reopens on the screen it showed. What a stored
-/// path restores to is Core's (`NavigationModel.restore(from:)`).
+/// The path outlives the window's process (`PathRestoration`).
 private struct SceneRoot: View {
     let app: AppModel
     /// Whether this window stores and restores its path: off under UI testing, where
     /// each launch must start at the root whatever the last one left pushed.
     let restoresPath: Bool
     @State private var navigation = NavigationModel()
-    /// The window's path as `NavigationModel.encodedPath` wrote it; empty until the
-    /// window first moves. The key names a value the system stores per scene: under a
-    /// new key, each window opens at the root once.
-    @SceneStorage("navigation.path")
-    private var storedPath = Data()
     @State private var lifecycle: SceneLifecycleModel
     @Environment(\.scenePhase)
     private var scenePhase
@@ -35,28 +65,24 @@ private struct SceneRoot: View {
         // recorded synchronously, so phases apply in order, and only the refresh it may
         // ask for runs in a `Task` — not `.task(id:)`, which the next phase change would
         // cancel mid-refresh.
-        //
-        // The stored path goes to Core on appear, and Core applies it once, and only
-        // while nothing has moved the path, so a link that opened the window wins
-        // whichever arrives first. The path is stored on change only, never initially:
-        // the first value is the empty path, which would overwrite the stored one before
-        // it is restored.
-        RootView(app: app, navigation: navigation)
-            .onAppear {
-                if restoresPath {
-                    navigation.restore(from: storedPath)
-                }
-            }
-            .onChange(of: navigation.encodedPath) { _, encodedPath in
-                if restoresPath {
-                    storedPath = encodedPath
-                }
-            }
+        root
             .onOpenURL { navigation.open($0) }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 lifecycle.sceneDidEnter(Self.lifecyclePhase(phase))
                 Task { await lifecycle.refreshIfNeeded() }
             }
+    }
+
+    /// The root view, with path restoration unless this launch opts out. The one place
+    /// the opt-out is read: without the modifier nothing is stored, read, or encoded.
+    /// `restoresPath` never changes while the process lives, so the branch never flips.
+    @ViewBuilder private var root: some View {
+        let rootView = RootView(app: app, navigation: navigation)
+        if restoresPath {
+            rootView.modifier(PathRestoration(navigation: navigation))
+        } else {
+            rootView
+        }
     }
 
     init(app: AppModel, restoresPath: Bool) {

@@ -28,11 +28,12 @@ screen looks like — the design lock, a token's value, custom glass — is the
   `refreshIfNeeded()` in a `Task`. It decides nothing about the phase: whether one
   refreshes anything is Core's (the `designing-core-logic` skill's
   `references/view-models.md` › Lifecycle).
-- `SceneRoot` keeps the window's path across launches: `NavigationModel.encodedPath` in
-  `@SceneStorage`, written by an `onChange` without `initial:` (the initial empty path
-  would overwrite the stored one), and handed to `restore(from:)` in `onAppear`. It only
-  carries the bytes — what restores, and when, is Core's — and does neither under
-  `-uiTesting` (the `designing-ui` skill's `references/navigation.md` › The path is
+- `SceneRoot` keeps the window's path across launches with its `PathRestoration`
+  modifier: `NavigationModel.encodedPath` in `@SceneStorage`, handed to `restore(from:)`
+  in `onAppear` with animations disabled and stored again right after, then written by
+  an `onChange(of: path)` without `initial:` (the initial empty path would overwrite the
+  stored one). It only carries the bytes — what restores, and when, is Core's — and the
+  modifier is left off under `-uiTesting` (the `designing-ui` skill's `references/navigation.md` › The path is
   restored per scene).
 - A model every scene shares comes from `AppModel` (`TodoListView(model: app.todoList)`);
   a pushed screen's model from its route's factory in `RootView`'s destination switch

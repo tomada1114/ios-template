@@ -22,8 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ended in the background no longer relaunches at the root. `AppRoute` is `Codable`
   with hand-written, explicit stored names, and `NavigationModel` gains `encodedPath`
   and `restore(from:)`, which applies once and only while nothing has moved the path (a
-  deep link that opened the window wins), skips a route it cannot read, and opens at
-  the root, without crashing, for anything that is not a stored path. Only the path is
+  deep link that opened the window wins), restores up to the first route it cannot
+  read, and opens at the root, without crashing, for anything that is not a stored
+  path or is of a version it does not know. Only the path is
   restored: a presented sheet is not, nor drafts or scroll position, and a route to an
   item deleted since shows the detail screen's not-found state. The stored format
   (`{"routes":[{"id":"<uuid>","screen":"todoDetail"}],"version":1}`) is contract from

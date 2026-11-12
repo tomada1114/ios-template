@@ -101,10 +101,15 @@ is contract and what is private").
 
 The system ends a backgrounded app whenever it wants the memory, and a person coming
 back expects the screen they left. So each window's path outlives its process:
-`SceneRoot` keeps `NavigationModel.encodedPath` in `@SceneStorage` — the system's
-per-scene store, so two iPad windows restore two different paths — writing it whenever
-the path changes, and hands the stored bytes to `NavigationModel.restore(from:)` when the
-scene appears. `App/` only carries the bytes; what they mean is Core's, and
+`SceneRoot`'s `PathRestoration` modifier keeps `NavigationModel.encodedPath` in
+`@SceneStorage` — the system's per-scene store, so two iPad windows restore two different
+paths — writing it whenever `path` changes, and hands the stored bytes to
+`NavigationModel.restore(from:)` when the scene appears, in a transaction with
+animations disabled, so the window opens on the restored screen instead of pushing it
+over the list. Right after the restore it stores `encodedPath` again: bytes that
+restored nothing, or only in part, are replaced by the path the person now sees, so
+they are logged once rather than at every launch, and a later build that could read
+them never brings back a screen this launch did not show. `App/` only carries the bytes; what they mean is Core's, and
 `NavigationModelRestorationTests` covers every branch.
 
 - **Once, and only onto an untouched path.** `restore(from:)` applies the first time it
@@ -112,11 +117,15 @@ scene appears. `App/` only carries the bytes; what they mean is Core's, and
   window, or a push, is newer than what was stored and wins, whether it reaches the
   model before or after the scene appears — the order SwiftUI delivers `.onOpenURL` and
   `.onAppear` in is not something the result depends on. Every later call does nothing.
-- **Never a crash, and never all-or-nothing.** A route this build cannot read (a screen
-  a later build stored, a damaged identifier) is skipped and the routes around it
-  restore. Bytes that are not a stored path, or are of a version this build does not
-  know, restore nothing and are logged, by size only, in the `navigation` category: the
-  window opens at the root.
+- **Never a crash, and never a stack that did not exist.** The path restores up to the
+  first route this build cannot read (a screen a later build stored, a damaged
+  identifier) and stops there. The screens above an unreadable one were pushed from it,
+  so joining what lies either side of it would show a stack the person never saw, with
+  a back button leading somewhere they never were. Bytes that are not a stored path, or
+  are of a version this build does not know, restore nothing: the window opens at the
+  root. Both are logged in the `navigation` category, and apart: an unknown version is
+  what a downgrade leaves behind, so it is a notice carrying the version number, while
+  bytes that are not a stored path are an error, by size only.
 - **A route to an item that no longer exists is restored.** `NavigationModel` holds
   routes, not items, and the list has not loaded when a scene is rebuilt, so restore
   cannot ask whether the item is still there, and it does not wait to find out. The
@@ -131,8 +140,10 @@ scene appears. `App/` only carries the bytes; what they mean is Core's, and
   An app whose sheet must survive stores it beside the path, as a second field of the
   stored form, and restores it in the same action.
 - **Nothing but the path.** Drafts, scroll position, and Edit mode start fresh.
-- **Not under UI testing.** With `-uiTesting`, `SceneRoot` neither restores nor stores,
-  so the launch walk starts at the root whatever an earlier launch left pushed.
+- **Not under UI testing.** With `-uiTesting`, `SceneRoot` leaves the `PathRestoration`
+  modifier off — the one place the opt-out is read — so nothing is stored, read, or
+  encoded, and the launch walk starts at the root whatever an earlier launch left
+  pushed.
 
 How long a scene's storage lives is the system's rule, not this app's: it is kept
 while the system may bring the scene back, and goes with the scene when the scene is
@@ -158,9 +169,13 @@ typed by hand: a change that alters what is written, or stops reading what was, 
 it.
 
 - A new screen adds its stored name and a branch in `AppRoute`'s `init(from:)` and
-  `encode(to:)`, with a test for its literal. An older build skips it.
-- A removed screen's routes stop decoding and are skipped; nothing else is needed.
-- A case that gains a value keeps decoding the form without it.
+  `encode(to:)`, with a test for its literal. An older build's path ends before it.
+- A removed screen's routes stop decoding, and a stored path ends at the first of them;
+  nothing else is needed.
+- A case that gains a value must keep decoding the form stored without it: read the new
+  value with `decodeIfPresent` and a default, and keep the old form's literal test beside
+  the new one. No gate enforces this; the literal tests are what fail when it is broken,
+  so they are never edited to pass.
 - A change old builds' payloads cannot survive — a different envelope, a route that is
   no longer an object — takes `version` 2, written from then on, while
   `StoredNavigationPath.routes(from:)` keeps reading version 1. The version is read
