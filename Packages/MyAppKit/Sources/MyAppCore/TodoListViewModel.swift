@@ -179,8 +179,9 @@ public final class TodoListViewModel {
     /// repository holds. The preference is read first, so it is current even when the
     /// repository fails.
     ///
-    /// Safe to call while another load is in flight — `.task`, pull-to-refresh, Retry, and
-    /// the detail screen can all ask at once (`designing-core-logic`'s `view-models.md`):
+    /// Safe to call while another load is in flight — `.task`, pull-to-refresh, Retry, the
+    /// detail screen, and ``AppModel/sceneDidEnter(_:scene:)`` on a return from the
+    /// background can all ask at once (`designing-core-logic`'s `view-models.md`):
     /// - The newest load wins. An older one that returns later drops its result, success
     ///   or failure, so a slow, stale fetch never overwrites a newer one.
     /// - An add, toggle, or delete the repository acknowledged while the load was in

@@ -22,6 +22,10 @@ screen looks like — the design lock, a token's value, custom glass — is the
   `AppModel` as ports. `MyAppApp` keeps the `AppModel` in `@State`; its `SceneRoot` keeps
   a `NavigationModel` in `@State` per scene, so each window navigates on its own, and
   passes both to `RootView(app:navigation:)`.
+- `SceneRoot` forwards that window's `@Environment(\.scenePhase)`, mapped to Core's
+  `LifecyclePhase`, to `AppModel.sceneDidEnter(_:scene:)` under the scene's own
+  `SceneID`, and decides nothing about it: whether a phase reloads anything is Core's
+  (the `designing-core-logic` skill's `references/view-models.md` › Lifecycle).
 - A model every scene shares comes from `AppModel` (`TodoListView(model: app.todoList)`);
   a pushed screen's model from its route's factory in `RootView`'s destination switch
   (`TodoDetailView(model: app.makeTodoDetailViewModel(id:))`), held in
