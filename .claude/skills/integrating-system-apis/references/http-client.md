@@ -90,5 +90,39 @@ func loadItem(using client: APIClient) async {
 - **Wiring.** The composition root makes the client —
   `APIClient(httpClient: URLSessionHTTPClient(), baseURL: …)` — and hands it to the Core
   services it builds; a test makes one over `FakeHTTPClient` (`APIClientTests`).
-  Auth, retries, caching, and pagination are services or decisions over this one, not
-  options inside it.
+  Retries are `RetryingAPIClient`, below; auth, caching, and pagination are services or
+  decisions over this one, not options inside it.
+
+## Retrying a call
+
+`RetryingAPIClient` in `MyAppCore/Networking` sends an `Endpoint` through an `APIClient`
+and tries a failed call again. A feature that wants retries is handed one instead of the
+bare client — `RetryingAPIClient(client: apiClient)` — and calls the same `send(_:)`.
+
+- **A wrapper over `APIClient`, not a decorator over the port.** Every fact a retry is
+  decided on already exists one level up: `APIError` has sorted the failure, it carries
+  the `Retry-After` wait already parsed, and the `Endpoint` says whether the call may be
+  repeated. A retrying `HTTPClient` would re-read statuses and headers, need a retry
+  flag on `HTTPRequest` (which describes only what the server receives), and break the
+  port's first promise: a 503 is returned as it arrived, which `HTTPClientContract`
+  checks.
+- **What is retried.** `timedOut`, `offline`, `server(status:)`, and
+  `rateLimited(retryAfter:)`: failures that describe the moment, not the request. Every
+  other case is thrown at once; the switch over `APIError` is exhaustive, so a new case
+  must be sorted before it compiles.
+- **How long it waits.** A 429's `Retry-After` exactly, up to the policy's `maxDelay`;
+  otherwise `baseDelay` multiplied once per earlier retry, held to `maxDelay`, then
+  shortened by a random share of `jitter`. Jitter only shortens, so the cap always
+  holds. A 5xx's `Retry-After` is not read: `APIError.server(status:)` carries no wait.
+- **A non-idempotent call is sent once.** `POST` and `PATCH`
+  (`HTTPRequest.Method.isIdempotent`) are not repeated — a timed-out `POST` may have
+  arrived — unless the endpoint is declared with `isSafeToRepeat: true`, which only the
+  feature that knows the server deduplicates it (an idempotency key) can say.
+- **Cancellation ends it.** `cancelled` is never retried, and a task cancelled during a
+  backoff wait gets `cancelled` at once rather than after the wait.
+- **Tunables and tests.** The numbers are `Tuning.default.retry`, a `RetryPolicy`: three
+  attempts, from half a second, doubling, half jitter, a 30-second cap. The client takes
+  a `Tuning`, an `any Clock<Duration>`, and a generator, so the `RetryPolicy…Tests`
+  suites hand it `ManualClock` and `SplitMix64` (`Tests/MyAppTestSupport`) and assert
+  every wait without one passing (`.claude/rules/core.md` › Inject what Core would read
+  from the world).

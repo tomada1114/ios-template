@@ -95,7 +95,8 @@ Module-specific rules: `core.md` (MyAppCore), `ui.md` (MyAppUI, `App/`, LaunchUI
   `InMemorySecureStore`),
   `Sendable` structs holding only `Sendable` values (`URLSessionHTTPClient`,
   `UserDefaultsPreferences`, `KeychainSecureStore`), or final classes guarding their state with a `Mutex`
-  (`InMemoryPreferences`)
+  (`InMemoryPreferences`, `ManualClock`); a Core service that owns mutable state is an
+  actor too (`RetryingAPIClient`, for its jitter generator)
 - A closure a test injects (`now`, `makeID`, the fake's `onSave` and `onFetch`) is
   `@Sendable`; it captures values, not a `@MainActor` static
 - `@unchecked Sendable` and `nonisolated(unsafe)` are not used to silence a diagnostic:

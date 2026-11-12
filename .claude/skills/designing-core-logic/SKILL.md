@@ -23,6 +23,15 @@ layer rules and what is contract (`AGENTS.md` › Architecture).
 The rule says what to do; load this skill when the question is whether the shape itself
 should change.
 
+**Worked example of injected time, randomness, and `Tuning`:** `RetryingAPIClient`
+(`MyAppCore/Networking`) waits on an `any Clock<Duration>`, draws jitter from an injected
+generator, and takes its numbers from `Tuning.retry`, a `RetryPolicy`. The
+`RetryPolicy…Tests` suites drive it with `ManualClock` and `SplitMix64` from
+`Tests/MyAppTestSupport`, so every backoff wait and a cancellation mid-wait are asserted
+with no real time passing. Copy that shape for the next debounce, timeout, or tick; why
+the retry sits over `APIClient` is `integrating-system-apis`'
+`references/http-client.md` › Retrying a call.
+
 ## When to load it
 
 - Changing a view model's shape or who owns it, or adding an `AppModel` stored model or
