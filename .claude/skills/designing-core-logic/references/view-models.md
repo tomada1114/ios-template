@@ -75,6 +75,6 @@ is shaped that way:
   fakes in `MyAppTestSupport` and the coverage floor sees the wiring. Factory closures
   assembled in `App/` were the alternative: they would leave the wiring where no
   coverage-gated test reaches it.
-- **It is app-level, never per scene.** Per-window state — the navigation path — stays
-  in the scene's own `NavigationModel` (the `designing-ui` skill's
+- **It is app-level, never per scene.** Per-window state — the navigation path and the
+  presented sheet — stays in the scene's own `NavigationModel` (the `designing-ui` skill's
   `references/navigation.md`).
