@@ -85,9 +85,10 @@ public struct APIClient: Sendable {
 
     /// Sends `endpoint` and returns its 2xx body decoded as `Response`.
     ///
-    /// An endpoint declared `Endpoint<EmptyResponse>` succeeds on a 2xx with an empty
-    /// body (a `204 No Content`) without decoding anything; for every other `Response`,
-    /// an empty body throws ``APIError/decoding``, as any body that does not decode does.
+    /// An endpoint declared `Endpoint<EmptyResponse>` never reaches the decoder: any 2xx
+    /// returns ``EmptyResponse``, whatever its body — empty, whitespace, JSON, or text.
+    /// For every other `Response`, a 2xx body that does not decode — an empty one
+    /// included — throws ``APIError/decoding``.
     ///
     /// Throws ``APIError/cancelled`` when the calling task is cancelled — which the
     /// caller treats as a no-op, not a failure — and another ``APIError`` case for every
@@ -107,9 +108,10 @@ public struct APIClient: Sendable {
         guard Self.successCodes.contains(response.statusCode) else {
             throw apiError(for: response)
         }
-        // A bodiless 2xx (a 204, an empty 200) is a success only when the endpoint
-        // declared `EmptyResponse`; for any other type it stays `.decoding` below.
-        if response.body.isEmpty, let empty = EmptyResponse() as? Response {
+        // Decided by the declared type, never by the body: a bodiless endpoint's 2xx is
+        // a success whatever the server sends. The cast only bridges the generic return
+        // type and cannot fail once the types are identical.
+        if Response.self == EmptyResponse.self, let empty = EmptyResponse() as? Response {
             return empty
         }
         do {

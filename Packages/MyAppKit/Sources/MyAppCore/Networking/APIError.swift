@@ -12,9 +12,11 @@ public enum APIError: Error, Equatable, Sendable {
     /// no retry.
     case cancelled
 
-    /// A 2xx response arrived, but its body did not decode as the endpoint's response
-    /// type — the server and the app disagree about the schema. Retrying will not help.
-    /// The client logs the response type's name, never the body.
+    /// A 2xx response arrived, but its body — an empty one included — did not decode as
+    /// the endpoint's response type: the server and the app disagree about the schema.
+    /// Retrying will not help. An endpoint that expects no body declares
+    /// ``EmptyResponse`` and never ends here. The client logs the response type's name,
+    /// never the body.
     case decoding
 
     /// The endpoint's ``Endpoint/body`` could not be encoded as JSON (a `Double.nan`, say,

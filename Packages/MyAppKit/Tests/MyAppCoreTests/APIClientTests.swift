@@ -88,8 +88,31 @@ struct APIClientTests {
         }
     }
 
-    @Test(arguments: [Self.itemJSON, "{}", "[1,2]", #""done""#, "null"])
-    func `an EmptyResponse endpoint ignores any JSON body the server adds`(
+    @Test(arguments: ["\n", "\r\n", " "])
+    func `a whitespace-only 2xx body still throws decoding for any other response type`(
+        body: String,
+    ) async {
+        let fake = FakeHTTPClient()
+        await fake.enqueue(.respond(APIClientFixture.response(204, headers: [:], body: body)))
+        let client = APIClientFixture.client(over: fake)
+
+        await #expect(throws: APIError.decoding) {
+            try await client.send(Endpoint<RemoteItem>(method: .delete, path: "items/7"))
+        }
+    }
+
+    @Test(arguments: [
+        "\n",
+        "\r\n",
+        " ",
+        Self.itemJSON,
+        "{}",
+        "[1,2]",
+        "null",
+        "OK",
+        "<html>Service page</html>",
+    ])
+    func `an EmptyResponse endpoint returns the empty response whatever the 2xx body is`(
         body: String,
     ) async throws {
         let fake = FakeHTTPClient()
@@ -101,21 +124,6 @@ struct APIClientTests {
         )
 
         #expect(response == EmptyResponse())
-    }
-
-    @Test
-    func `an EmptyResponse endpoint still throws decoding for a body that is not JSON`() async {
-        let fake = FakeHTTPClient()
-        await fake.enqueue(.respond(APIClientFixture.response(
-            200,
-            headers: [:],
-            body: "<html>Service page</html>",
-        )))
-        let client = APIClientFixture.client(over: fake)
-
-        await #expect(throws: APIError.decoding) {
-            try await client.send(Endpoint<EmptyResponse>(method: .put, path: "items/7"))
-        }
     }
 
     // MARK: - Other statuses

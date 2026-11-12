@@ -81,19 +81,19 @@ func loadItem(using client: APIClient) async {
   as `imageUrl`, never `imageURL`. Encoded keys are sorted, so a body is the same bytes
   every time and a test compares it with a literal.
 - **Every outcome is a case.** 401, 403, 404, and 429 have cases of their own; a 5xx is
-  `server(status:)`, any other status `unexpectedStatus(_:)`. A body that does not decode
-  is `decoding` — logged under `AppLog.network` by the response type's name, never the
+  `server(status:)`, any other status `unexpectedStatus(_:)`. A 2xx body that does not
+  decode as the declared type, an empty one included, is `decoding` — logged under `AppLog.network` by the response type's name, never the
   body — and one that cannot be encoded is `encoding`, sent nowhere. `HTTPClientError`
   maps across: `notConnected` to `offline`, `timedOut`, `cancelled`, and the rest to
   `transport`. A 429's `Retry-After` is read as delta-seconds or an HTTP-date, the date
   measured from the `now` the client is handed so a test pins it.
 - **A 2xx with no body is `Endpoint<EmptyResponse>`.** A call that succeeds with nothing
   to read — a `204 No Content`, the bodiless `200` of many `DELETE` and `PUT`
-  endpoints — declares `EmptyResponse` as its response type. The client returns it for
-  an empty 2xx body without decoding, and it decodes from any JSON body, ignoring the
-  content, so a server that later adds a body does not break the call. An empty body
-  for any other type is still `decoding`: that case means a body arrived and did not
-  decode as the declared type, so a feature never catches it as success.
+  endpoints — declares `EmptyResponse` as its response type. The client decides by that
+  type and never decodes: any 2xx returns `EmptyResponse()`, whatever the body —
+  empty, whitespace, JSON, or text — so a server that later adds a body does not break
+  the call. For any other type, `decoding` means the 2xx body, an empty one included,
+  did not decode as the declared type, so a feature never catches it as success.
 - **Cancellation is a no-op.** A cancelled task ends the call with `cancelled`, which the
   caller drops quietly, as it would the port's own `cancelled`.
 - **Wiring.** The composition root makes the client once —
