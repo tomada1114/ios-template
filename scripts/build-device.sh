@@ -78,8 +78,8 @@ USAGE="usage: scripts/build-device.sh [--root DIR]"
 # FileAttributeKey and URLResourceKey members (`.creationDate`,
 # `.contentModificationDateKey`, `.volumeTotalCapacityKey`, `.systemSize`) link as the
 # Foundation constants below; `getattrlist`, `fgetattrlist`, and `getattrlistat` are in
-# two categories, as Apple lists them. A new API is one line.
-REQUIRED_REASON_APIS='
+# two categories, as Apple lists them. A new API is one line (a `$` written `\$`).
+REQUIRED_REASON_APIS="
 FileTimestamp|import|_stat
 FileTimestamp|import|_fstat
 FileTimestamp|import|_fstatat
@@ -109,9 +109,9 @@ DiskSpace|import|_NSURLVolumeTotalCapacityKey
 DiskSpace|import|_NSFileSystemFreeSize
 DiskSpace|import|_NSFileSystemSize
 ActiveKeyboards|selector|activeInputModes
-UserDefaults|import|_OBJC_CLASS_$_NSUserDefaults
+UserDefaults|import|_OBJC_CLASS_\$_NSUserDefaults
 UserDefaults|import-part|So14NSUserDefaultsC
-'
+"
 CATEGORY_PREFIX="NSPrivacyAccessedAPICategory"
 
 fail() { # fail <code> <what failed> <expected> <actual> <next>

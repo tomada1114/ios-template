@@ -47,8 +47,7 @@ make_fixture_root() {
 stub_tools() {
     export STUB_MODE="$1" STUB_APP_DIR="${APP_DIR}"
     export STUB_DECLARED="NSPrivacyAccessedAPICategoryUserDefaults:1" STUB_SELECTORS="standardUserDefaults"
-    STUB_IMPORTS='_$s7SwiftUI10AppStorageV12wrappedValue_5storeACySiGSi_SSSo14NSUserDefaultsCSgtcSiRszlufC _OBJC_CLASS_$_NSUserDefaults _objc_msgSend'
-    export STUB_IMPORTS
+    export STUB_IMPORTS="_\$s7SwiftUI10AppStorageV12wrappedValue_5storeACySiGSi_SSSo14NSUserDefaultsCSgtcSiRszlufC _OBJC_CLASS_\$_NSUserDefaults _objc_msgSend"
     # shellcheck disable=SC2016 # expanded when the stub runs, not here
     stub_command xcodebuild 'mkdir -p "${STUB_APP_DIR}"
 : >"${STUB_APP_DIR}/Info.plist"
@@ -69,7 +68,6 @@ esac'
     -extract)
         [ "${STUB_DECLARED}" != absent ] || { echo "stubbed: No value at that key path" >&2; exit 1; }
         key="$2"
-        # shellcheck disable=SC2086 # split the entry list on purpose
         set -- ${STUB_DECLARED}
         case "${key}" in
             NSPrivacyAccessedAPITypes) printf "%s" "$#" ;;
@@ -86,19 +84,18 @@ esac'
         ;;
     *) echo "plutil stub: unexpected $*" >&2; exit 2 ;;
 esac'
-    # shellcheck disable=SC2016 # expanded when the stub runs, not here
-    stub_command xcrun 'case "$1" in
+    stub_command xcrun "case \"\$1\" in
     nm)
-        [ "${STUB_NM_FAIL:-}" != 1 ] || { echo "stubbed: truncated or malformed object" >&2; exit 1; }
-        for symbol in ${STUB_IMPORTS}; do echo "${symbol}"; done
+        [ \"\${STUB_NM_FAIL:-}\" != 1 ] || { echo 'stubbed: truncated or malformed object' >&2; exit 1; }
+        for symbol in \${STUB_IMPORTS}; do echo \"\${symbol}\"; done
         ;;
     otool)
-        echo "$5:"
-        echo "Contents of (__TEXT,__objc_methname) section"
-        for selector in ${STUB_SELECTORS}; do echo "0000000100008000  ${selector}"; done
+        echo \"\$5:\"
+        echo 'Contents of (__TEXT,__objc_methname) section'
+        for selector in \${STUB_SELECTORS}; do echo \"0000000100008000  \${selector}\"; done
         ;;
-    *) echo "xcrun stub: unexpected $*" >&2; exit 2 ;;
-esac'
+    *) echo \"xcrun stub: unexpected \$*\" >&2; exit 2 ;;
+esac"
 }
 
 assert_first_stderr_line() {
@@ -253,7 +250,7 @@ run_with_symbols() {
 }
 
 case_undeclared_import() {
-    run_with_symbols '_OBJC_CLASS_$_NSUserDefaults _mach_absolute_time _objc_msgSend' \
+    run_with_symbols "_OBJC_CLASS_\$_NSUserDefaults _mach_absolute_time _objc_msgSend" \
         "standardUserDefaults" "NSPrivacyAccessedAPICategoryUserDefaults:1"
     assert_exit 1
     assert_first_stderr_line ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API
@@ -264,7 +261,7 @@ case_undeclared_import() {
 }
 
 case_undeclared_selectors() {
-    run_with_symbols '_OBJC_CLASS_$_NSUserDefaults _OBJC_CLASS_$_UITextInputMode' \
+    run_with_symbols "_OBJC_CLASS_\$_NSUserDefaults _OBJC_CLASS_\$_UITextInputMode" \
         "activeInputModes systemUptime" "NSPrivacyAccessedAPICategoryUserDefaults:1"
     assert_exit 1
     assert_first_stderr_line ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API
@@ -272,7 +269,7 @@ case_undeclared_selectors() {
 }
 
 case_undeclared_mangled_swift() {
-    run_with_symbols '_$s7SwiftUI10AppStorageV12wrappedValue_5storeACySiGSi_SSSo14NSUserDefaultsCSgtcSiRszlufC _objc_msgSend' \
+    run_with_symbols "_\$s7SwiftUI10AppStorageV12wrappedValue_5storeACySiGSi_SSSo14NSUserDefaultsCSgtcSiRszlufC _objc_msgSend" \
         "" "absent"
     assert_exit 1
     assert_first_stderr_line ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API
@@ -280,14 +277,14 @@ case_undeclared_mangled_swift() {
 }
 
 case_entry_without_reasons() {
-    run_with_symbols '_OBJC_CLASS_$_NSUserDefaults' "" "NSPrivacyAccessedAPICategoryUserDefaults:0"
+    run_with_symbols "_OBJC_CLASS_\$_NSUserDefaults" "" "NSPrivacyAccessedAPICategoryUserDefaults:0"
     assert_exit 1
     assert_first_stderr_line ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API
     assert_stderr_contains "undeclared: NSPrivacyAccessedAPICategoryUserDefaults (import _OBJC_CLASS_\$_NSUserDefaults)"
 }
 
 case_every_category_declared() {
-    run_with_symbols '_OBJC_CLASS_$_NSUserDefaults _stat _getattrlist _mach_absolute_time _NSURLVolumeTotalCapacityKey' \
+    run_with_symbols "_OBJC_CLASS_\$_NSUserDefaults _stat _getattrlist _mach_absolute_time _NSURLVolumeTotalCapacityKey" \
         "activeInputModes fileModificationDate" \
         "NSPrivacyAccessedAPICategoryUserDefaults:1 NSPrivacyAccessedAPICategoryFileTimestamp:1 NSPrivacyAccessedAPICategorySystemBootTime:2 NSPrivacyAccessedAPICategoryDiskSpace:1 NSPrivacyAccessedAPICategoryActiveKeyboards:1"
     assert_exit 0
@@ -299,7 +296,7 @@ case_every_category_declared() {
 case_lookalikes_are_no_use() {
     # Each resembles a listed API without being one: a longer C name, a Swift type of the
     # app's own, a longer selector, and a listed name inside a longer selector.
-    run_with_symbols '_statx_np _status_update _$s10MyAppCore23UserDefaultsPreferencesV' \
+    run_with_symbols "_statx_np _status_update _\$s10MyAppCore23UserDefaultsPreferencesV" \
         "systemUptimeOffset activeInputModesDidChange" "absent"
     assert_exit 0
     assert_stdout_not_contains ": declared"

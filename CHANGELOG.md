@@ -26,6 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `just build-device` (`scripts/build-device.sh`) now holds the linked Release
+  executable to the bundled `PrivacyInfo.xcprivacy`: it reads the symbols the binary
+  imports (`xcrun nm -u`) and the Objective-C selectors it sends (`xcrun otool`), maps
+  them to Apple's required-reason categories (file timestamps, system boot time, disk
+  space, active keyboards, `UserDefaults`) through one table in the script, and fails
+  with `ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API`, naming each category and the
+  symbols behind it, when the manifest gives one no reason. So a required-reason call
+  reached through a package, an alias, or generated code, which the source scan in
+  `RequiredReasonAPITests` cannot see, fails before a release; the scan stays as
+  `just test`'s fast signal. An executable the tools cannot read fails
+  `ERR_BUILD_DEVICE_SYMBOLS_UNREADABLE`.
 - A window reopens on the screen it was showing: each scene keeps its navigation path
   in `@SceneStorage` and restores it when the system rebuilds the scene, so an app
   ended in the background no longer relaunches at the root. `AppRoute` is `Codable`
