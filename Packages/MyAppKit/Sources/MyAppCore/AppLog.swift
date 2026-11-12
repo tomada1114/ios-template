@@ -51,4 +51,8 @@ public enum AppLog {
     /// and host are `.public`; its path and query are never logged, since a URL can carry
     /// user data.
     public static let navigation = Logger(subsystem: subsystem, category: "navigation")
+
+    /// The lifecycle concern: ``SceneLifecycleModel`` deciding that a scene's phase change
+    /// asks for a refresh. Only phases and decisions are logged, never user data.
+    public static let lifecycle = Logger(subsystem: subsystem, category: "lifecycle")
 }

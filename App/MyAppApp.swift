@@ -8,28 +8,37 @@ import SwiftUI
 /// A scene, not the app, owns the `NavigationModel`: the app supports multiple scenes
 /// (two windows on iPad), and a path shared between them would move every window in
 /// lockstep, and a deep link would move them all instead of the window it arrived in.
-/// It also owns the `SceneID` Core tells this window's lifecycle apart by.
+/// So does its `SceneLifecycleModel`, whose state lives exactly as long as the window.
 private struct SceneRoot: View {
     let app: AppModel
     @State private var navigation = NavigationModel()
-    @State private var scene = SceneID()
+    @State private var lifecycle: SceneLifecycleModel
     @Environment(\.scenePhase)
     private var scenePhase
 
     var body: some View {
         // A `my-app://` link (project.yml registers the scheme) goes to Core, which
-        // decides what it opens. So does this window's phase, initial value included,
-        // which Core decides whether to reload on; a `Task`, not `.task(id:)`, so the
-        // next phase change does not cancel a reload in flight.
+        // decides what it opens. So does this window's phase, initial value included:
+        // recorded synchronously, so phases apply in order, and only the refresh it may
+        // ask for runs in a `Task` — not `.task(id:)`, which the next phase change would
+        // cancel mid-refresh.
         RootView(app: app, navigation: navigation)
             .onOpenURL { navigation.open($0) }
             .onChange(of: scenePhase, initial: true) { _, phase in
-                Task { await app.sceneDidEnter(Self.lifecyclePhase(phase), scene: scene) }
+                lifecycle.sceneDidEnter(Self.lifecyclePhase(phase))
+                Task { await lifecycle.refreshIfNeeded() }
             }
     }
 
+    init(app: AppModel) {
+        self.app = app
+        // A re-render builds a spare model, which `@State` discards: building one has no
+        // side effects.
+        _lifecycle = State(initialValue: app.makeSceneLifecycleModel())
+    }
+
     /// SwiftUI's phase as Core's. A phase a later SDK adds is `inactive`, the one value
-    /// that neither arms nor triggers a reload.
+    /// that neither arms nor asks for a refresh.
     private static func lifecyclePhase(_ phase: ScenePhase) -> LifecyclePhase {
         switch phase {
         case .active:

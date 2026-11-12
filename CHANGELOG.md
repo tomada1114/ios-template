@@ -9,13 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- The list reloads when a window comes back from the background, so changes made while
-  the app was away show up. Each window forwards its `scenePhase` to Core as a
-  `LifecyclePhase` (`AppModel.sceneDidEnter(_:scene:)`, keyed by a per-window
-  `SceneID`); only a window that was active, went to the background, and became active
-  again reloads. Dismissing Control Center or a system alert (inactive → active) does
-  not, and a window's first active never does, so a launch loads once. Two windows
-  returning together rely on the list's latest-wins load guard.
+- The list refreshes quietly when a window comes back from the background, so changes
+  made while the app was away show up. Each window keeps a `SceneLifecycleModel`
+  (`AppModel.makeSceneLifecycleModel()`) and forwards its `scenePhase` to it as a
+  `LifecyclePhase`, recorded synchronously so phases apply in order. A window's first
+  active and every active after a trip through the background ask for
+  `TodoListViewModel.refresh()`; dismissing Control Center or a system alert
+  (inactive → active) does not. A refresh fetches only when the list has already loaded
+  and no other refresh is in flight, so a launch loads once and several windows
+  returning together fetch once; it shows no progress, and a failed refresh keeps the
+  items and shows no alert. Lifecycle decisions log under the new `lifecycle` category.
 - A per-configuration API base URL: `API_BASE_URL` in `Config/Debug.xcconfig` and a new
   `Config/Release.xcconfig` (placeholder `.invalid` hosts, the `//` written `/$()/`),
   expanded into `Info.plist` under `APIBaseURL` and parsed by Core's `AppConfiguration`,

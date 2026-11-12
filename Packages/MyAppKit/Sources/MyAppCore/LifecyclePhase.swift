@@ -2,7 +2,7 @@ import Foundation
 
 /// Where one scene stands in its lifecycle: Core's mirror of SwiftUI's `ScenePhase`,
 /// which Core may not import. `App/` maps each value it observes to one of these and
-/// hands it to ``AppModel/sceneDidEnter(_:scene:)``.
+/// hands it to its scene's ``SceneLifecycleModel/sceneDidEnter(_:)``.
 public enum LifecyclePhase: Equatable, Sendable {
     /// In the foreground and receiving events.
     case active

@@ -28,11 +28,11 @@ The view model is written for that:
   the list may have changed in between (`toggle(_:)`).
 - The draft is cleared only if it still holds what was submitted, so text typed while a
   save was in flight survives (`addDraft()`).
-- Loads overlap — the list's `.task`, pull-to-refresh, Retry, the detail screen's
-  `.task`, and a scene's return from the background ("Lifecycle", below) all call
-  `load()` — and the newest one wins. Each load takes a generation
-  number; one that returns after a newer load started drops its result, success or
-  failure, so a slow, stale fetch never overwrites a newer one.
+- Loads overlap — the list's `.task`, pull-to-refresh, Retry, and the detail screen's
+  `.task` all call `load()`, and a scene's return to the foreground calls `refresh()`
+  ("Lifecycle", below), which shares its fetch — and the newest one wins. Each fetch takes
+  a generation number; one that returns after a newer one started drops its result,
+  success or failure, so a slow, stale fetch never overwrites a newer one.
 - A load replaces `items` wholesale, so a write that finished while it was in flight
   could vanish: the fetch may have read the store before the write landed. Every add,
   toggle, and delete the repository acknowledges during the newest load is recorded and
@@ -56,9 +56,9 @@ storage and the preferences suite from the launch arguments, opens the one Swift
 container (`PersistenceStore`) and builds every SwiftData repository over it, falls back
 to the null object when the container will not open (`persisting-data`), and builds one
 `AppModel` in `@State`, handing it the adapters as ports through its initializer. Each
-scene's root (`SceneRoot`) owns that scene's `NavigationModel` and `SceneID`, forwards
-opened URLs to the navigation model (`.onOpenURL`) and its scene phase to the app model
-("Lifecycle", below), and renders `MyAppUI`'s `RootView` over the app model and the
+scene's root (`SceneRoot`) owns that scene's `NavigationModel` and
+`SceneLifecycleModel`, forwards opened URLs to the first (`.onOpenURL`) and its scene
+phase to the second ("Lifecycle", below), and renders `MyAppUI`'s `RootView` over the app model and the
 navigation model. It also parses `Bundle.main.infoDictionary` once into Core's
 `AppConfiguration` and builds the `APIClient` at its base URL (the
 `integrating-system-apis` skill's `references/http-client.md`): the parsing is Core's,
@@ -79,46 +79,58 @@ is shaped that way:
   coverage-gated test reaches it.
 - **It is app-level, never per scene.** Per-window state — the navigation path — stays
   in the scene's own `NavigationModel` (the `designing-ui` skill's
-  `references/navigation.md`). The one per-scene record it keeps is each scene's
-  lifecycle, keyed by the `SceneID` the scene passes, because what a phase change means
-  depends on that scene's own history ("Lifecycle", below).
+  `references/navigation.md`), and so does where the window stands in its lifecycle:
+  `AppModel` builds a scene's `SceneLifecycleModel` (`makeSceneLifecycleModel()`) over
+  the shared list, and the scene keeps it ("Lifecycle", below).
 
 ## Lifecycle
 
 Core cannot see SwiftUI's `ScenePhase` (the import ban), so it declares its mirror,
-`LifecyclePhase` (`active`, `inactive`, `background`), and one
-action that receives it, `AppModel.sceneDidEnter(_:scene:)`. `SceneRoot` reads
+`LifecyclePhase` (`active`, `inactive`, `background`), and a per-scene model that receives
+it, `SceneLifecycleModel`. `AppModel.makeSceneLifecycleModel()` builds one over the shared
+`TodoListViewModel`, and `SceneRoot` keeps it in `@State` beside its `NavigationModel`, so
+its state lives exactly as long as the window. `SceneRoot` reads
 `@Environment(\.scenePhase)` — that window's phase, not the app's — and forwards every
 value, the initial one included (`.onChange(of:initial: true)`), mapped to Core's enum, an
-unknown future phase as `inactive`. It calls the action from a `Task`, not
-`.task(id: scenePhase)`, because the next phase change would cancel a reload in flight and
-a cancelled `load()` is a silent no-op. `App/` decides nothing about the phase; every rule
-below is Core's, under `AppModelLifecycleTests`.
+unknown future phase as `inactive`. `App/` decides nothing about the phase; every rule
+below is Core's, under `SceneLifecycleModelTests` and `TodoListViewModelRefreshTests`.
 
-- **A return from the background reloads the shared list.** The store may have changed
+- **Two steps, so phases apply in order.** `sceneDidEnter(_:)` records the phase
+  synchronously, inside `onChange`, and only marks a refresh as pending;
+  `refreshIfNeeded()`, called from a `Task` after it, runs that refresh once. However the
+  tasks are scheduled, the phases are applied in the order the scene reported them. The
+  `Task` is not `.task(id: scenePhase)`, which the next phase change would cancel
+  mid-refresh.
+- **A return from the background refreshes the shared list.** The store may have changed
   while the app was away — a widget, an extension, a sync — and the user expects the
-  screen to be current when they come back. A scene that was active, then went to the
-  background, reloads at its next active.
-- **A return passes through `inactive`.** The system reports background → inactive →
-  active, so the rule is "went to the background since it was last active", not "the
-  previous phase was background", which would never fire in the running app.
-- **A plain inactive → active change reloads nothing.** Control Center, a system alert,
-  and the app switcher make a scene inactive without it leaving the screen; nothing could
-  have changed that the user did not see.
-- **A scene's first active never reloads,** whatever it reported before it: the list's
-  `.task` owns the first load, and what SwiftUI reports while a scene is created is not
-  something to depend on. This is what keeps a launch from loading twice.
-- **Phases are per scene, not app-wide.** Each window reports its own phase under its
-  own `SceneID`, and the scene that returns reloads, whatever the others do; one
-  window going to the background arms nothing in another window that only went inactive.
-  Two windows returning together are two overlapping `load()` calls, and the list's
-  latest-wins generation guard ("Reentrancy", above) applies only the newest, so the cost
-  is one spare fetch. An app-wide phase — the most active of all windows — was the
-  alternative: it reloads once, but only while every window's last report is trusted,
-  and a window that closed with a stale `active` would suppress every later reload. A
-  closed scene's entry stays in `AppModel` and is never read again.
+  screen to be current when they come back. A scene that went to the background asks for
+  a refresh at its next active. The return passes through `inactive` (background →
+  inactive → active), so the rule is "went to the background since it was last active",
+  not "the previous phase was background", which would never fire in the running app.
+- **A plain inactive → active change refreshes nothing.** Control Center, a system alert,
+  and the app switcher make a scene inactive without it leaving the screen.
+- **A scene's first active asks for a refresh too,** whatever it reported before it. A
+  window iOS discarded and rebuilt, or a prewarmed one whose first reports were
+  `background`, gets a new model, and would otherwise show the shared list without
+  refreshing it. A launch still loads once, because the list decides whether to fetch.
+- **The refresh is quiet, and the list decides whether it fetches.**
+  `TodoListViewModel.refresh()` does nothing while the list is `idle` or `loading` (the
+  list's `.task` is about to load or is loading) or while another refresh is in flight,
+  so several windows returning together fetch once. It never shows progress, and a
+  failure keeps the items and the phase, presents no alert, and is logged: the user did
+  not ask for it, and an alert on every return would punish them for a store that is
+  down; their next pull-to-refresh or Retry reports a failure that persists. It shares
+  `load()`'s fetch and latest-wins guard ("Reentrancy", above), so a load that starts
+  during a refresh supersedes it.
+- **Phases are per scene, not app-wide.** Each window keeps its own model, and the scene
+  that returns asks, whatever the others do; one window going to the background arms
+  nothing in another window that only went inactive. An app-wide phase — the most active
+  of all windows — was the alternative: it needs every window's last report to be
+  trusted, and a window that closed with a stale `active` would suppress every later
+  refresh. Lifecycle decisions log under `AppLog.lifecycle`.
 - **Where the next lifecycle rule goes.** Work for leaving the foreground — flushing a
-  pending write, pausing a timer — is a `.background` (or `.inactive`) branch of the same
-  per-scene record, in Core, calling a view model's action; `SceneRoot` forwards nothing
-  new. Work that must run while the app is suspended (`BGTaskScheduler`) is a capability,
-  a design change (`AGENTS.md` › Before changing the architecture), not this action.
+  pending write, pausing a timer — is a `.background` (or `.inactive`) branch of
+  `SceneLifecycleModel.sceneDidEnter(_:)`, calling a view model's action; `SceneRoot`
+  forwards nothing new. Work that must run while the app is suspended
+  (`BGTaskScheduler`) is a capability, a design change (`AGENTS.md` › Before changing the
+  architecture), not this model.

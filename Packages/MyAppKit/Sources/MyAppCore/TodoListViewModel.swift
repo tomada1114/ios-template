@@ -1,51 +1,6 @@
 import Foundation
 import Observation
 
-/// A failure the list reports, from whichever screen caused it — the detail screen's
-/// toggle is the list's. Which store failed, and why, stays in the log.
-public enum TodoListFailure: Equatable, PresentableFailure {
-    /// A delete could not be completed.
-    case deleteFailed
-    /// ``TodoListViewModel/load()`` could not read the repository.
-    case loadFailed
-    /// An add or a toggle could not be saved.
-    case saveFailed
-
-    /// Every case shares one headline; ``message`` says what did not happen.
-    public var title: LocalizedStringResource {
-        TodoListStrings.failureTitle
-    }
-
-    /// The sentence the alert shows for this failure.
-    public var message: LocalizedStringResource {
-        switch self {
-        case .deleteFailed:
-            LocalizedStringResource(
-                "todoList.failure.delete",
-                defaultValue: "The item could not be deleted.",
-                bundle: .module,
-                comment: "Alert message when deleting a to-do item failed.",
-            )
-
-        case .loadFailed:
-            LocalizedStringResource(
-                "todoList.failure.load",
-                defaultValue: "Your items could not be loaded.",
-                bundle: .module,
-                comment: "Alert message when the saved to-do items could not be read.",
-            )
-
-        case .saveFailed:
-            LocalizedStringResource(
-                "todoList.failure.save",
-                defaultValue: "Your change could not be saved.",
-                bundle: .module,
-                comment: "Alert message when adding or checking off a to-do item could not be saved.",
-            )
-        }
-    }
-}
-
 /// Observable presentation state for the to-do list, over a ``TodoRepository`` port and a
 /// ``PreferencesStoring`` port.
 ///
@@ -78,6 +33,15 @@ public final class TodoListViewModel {
     /// A write the repository acknowledged while the newest ``load()`` was in flight. That
     /// load's fetch may have read the store before the write landed, so the write is
     /// replayed over its result rather than lost until the next load.
+    private enum FetchOutcome {
+        case cancelled
+        case failed(TodoRepositoryError)
+        /// The fetch with every write since it started replayed over it, and its count.
+        case loaded([TodoItem], fetchedCount: Int)
+        /// A newer fetch started while this one was in flight; it owns the state.
+        case superseded
+    }
+
     private enum AcknowledgedWrite {
         case deleted(TodoItem.ID)
         case saved(TodoItem)
@@ -104,6 +68,9 @@ public final class TodoListViewModel {
     /// What ``phase`` was before the in-flight loads set `.loading` — what a cancelled
     /// load puts back.
     private var phaseBeforeLoading = Phase.idle
+    /// The generation of the ``refresh()`` in flight, or `nil`. It is in flight only while
+    /// it equals ``loadGeneration``: a newer load supersedes it.
+    private var refreshGeneration: Int?
     /// Whether a load is in flight, so an acknowledged write is recorded for it.
     private var isRecordingWrites = false
     /// Writes acknowledged since the newest load started, in order. An edit outside a load
@@ -179,9 +146,9 @@ public final class TodoListViewModel {
     /// repository holds. The preference is read first, so it is current even when the
     /// repository fails.
     ///
-    /// Safe to call while another load is in flight — `.task`, pull-to-refresh, Retry, the
-    /// detail screen, and ``AppModel/sceneDidEnter(_:scene:)`` on a return from the
-    /// background can all ask at once (`designing-core-logic`'s `view-models.md`):
+    /// Safe to call while another load is in flight — `.task`, pull-to-refresh, Retry, and
+    /// the detail screen can all ask at once, and a lifecycle ``refresh()`` can be running
+    /// (`designing-core-logic`'s `view-models.md`):
     /// - The newest load wins. An older one that returns later drops its result, success
     ///   or failure, so a slow, stale fetch never overwrites a newer one.
     /// - An add, toggle, or delete the repository acknowledged while the load was in
@@ -197,39 +164,58 @@ public final class TodoListViewModel {
             phaseBeforeLoading = phase
         }
         phase = .loading
-        loadGeneration += 1
-        let generation = loadGeneration
-        writesDuringLoad = []
-        isRecordingWrites = true
-        let outcome: Result<[TodoItem], TodoRepositoryError>
-        do {
-            let loaded = try await repository.fetchAll()
-            outcome = .success(loaded)
-        } catch {
-            outcome = .failure(error)
-        }
-        guard generation == loadGeneration else {
-            // Superseded: the newer load owns `items`, `phase`, and the write log.
+        switch await fetch(for: beginFetch()) {
+        case .superseded:
+            // The newer load owns `items`, `phase`, and the write log.
             return
-        }
-        let writes = writesDuringLoad
-        writesDuringLoad = []
-        isRecordingWrites = false
-        guard !Task.isCancelled else {
-            phase = phaseBeforeLoading
-            return
-        }
-        switch outcome {
-        case let .success(loaded):
-            items = replaying(writes, over: loaded)
-            phase = .loaded
-            // A local, not `self.items`: the message is an autoclosure that needs an
-            // explicit `self`, which SwiftFormat's redundantSelf rule would strip.
-            AppLog.todos.debug("load: \(loaded.count, privacy: .public) items")
 
-        case let .failure(error):
+        case .cancelled:
+            phase = phaseBeforeLoading
+
+        case let .loaded(loaded, fetchedCount):
+            items = loaded
+            phase = .loaded
+            AppLog.todos.debug("load: \(fetchedCount, privacy: .public) items")
+
+        case let .failed(error):
             phase = .failed
             report(.loadFailed, error)
+        }
+    }
+
+    /// Reloads what the list already shows, quietly: the refresh a scene's return to the
+    /// foreground asks for (``SceneLifecycleModel``), which the user did not request.
+    ///
+    /// - It does nothing while ``phase`` is `.idle` or `.loading` — the screen's `.task`
+    ///   is about to load or is loading — or while another refresh is in flight, so
+    ///   several windows returning at once fetch once.
+    /// - It never sets `.loading`, so no progress shows over the items already there.
+    /// - A failure keeps ``items`` and ``phase``, presents no ``failure``, and is logged.
+    /// - It shares ``load()``'s fetch: the newest of the two wins, and writes acknowledged
+    ///   while it was in flight are replayed over its result.
+    public func refresh() async {
+        guard phase == .loaded || phase == .failed, refreshGeneration != loadGeneration else {
+            AppLog.todos.debug("refresh: skipped, nothing loaded yet or a fetch is in flight")
+            return
+        }
+        hideCompleted = preferences.value(for: PreferenceKeys.hideCompleted)
+        let generation = beginFetch()
+        refreshGeneration = generation
+        let outcome = await fetch(for: generation)
+        if refreshGeneration == generation {
+            refreshGeneration = nil
+        }
+        switch outcome {
+        case .cancelled, .superseded:
+            return
+
+        case let .loaded(loaded, fetchedCount):
+            items = loaded
+            phase = .loaded
+            AppLog.todos.debug("refresh: \(fetchedCount, privacy: .public) items")
+
+        case let .failed(error):
+            AppLog.todos.error("refresh failed: \(String(describing: error), privacy: .public)")
         }
     }
 
@@ -359,6 +345,43 @@ public final class TodoListViewModel {
             }
         }
         return result.sorted(by: TodoItem.isOrderedBefore)
+    }
+
+    /// Starts a fetch, before anything suspends: a new generation and an empty write log.
+    private func beginFetch() -> Int {
+        loadGeneration += 1
+        writesDuringLoad = []
+        isRecordingWrites = true
+        return loadGeneration
+    }
+
+    /// The fetch ``load()`` and ``refresh()`` share, and the latest-wins guard over it: a
+    /// fetch that returns after a newer one began is `.superseded`, and drops its result.
+    /// Cancellation is read from `Task.isCancelled` after the fetch, not from the port,
+    /// because ``TodoRepositoryError`` has no cancellation case.
+    private func fetch(for generation: Int) async -> FetchOutcome {
+        let outcome: Result<[TodoItem], TodoRepositoryError>
+        do {
+            outcome = try await .success(repository.fetchAll())
+        } catch {
+            outcome = .failure(error)
+        }
+        guard generation == loadGeneration else {
+            return .superseded
+        }
+        let writes = writesDuringLoad
+        writesDuringLoad = []
+        isRecordingWrites = false
+        guard !Task.isCancelled else {
+            return .cancelled
+        }
+        switch outcome {
+        case let .success(loaded):
+            return .loaded(replaying(writes, over: loaded), fetchedCount: loaded.count)
+
+        case let .failure(error):
+            return .failed(error)
+        }
     }
 
     private func recordWrite(_ write: AcknowledgedWrite) {
