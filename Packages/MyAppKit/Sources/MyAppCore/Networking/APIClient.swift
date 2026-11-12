@@ -22,8 +22,9 @@ import os
 /// - **Encoded keys are sorted**, so the same body is the same bytes every time — a test
 ///   compares it to a literal, and a log or a cache key is stable.
 ///
-/// Auth, retries, caching, and pagination are not here: each is its own service over
-/// this one, or a decision in the feature that calls it.
+/// Retries are not here but in ``RetryingAPIClient``, a service over this one. Auth,
+/// caching, and pagination are not here either: each is its own service over this one,
+/// or a decision in the feature that calls it.
 public struct APIClient: Sendable {
     private static let jsonMediaType = "application/json"
     private static let acceptHeader = "Accept"
@@ -86,8 +87,9 @@ public struct APIClient: Sendable {
     ///
     /// Throws ``APIError/cancelled`` when the calling task is cancelled — which the
     /// caller treats as a no-op, not a failure — and another ``APIError`` case for every
-    /// other way the call can end without a decoded body. A status the server sent is
-    /// never retried here; that is the caller's decision, made on the case.
+    /// other way the call can end without a decoded body. Nothing is retried here: a
+    /// caller that wants a failed call sent again sends it through
+    /// ``RetryingAPIClient``, which decides on the case.
     public func send<Response>(
         _ endpoint: Endpoint<Response>,
     ) async throws(APIError) -> Response {
