@@ -13,10 +13,10 @@ extension XCTestCase {
         }
         switch issue.auditType {
         case .contrast:
-            // A disabled button: the system's button style draws its dimmed disabled
-            // state, and WCAG 1.4.3 exempts an inactive control from the contrast minimum
-            // (the empty field's Add button).
-            if element.elementType == .button, !element.isEnabled {
+            // The add bar's Add button while it is disabled (the field is empty): the
+            // system's prominent button style draws its dimmed disabled state, and WCAG
+            // 1.4.3 exempts an inactive control from the contrast minimum.
+            if element.identifier == "addButton", !element.isEnabled {
                 return true
             }
             // The detail screen's created date: `LabeledContent` in a `Form` draws its
@@ -26,12 +26,12 @@ extension XCTestCase {
             return element.identifier == "createdDate"
 
         case .textClipped:
-            // A single-line `TextField` is a UIKit text field that scrolls its text
-            // sideways instead of wrapping, and the audit reports every one as "may be
-            // clipped at larger Dynamic Type sizes" — an unstyled default field included.
-            // A multi-line field would clear it, but there Return inserts a newline
-            // instead of submitting (the add bar's `newItemField`).
-            return element.elementType == .textField
+            // The add bar's `newItemField`: a single-line `TextField` is a UIKit text
+            // field that scrolls its text sideways instead of wrapping, and the audit
+            // reports every one as "may be clipped at larger Dynamic Type sizes" — an
+            // unstyled default field included. A multi-line field would clear it, but
+            // there Return inserts a newline instead of submitting.
+            return element.identifier == "newItemField"
 
         default:
             return false

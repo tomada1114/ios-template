@@ -178,13 +178,16 @@ helper more than one test file needs (`focus`, `waitForDisappearance`) goes in
 `LaunchUITests/Support/`, never copied into a second file.
 
 The launch walk runs Xcode's accessibility audit (`auditAccessibility(of:)`,
-`Support/XCTestCase+AccessibilityAudit.swift`) on the empty list, the list with an item,
-and the detail screen; a screen the walk reaches later gets the same call. Its issue
-handler accepts only a named exception matched on the audit type *and* the element, each
-with a comment saying why the issue is the system's rather than the app's. A new
-exception is a gate change reviewed like a lint disable; accepting a whole audit type is
-weakening a gate (`AGENTS.md` › Security and human approval). Fix what the audit reports
-in the view instead.
+`Support/XCTestCase+AccessibilityAudit.swift`) on exactly these states: the empty list,
+the list with an item (keyboard dismissed), the item's detail screen, the detail
+screen's not-found state, and the All Done state. Edit mode, the load-failure state, and
+the failure alert go unaudited; a new screen or state the walk reaches gets the same
+call. The walk pins light appearance and the default text size, so dark mode and large
+text are not audited. Its issue handler accepts only a named exception matched on the
+audit type *and* the element, each with a comment saying why the issue is the system's
+rather than the app's. A new exception is a gate change reviewed like a lint disable;
+accepting a whole audit type is weakening a gate (`AGENTS.md` › Security and human
+approval). Fix what the audit reports in the view instead.
 
 ## Verifying a screen
 
@@ -193,9 +196,8 @@ in the view instead.
    rules.
 3. `just uitest` — when an identifier the launch test reads, a screen the launch walk
    visits, or `App/`'s wiring changed. Its accessibility audit (missing labels, hit
-   regions, clipped text, contrast, traits) covers those screens only, in the states
-   the walk leaves them in, and in whatever appearance and text size the simulator is
-   set to — light at the default size unless someone changed it; the test pins neither.
+   regions, clipped text, contrast, traits) covers only the states listed under
+   LaunchUITests, in light appearance at the default text size.
 4. `just run`, then screenshots per the `running-the-app` skill on the smallest iPhone
    the Simulator offers (`SIMULATOR_DEVICE="<name>" just run`): light, dark, the largest
    accessibility text size (`accessibility-extra-extra-extra-large`), and Increase

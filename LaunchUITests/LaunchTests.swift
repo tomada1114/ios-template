@@ -6,8 +6,8 @@ import XCTest
 /// proves the navigation model reaches the stack; opening it by a deep link proves the
 /// registered scheme and `App/`'s URL handling reach that model. Deleting in Edit mode
 /// proves a swipe is not the only way to delete. Xcode's accessibility audit runs on the
-/// empty list, the list with an item, and the detail screen
-/// (`Support/XCTestCase+AccessibilityAudit.swift`).
+/// empty list, the list with an item, the detail screen, its not-found state, and the All
+/// Done state (`Support/XCTestCase+AccessibilityAudit.swift`).
 ///
 /// XCTest by necessity — Apple has not ported UI automation to Swift Testing.
 /// All other tests use Swift Testing in Packages/MyAppKit.
@@ -23,8 +23,9 @@ final class LaunchTests: XCTestCase {
     /// One launch walks every scenario in turn, because each relaunch costs tens of
     /// seconds on CI (#57). The steps are ordered so none undoes what a later one needs:
     /// audit the empty list, add, audit the list, open the detail, audit it and come back,
-    /// open it and an unknown item by deep link and come back, complete and hide the item,
-    /// show it again, then delete it in Edit mode.
+    /// open it and an unknown item by deep link, audit the not-found state and come back,
+    /// complete and hide the item and audit the All Done state, show it again, then delete
+    /// it in Edit mode.
     /// Each step runs as a named activity with its own assertion message, so a failure
     /// still names the broken behavior — but a failure stops the walk, so the steps after
     /// it go unreported until it is fixed.
@@ -37,7 +38,13 @@ final class LaunchTests: XCTestCase {
         // An in-memory store and scratch preferences (App/MyAppApp.swift), so the list
         // starts empty, and Hide Completed off, on every run. English, whatever the
         // simulator's language, because the tests find system controls ("Delete") by label.
-        app.launchArguments = ["-uiTesting", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        // Light appearance and the default text size, whatever the simulator is set to,
+        // so the accessibility audits judge the same rendering on every run.
+        XCUIDevice.shared.appearance = .light
+        app.launchArguments = [
+            "-uiTesting", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL",
+        ]
         app.launch()
 
         try XCTContext.runActivity(named: "Audit the empty list's accessibility") { _ in
@@ -45,19 +52,19 @@ final class LaunchTests: XCTestCase {
         }
         XCTContext.runActivity(named: "Add an item") { _ in addAnItem(in: app) }
         try XCTContext.runActivity(named: "Audit the list's accessibility with an item") { _ in
-            try auditAccessibility(of: app)
+            try auditTheListWithAnItem(in: app)
         }
         try XCTContext
             .runActivity(named: "Open the item's detail, audit it, then go back") { _ in
                 try openTheDetailAuditItAndGoBack(in: app)
             }
         try XCTContext
-            .runActivity(named: "Open the item, then an unknown item, by deep link") { _ in
+            .runActivity(named: "Open the item, then an unknown item, by deep link, and audit") { _ in
                 try openTheItemThenAnUnknownItemByDeepLink(in: app)
             }
-        XCTContext
-            .runActivity(named: "Complete the item and hide completed items") { _ in
-                completeAndHideTheItem(in: app)
+        try XCTContext
+            .runActivity(named: "Complete the item, hide completed items, and audit") { _ in
+                try completeHideAndAuditTheItem(in: app)
             }
         XCTContext
             .runActivity(named: "Show completed items again") { _ in
@@ -140,15 +147,6 @@ final class LaunchTests: XCTestCase {
     }
 
     @MainActor
-    private func auditTheEmptyList(in app: XCUIApplication) throws {
-        XCTAssertTrue(
-            app.staticTexts["No Items"].waitForExistence(timeout: Timeout.launch),
-            "the list should start empty",
-        )
-        try auditAccessibility(of: app)
-    }
-
-    @MainActor
     private func openTheDetailAuditItAndGoBack(in app: XCUIApplication) throws {
         let item = app.staticTexts["Buy milk"]
         item.tap()
@@ -162,6 +160,7 @@ final class LaunchTests: XCTestCase {
             app.buttons["detailToggle"].exists,
             "the detail screen should show the item it was opened for",
         )
+        waitForThePushToSettle(in: app)
         try auditAccessibility(of: app)
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(
@@ -212,6 +211,8 @@ final class LaunchTests: XCTestCase {
             waitForDisappearance(of: app.buttons["detailToggle"]),
             "the not-found state should show no item",
         )
+        waitForThePushToSettle(in: app)
+        try auditAccessibility(of: app)
 
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(
@@ -261,7 +262,7 @@ final class LaunchTests: XCTestCase {
     }
 
     @MainActor
-    private func completeAndHideTheItem(in app: XCUIApplication) {
+    private func completeHideAndAuditTheItem(in app: XCUIApplication) throws {
         let item = app.staticTexts["Buy milk"]
         let hideCompleted = app.buttons["hideCompletedToggle"]
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", Self.rowTogglePrefix))
@@ -276,6 +277,7 @@ final class LaunchTests: XCTestCase {
             app.staticTexts["All Done"].waitForExistence(timeout: Timeout.elementAppears),
             "the all-done state should replace the hidden list",
         )
+        try auditAccessibility(of: app)
     }
 
     @MainActor
@@ -318,6 +320,50 @@ final class LaunchTests: XCTestCase {
         XCTAssertTrue(
             waitForDisappearance(of: item),
             "deleting in Edit mode should remove the item",
+        )
+    }
+}
+
+/// The audit steps the walk interleaves with its behavior steps.
+extension LaunchTests {
+    @MainActor
+    private func auditTheEmptyList(in app: XCUIApplication) throws {
+        XCTAssertTrue(
+            app.staticTexts["No Items"].waitForExistence(timeout: Timeout.launch),
+            "the list should start empty",
+        )
+        try auditAccessibility(of: app)
+    }
+
+    /// The keyboard the add left up is the system's, and it covers the list's lower half;
+    /// the audit judges the list without it. Return on the empty field adds nothing
+    /// (`canAdd` is false) and ends editing.
+    @MainActor
+    private func auditTheListWithAnItem(in app: XCUIApplication) throws {
+        let keyboard = app.keyboards.firstMatch
+        if keyboard.exists {
+            app.textFields["newItemField"].typeText("\n")
+        }
+        XCTAssertTrue(
+            waitForDisappearance(of: keyboard),
+            "Return on the empty field should dismiss the keyboard",
+        )
+        try auditAccessibility(of: app)
+    }
+
+    /// Waits until the list's new-item field is no longer hittable, which is when a
+    /// pushed screen has covered the list, so an audit judges the pushed screen settled
+    /// rather than mid-transition.
+    @MainActor
+    private func waitForThePushToSettle(in app: XCUIApplication) {
+        let covered = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false OR hittable == false"),
+            object: app.textFields["newItemField"],
+        )
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [covered], timeout: Timeout.elementAppears),
+            .completed,
+            "the pushed screen should cover the list",
         )
     }
 }
