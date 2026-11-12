@@ -115,7 +115,7 @@ struct AppConfigurationTests {
 
     @Test
     func `the key Core reads is the one project yml expands the build setting under`() throws {
-        let manifest = AppLogTests.repositoryRoot.appendingPathComponent("project.yml")
+        let manifest = RepositoryRoot.file("project.yml")
         let value = try ProjectManifest.value(
             of: AppConfiguration.apiBaseURLKey,
             inManifest: String(contentsOf: manifest, encoding: .utf8),
@@ -132,7 +132,7 @@ struct AppConfigurationTests {
 
     @Test(arguments: xcconfigs)
     func `each configuration sets a base URL the parser accepts`(path: String) throws {
-        let file = AppLogTests.repositoryRoot.appendingPathComponent(path)
+        let file = RepositoryRoot.file(path)
         let xcconfig = try String(contentsOf: file, encoding: .utf8)
         let value = try #require(
             Self.value(of: Self.buildSetting, inXcconfig: xcconfig),

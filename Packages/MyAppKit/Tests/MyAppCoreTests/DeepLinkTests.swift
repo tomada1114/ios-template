@@ -113,7 +113,7 @@ struct DeepLinkTests {
 
     @Test
     func `the scheme Core parses is the one project yml registers`() throws {
-        let manifest = AppLogTests.repositoryRoot.appendingPathComponent("project.yml")
+        let manifest = RepositoryRoot.file("project.yml")
         let schemes = try Self.registeredSchemes(
             inManifest: String(contentsOf: manifest, encoding: .utf8),
         )
