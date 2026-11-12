@@ -4,8 +4,8 @@ description: >
   Covers deciding how this iOS app looks: the design lock in references/design-lock.md
   (accent, custom colors, type, density, symbols, navigation structure, iPad layout,
   haptics, motion, copy style, app icon), the values of the DesignTokens scale,
-  Liquid Glass and materials on the iOS 27 floor, researching the lock with
-  /refero-design, and why navigation is a Core AppRoute enum with a per-scene
+  Liquid Glass and materials on the iOS 27 floor, researching the lock from
+  the HIG and Apple's own apps, and why navigation is a Core AppRoute enum with a per-scene
   NavigationModel and Core-parsed deep links. Use when writing or amending the design
   lock, changing a DesignTokens value, touching AccentColor.colorset or
   AppIcon.appiconset, adding custom glass or a material, comparing a screen against the
@@ -23,7 +23,7 @@ any file under `MyAppUI/` or `App/`); the device family and scene model
 (`starting-an-app`); launching the app and taking screenshots (`running-the-app`).
 
 Apple's Human Interface Guidelines are the baseline and are not restated. The template's
-own research — every reference, Refero's reference lock, the ledger, and why each token
+own research — every reference, the reference lock, the ledger, and why each token
 has its value — is `docs/design-system.md`, the record the lock's values came from.
 Why navigation is a Core route enum and a per-scene path, how deep links are parsed, and
 what tabs or a split view would change: [references/navigation.md](references/navigation.md).
@@ -77,9 +77,8 @@ decisions made once, each a value or an explicit "system default".
 - **When:** after the device family is decided and before the second screen.
 - **What it holds, and where each value lands:** **REQUIRED:** the same file's Fields.
 - **How to research it:** **REQUIRED:**
-  [references/refero-workflow.md](references/refero-workflow.md) — `/refero-design`
-  with iOS screens and flows when the Refero tools are available, the HIG and
-  `.claude/rules/ui.md` when they are not.
+  [references/research-workflow.md](references/research-workflow.md) — the HIG,
+  Apple's own apps doing the same task, and `.claude/rules/ui.md`.
 - **Changing it:** edit the section in place — a corrected value and a new direction (a
   new accent, custom type, denser layout) alike — in the pull request that changes the
   code, rewriting the reason beside it; git history holds what it used to say.

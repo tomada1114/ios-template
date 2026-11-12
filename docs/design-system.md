@@ -9,7 +9,7 @@ decision belongs to the app's own design lock, which lives in the `designing-ui`
 (`.claude/skills/designing-ui/references/design-lock.md`): the template ships its
 reference lock there, and an app rewrites it for itself after the bootstrap. This page is
 the research record behind the lock, never a copy of it; the skill's
-`references/refero-workflow.md` is how an app researches its own.
+`references/research-workflow.md` is how an app researches its own.
 
 Researched 2026-09-30 with the owner's `/refero-design` skill and the Refero MCP tools
 (screens and flows on `platform: "ios"`; styles only as a check). Apple claims were
