@@ -42,8 +42,15 @@ public enum APIError: Error, Equatable, Sendable {
     case rateLimited(retryAfter: Duration?)
 
     /// The server answered with a 5xx: its own failure. `status` says which, for a log
-    /// or a decision (a 503 is often worth a retry; a 501 never is).
-    case server(status: Int)
+    /// or a decision (a 503 is often worth a retry; a 501 never is). `retryAfter` is how
+    /// long its `Retry-After` header asked the client to wait — read as a 429's is,
+    /// never negative — or `nil` when the header was missing or unreadable. It is
+    /// reported for any 5xx; ``RetryingAPIClient`` honors it only on a 503.
+    ///
+    /// Match a status by pattern (`case .server(503, _)`) or with
+    /// ``isServerError(_:)``, never with `==`: `== .server(status: 503, retryAfter: nil)`
+    /// stops matching as soon as the server sends a `Retry-After`.
+    case server(status: Int, retryAfter: Duration?)
 
     /// The server went silent for longer than the request's idle timeout. Retry with a
     /// backoff (``RetryingAPIClient``), or show a "try again" state.
@@ -65,4 +72,14 @@ public enum APIError: Error, Equatable, Sendable {
     /// status is kept so a log or a bug report can name it; branching on a specific
     /// value is a sign it deserves a case of its own here.
     case unexpectedStatus(Int)
+
+    /// Whether this is a 5xx with `status`, whatever `Retry-After` it carried — the
+    /// check a feature means when it asks "was this a 503?", which `==` against
+    /// ``server(status:retryAfter:)`` answers wrongly once the server sends a wait.
+    public func isServerError(_ status: Int) -> Bool {
+        if case .server(status, _) = self {
+            return true
+        }
+        return false
+    }
 }

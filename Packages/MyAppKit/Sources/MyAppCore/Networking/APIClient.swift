@@ -167,12 +167,12 @@ public struct APIClient: Sendable {
             return .notFound
 
         case Self.tooManyRequestsCode:
-            let delay = headerValue(named: Self.retryAfterHeader, in: response)
-                .flatMap { RetryAfter.delay(fromHeaderValue: $0, now: now()) }
-            return .rateLimited(retryAfter: delay)
+            return .rateLimited(retryAfter: retryAfter(in: response))
 
         case Self.serverErrorCodes:
-            return .server(status: status)
+            // Reported for any 5xx, so the client states what the server said;
+            // whether a wait is honored is ``RetryingAPIClient``'s decision.
+            return .server(status: status, retryAfter: retryAfter(in: response))
 
         default:
             return .unexpectedStatus(status)
@@ -193,6 +193,13 @@ public struct APIClient: Sendable {
         case .nonHTTPResponse, .transport:
             .transport
         }
+    }
+
+    /// The wait `response`'s `Retry-After` header asks for, or `nil` when it has none
+    /// or it is unreadable.
+    private func retryAfter(in response: HTTPResponse) -> Duration? {
+        headerValue(named: Self.retryAfterHeader, in: response)
+            .flatMap { RetryAfter.delay(fromHeaderValue: $0, now: now()) }
     }
 
     /// `response`'s value for the header `name`, matched case-insensitively

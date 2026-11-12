@@ -45,7 +45,7 @@ struct RetryPolicyTests {
         for _ in 0 ..< 2 {
             await clock.advance(by: clock.nextSleep())
         }
-        await #expect(throws: APIError.server(status: 503)) {
+        await #expect(throws: APIError.server(status: 503, retryAfter: nil)) {
             try await sending.value
         }
         #expect(await fake.requests.count == 3)
