@@ -15,6 +15,21 @@ public struct HTTPRequest: Equatable, Sendable {
         case patch = "PATCH"
         case post = "POST"
         case put = "PUT"
+
+        /// Whether sending the same request twice leaves the server as sending it once
+        /// would (RFC 9110 §9.2.2) — what makes a retry safe when the first attempt may
+        /// have arrived. `POST` and `PATCH` promise no such thing, so
+        /// ``RetryingAPIClient`` repeats one only when its endpoint says it may
+        /// (``Endpoint/isSafeToRepeat``).
+        public var isIdempotent: Bool {
+            switch self {
+            case .delete, .get, .put:
+                true
+
+            case .patch, .post:
+                false
+            }
+        }
     }
 
     /// How long a request waits for the server unless the caller says otherwise.

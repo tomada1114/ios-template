@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `RetryingAPIClient`, a Core service over `APIClient` that sends a failed call again:
+  only a timeout, no connection, a 5xx, or a 429; after a jittered exponential backoff
+  or the 429's `Retry-After`, up to a cap; never a `POST` or `PATCH` unless its
+  `Endpoint` is declared `isSafeToRepeat`; and never after cancellation, which ends a
+  backoff wait at once. Its numbers are `Tuning.default.retry`, a `RetryPolicy` — the
+  first tunables in Core's one `Tuning` type. It waits on an injected
+  `any Clock<Duration>` and draws jitter from an injected generator, so the
+  `RetryPolicy` suites cover every wait with `ManualClock` and the seeded `SplitMix64`
+  (both new in `MyAppTestSupport`) and no real sleeping.
 - A `SecureStoring` port for secrets, with a Keychain adapter (`KeychainSecureStore`: a
   generic-password item per `SecureKeys` constant, the bundle identifier as its service,
   `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, no entitlement), the

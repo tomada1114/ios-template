@@ -34,6 +34,14 @@ public struct Endpoint<Response: Decodable & Sendable>: Sendable {
     /// replaces it.
     public var headers: [String: String]
 
+    /// Whether sending this call twice leaves the server as sending it once would, though
+    /// its method does not promise that — a `POST` the server deduplicates by an
+    /// idempotency key, say. ``RetryingAPIClient`` never repeats a non-idempotent call
+    /// (``HTTPRequest/Method/isIdempotent``) without it: only the feature that declares
+    /// the endpoint knows a repeat is harmless, so the default is `false`. It changes
+    /// nothing about a method that is idempotent already.
+    public var isSafeToRepeat: Bool
+
     /// An endpoint with every field given; only `method` and `path` are required.
     public init(
         method: HTTPRequest.Method,
@@ -41,11 +49,13 @@ public struct Endpoint<Response: Decodable & Sendable>: Sendable {
         queryItems: [URLQueryItem] = [],
         body: (any Encodable & Sendable)? = nil,
         headers: [String: String] = [:],
+        isSafeToRepeat: Bool = false,
     ) {
         self.method = method
         self.path = path
         self.queryItems = queryItems
         self.body = body
         self.headers = headers
+        self.isSafeToRepeat = isSafeToRepeat
     }
 }
