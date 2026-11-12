@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `InMemorySecureStore` fake, and `SecureStoringContract`. The contract runs against the
   fake under `just test`; no gate runs it against the Keychain, which refuses a test
   runner on the host and on the Simulator, so the adapter is verified in the running
-  app. `MyAppCore` may no longer import `Security` or call `SecItem*`.
+  app. `MyAppCore` may no longer import `Security` or call `SecItemAdd`,
+  `SecItemCopyMatching`, `SecItemUpdate`, or `SecItemDelete`.
 
 ### Changed
 

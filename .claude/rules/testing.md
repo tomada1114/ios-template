@@ -28,7 +28,9 @@ Four kinds of test, split by what is under test:
    device, push delivery, or an app process shows is not a test at all: the pull request
    carries the evidence (a screenshot, the log lines from `just logs`). The Keychain is
    the shipped case of the last — it refuses a test runner on the host and on the
-   Simulator — so `KeychainSecureStoreTests` holds only the adapter's status mapping.
+   Simulator — so `KeychainSecureStoreTests` holds only what needs no Keychain: the
+   adapter's status mapping, its write's call sequence, and its query and attribute
+   dictionaries.
 4. **What only the assembled app shows → `LaunchUITests`.** The one XCTest target holds
    the launch guarantee: the app starts on the iOS Simulator, shows its list, and the
    core interaction — adding an item — round-trips through `App/`'s real wiring

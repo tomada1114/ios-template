@@ -60,7 +60,9 @@ app does about it is Core's (`core.md` › Errors). Convert at the call site.
 - **Security (`OSStatus`):** `KeychainSecureStore.storeError(for:)` maps
   `errSecInteractionNotAllowed` to `deviceLocked` and every other status to
   `storageFailure(status:)`. `errSecItemNotFound` is not an error at the call site: a
-  read answers `nil`, a delete succeeds, and a write falls through to `SecItemAdd`. The
+  read answers `nil`, a delete succeeds, and a write falls through to `SecItemAdd` —
+  whose `errSecDuplicateItem` (another writer got there between the two calls) is
+  answered by one more update (`writeStatus(update:add:)`), not reported. The
   log line carries the operation, the key's name, and the status, all `.public` — never
   the value, at any privacy level.
 - An SDK-owned enum (an `NSError` code, an imported C enum) is the one place a `switch`
@@ -74,6 +76,7 @@ in-memory store does; `SwiftDataTodoRepositoryTests` asserts `.corruptedRecord` 
 record that breaks the title invariant) and the contracts against both the fake and the
 adapter. `just test-ios` runs what sits behind `#if os(iOS)`; `just build` when `App/`
 wires the adapter. `KeychainSecureStore` is the exception to "against both": no test
-runner may store a Keychain item, so `just test` checks only its status mapping, and a
-change to it is shown in the running app (the `persisting-data` skill's
+runner may store a Keychain item, so `just test` checks only what needs no Keychain — its
+status mapping, its write's call sequence, and its query and attribute dictionaries —
+and a change to it is shown in the running app (the `persisting-data` skill's
 `references/secure-storage.md`).

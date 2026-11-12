@@ -92,9 +92,9 @@ Module-specific rules: `core.md` (MyAppCore), `ui.md` (MyAppUI, `App/`, LaunchUI
   `PreferencesStoring` is deliberately synchronous (the `persisting-data` skill's
   `references/preferences.md`)
 - Adapters and fakes are actors (`SwiftDataTodoRepository`, `InMemoryTodoRepository`,
-  `KeychainSecureStore`, `InMemorySecureStore`),
+  `InMemorySecureStore`),
   `Sendable` structs holding only `Sendable` values (`URLSessionHTTPClient`,
-  `UserDefaultsPreferences`), or final classes guarding their state with a `Mutex`
+  `UserDefaultsPreferences`, `KeychainSecureStore`), or final classes guarding their state with a `Mutex`
   (`InMemoryPreferences`)
 - A closure a test injects (`now`, `makeID`, the fake's `onSave` and `onFetch`) is
   `@Sendable`; it captures values, not a `@MainActor` static

@@ -115,9 +115,11 @@ private actor StrictDeleteStore: SecureStoring {
     }
 }
 
-/// The fake half of the `SecureStoring` contract suite: the same
-/// ``SecureStoringContract`` that `MyAppPlatformTests` runs against `KeychainSecureStore`
-/// runs here against ``InMemorySecureStore``, so the fake cannot drift from the port.
+/// The one run of ``SecureStoringContract``: against ``InMemorySecureStore``, so the fake
+/// cannot drift from the port, and against deliberately broken stores, so the contract
+/// cannot pass anything. No test runs it against `KeychainSecureStore` — the Keychain
+/// refuses every test runner — so the adapter is held to the same promises in the running
+/// app (the `persisting-data` skill's `references/secure-storage.md`).
 @Suite("SecureStoring contract, against the fake")
 struct SecureStoringContractTests {
     @Test
@@ -129,6 +131,18 @@ struct SecureStoringContractTests {
     func `the contract leaves nothing behind`() async {
         let store = InMemorySecureStore()
         _ = await SecureStoringContract.violations(of: store)
+        #expect(await store.snapshot.isEmpty)
+    }
+
+    @Test
+    func `the contract clears its keys before it starts`() async {
+        // What a run interrupted between a write and its cleanup leaves in a store that
+        // outlives the process.
+        let store = InMemorySecureStore(values: [
+            SecureKey(name: "contract.first"): Data([0x01]),
+            SecureKey(name: "contract.second"): Data([0x02]),
+        ])
+        #expect(await SecureStoringContract.violations(of: store).isEmpty)
         #expect(await store.snapshot.isEmpty)
     }
 
@@ -177,6 +191,14 @@ struct SecureStoringContractTests {
         let store = InMemorySecureStore()
         await store.fail(.write, with: .deviceLocked)
         let violations = await SecureStoringContract.violations(of: store)
-        #expect(violations.contains("writing a value threw deviceLocked"))
+        #expect(violations == ["writing a value threw deviceLocked"])
+    }
+
+    @Test
+    func `a clause that throws stops the run, so one failure is one violation`() async {
+        let store = InMemorySecureStore()
+        await store.fail(.read, with: .storageFailure(status: -34_018))
+        let violations = await SecureStoringContract.violations(of: store)
+        #expect(violations == ["reading a key never written threw storageFailure(status: -34018)"])
     }
 }

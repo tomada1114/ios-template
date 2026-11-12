@@ -20,9 +20,14 @@ public protocol SecureStoring: Sendable {
 
 - **`async` and throwing, unlike `PreferencesStoring`.** Every Keychain call is a blocking
   round trip to a system service and can fail in ways a caller acts on, so the port is
-  `async throws(SecureStoringError)` and both implementations are actors. The adapter
-  being an actor also keeps a write — an update, then an add when nothing was there —
-  from interleaving with another write of the same key.
+  `async throws(SecureStoringError)`. An actor would still run a blocking call on Swift's
+  cooperative thread pool, so the adapter is a `Sendable` struct that runs every `SecItem`
+  call on one dedicated serial dispatch queue all instances share, and suspends on a
+  checked continuation until it answers: the calls block that queue's thread, never the
+  pool's or the main thread, and a write — an update, then an add when nothing was
+  there — never interleaves with another write in the process. Another process can
+  still write between the update and the add; the add's `errSecDuplicateItem` is then
+  answered by one more update, not reported.
 - **Opaque `Data` across the port.** What a secret encodes (a token's text, a key's
   bytes) is converted in Core, where a test sees it. The adapter never interprets a
   value, and never logs one: `AppLog.secureStorage` gets the operation, the key's name,
@@ -82,6 +87,8 @@ works under a service of its own.
 | The fake's failures and recorded calls | `MyAppCoreTests/InMemorySecureStoreTests.swift` | `just test`, CI |
 | Key names | `MyAppCoreTests/SecureKeysTests.swift` | `just test`, CI |
 | `OSStatus` to `SecureStoringError` | `MyAppPlatformTests/KeychainSecureStoreTests.swift` (`storeError(for:)`) | `just test`, CI |
+| A write's update, add, and retried update on a duplicate | `MyAppPlatformTests/KeychainSecureStoreTests.swift` (`writeStatus(update:add:)`) | `just test`, CI |
+| The query and attribute dictionaries (class, service, account, data protection keychain, accessibility, match limit) | `MyAppPlatformTests/KeychainSecureStoreTests.swift` (`itemQuery`, `readQuery`, `writeAttributes`, `newItem`) | `just test`, CI |
 | The port's promises, against the Keychain | none — the adapter called from `App/`, in the running app | nowhere; the evidence is a log excerpt in the pull request (`running-the-app`) |
 
 No gate stores a Keychain item, and this is the one place the template departs from "the
@@ -105,3 +112,5 @@ Core never imports `Security` (`.swiftlint.yml`'s `no_ui_import_in_core`,
 `ArchitectureBoundaryTests.forbiddenModules`) and never calls `SecItemAdd`,
 `SecItemCopyMatching`, `SecItemUpdate`, or `SecItemDelete`, which Foundation re-exports
 and an import ban therefore cannot see (`ArchitectureBoundaryTests.forbiddenKeychainCalls`).
+That scan covers those four names and nothing else: no check looks for any other
+Security function, type, or constant in Core.

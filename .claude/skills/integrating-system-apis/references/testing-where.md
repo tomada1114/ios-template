@@ -31,7 +31,8 @@ states the four kinds; this is the same split applied to a system API.
   bare runner on the Simulator, so a framework that wants an app's identity refuses it
   as the host does: every `SecItem` call answers `errSecMissingEntitlement` there. For
   such an adapter — `KeychainSecureStore` is the shipped one — `just test` holds what
-  needs no framework (its status mapping, the contract against the fake) and the rest is
+  needs no framework (its status mapping, its write's call sequence, its query
+  dictionaries, the contract against the fake) and the rest is
   the bottom row: the adapter called from `App/`, observed in the running app.
 - **The Simulator answers more than it seems.** `xcrun simctl privacy` grants or revokes
   the services its help lists, `xcrun simctl push` delivers a notification payload, and

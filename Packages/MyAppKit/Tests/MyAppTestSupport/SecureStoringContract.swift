@@ -13,8 +13,9 @@ import Testing
 /// port's `///` states; a new clause is stated there first.
 ///
 /// The keys are the contract's own, never ``MyAppCore/SecureKeys``, so a contract run
-/// never touches a real secret — and it deletes every key it wrote before it returns, so
-/// a run against a store that outlives the process leaves nothing behind.
+/// never touches a real secret — and it deletes every one of them before it starts and
+/// before it returns, so a run against a store that outlives the process neither trips
+/// over nor leaves behind a value.
 package enum SecureStoringContract {
     /// Contract-local keys.
     enum Keys {
@@ -40,37 +41,77 @@ package enum SecureStoringContract {
         static let secondValue = Data([allBits, zero, strayContinuation])
     }
 
-    /// A description of every broken promise, empty when `store` keeps them all. `store`
-    /// must hold nothing under the contract's keys.
+    /// One promise, named by the step a failure report quotes.
+    private enum Clause: String {
+        case deletedKeysReadNil = "deleting a key"
+        case deletingAnAbsentKeySucceeds = "deleting an absent key"
+        case keysAreIndependent = "writing a second key"
+        case secondWriteReplacesTheFirst = "replacing a value"
+        case unwrittenKeysReadNil = "reading a key never written"
+        case writtenValuesReadBackEqual = "writing a value"
+
+        /// The order the clauses run in: each after the first builds on the state the
+        /// ones before it left.
+        static let inOrder: [Self] = [
+            .unwrittenKeysReadNil,
+            .writtenValuesReadBackEqual,
+            .secondWriteReplacesTheFirst,
+            .keysAreIndependent,
+            .deletedKeysReadNil,
+            .deletingAnAbsentKeySucceeds,
+        ]
+
+        /// What this clause finds broken in `store`.
+        func violations(of store: some SecureStoring) async throws(SecureStoringError) -> [String] {
+            switch self {
+            case .unwrittenKeysReadNil:
+                try await SecureStoringContract.unwrittenKeysReadNil(store)
+
+            case .writtenValuesReadBackEqual:
+                try await SecureStoringContract.writtenValuesReadBackEqual(store)
+
+            case .secondWriteReplacesTheFirst:
+                try await SecureStoringContract.secondWriteReplacesTheFirst(store)
+
+            case .keysAreIndependent:
+                try await SecureStoringContract.keysAreIndependent(store)
+
+            case .deletedKeysReadNil:
+                try await SecureStoringContract.deletedKeysReadNil(store)
+
+            case .deletingAnAbsentKeySucceeds:
+                try await SecureStoringContract.deletingAnAbsentKeySucceeds(store)
+            }
+        }
+    }
+
+    /// A description of every broken promise, empty when `store` keeps them all.
+    ///
+    /// It first deletes whatever `store` holds under the contract's keys, so a run that was
+    /// interrupted against a store that outlives the process — and left a value behind —
+    /// does not fail the next run on a correct implementation. No clause expects an
+    /// operation to fail, and every clause after the first builds on the state the ones
+    /// before it left, so the first clause that throws is reported under its name and the
+    /// rest do not run: one root failure is one violation, not several unrelated ones.
     ///
     /// Separate from ``check(_:)`` so a test can hand it an implementation that breaks a
     /// promise and see the contract notice — the proof it is not vacuous.
     package static func violations(of store: some SecureStoring) async -> [String] {
+        await removeEverything(from: store)
         var broken: [String] = []
-        broken += await attempt("reading a key never written") { () throws(SecureStoringError) in
-            try await unwrittenKeysReadNil(store)
-        }
-        broken += await attempt("writing a value") { () throws(SecureStoringError) in
-            try await writtenValuesReadBackEqual(store)
-        }
-        broken += await attempt("replacing a value") { () throws(SecureStoringError) in
-            try await secondWriteReplacesTheFirst(store)
-        }
-        broken += await attempt("writing a second key") { () throws(SecureStoringError) in
-            try await keysAreIndependent(store)
-        }
-        broken += await attempt("deleting a key") { () throws(SecureStoringError) in
-            try await deletedKeysReadNil(store)
-        }
-        broken += await attempt("deleting an absent key") { () throws(SecureStoringError) in
-            try await deletingAnAbsentKeySucceeds(store)
+        for clause in Clause.inOrder {
+            do {
+                broken += try await clause.violations(of: store)
+            } catch {
+                broken.append("\(clause.rawValue) threw \(error)")
+                break
+            }
         }
         await removeEverything(from: store)
         return broken
     }
 
-    /// Records an issue for every promise `store` breaks. `store` must hold nothing under
-    /// the contract's keys.
+    /// Records an issue for every promise `store` breaks.
     package static func check(_ store: some SecureStoring) async {
         let broken = await violations(of: store)
         #expect(
@@ -79,20 +120,8 @@ package enum SecureStoringContract {
         )
     }
 
-    /// The violations `clause` finds, or one naming what threw: no clause expects an
-    /// operation to fail.
-    private static func attempt(
-        _ step: String,
-        _ clause: () async throws(SecureStoringError) -> [String],
-    ) async -> [String] {
-        do {
-            return try await clause()
-        } catch {
-            return ["\(step) threw \(error)"]
-        }
-    }
-
-    /// Best effort: a store that cannot delete has already been reported.
+    /// Best effort, before the clauses and after them: a store that cannot delete is
+    /// reported by the clauses themselves.
     private static func removeEverything(from store: some SecureStoring) async {
         for key in Keys.all {
             try? await store.delete(key)
@@ -169,7 +198,7 @@ package enum SecureStoringContract {
     }
 
     /// Promise 6: deleting an absent key succeeds; a throw is reported by
-    /// ``attempt(_:_:)`` under this step's name.
+    /// ``violations(of:)`` under this clause's name.
     private static func deletingAnAbsentKeySucceeds(
         _ store: some SecureStoring,
     ) async throws(SecureStoringError) -> [String] {

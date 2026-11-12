@@ -10,8 +10,9 @@ import Foundation
 /// named by a ``SecureKey`` declared in ``SecureKeys``.
 ///
 /// `async`, unlike ``PreferencesStoring``: every call is a round trip to the system's
-/// keychain service, which can block, so an implementation is an actor and a `@MainActor`
-/// caller never waits on the main thread. Every method throws ``SecureStoringError`` and
+/// keychain service, which blocks, so the adapter runs it on a dispatch queue of its own
+/// and a `@MainActor` caller suspends rather than waiting on the main thread. Every method throws
+/// ``SecureStoringError`` and
 /// nothing else.
 ///
 /// Every implementation promises:

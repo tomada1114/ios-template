@@ -84,7 +84,7 @@ for the area you touched names its own check; the rest are here.
 | A workflow under `.github/workflows/` | `just lint` (actionlint), then `just check-harness` |
 | Markdown, including a rule under `.claude/rules/` | `just lint` (its `typos` spell-check) |
 | `.github/labels.yml`, or an issue form under `.github/ISSUE_TEMPLATE/` | `just lint` (its `typos` spell-check), then `just check-harness` (every applied label declared, once); `scripts/tests/sync-labels_test.sh` for `scripts/sync-labels.sh` itself |
-| `KeychainSecureStore`, or anything else that stores a Keychain item | `just test` for the fake's `SecureStoringContract` run and the adapter's status mapping; then `just run` with the adapter called from `App/` — no gate stores a Keychain item, because the Keychain answers `errSecMissingEntitlement` to a test runner with no app around it, on the host and under `just test-ios` alike, so the PR carries the log evidence (`persisting-data`'s `references/secure-storage.md`) |
+| `KeychainSecureStore`, or anything else that stores a Keychain item | `just test` for the fake's `SecureStoringContract` run and the adapter's status mapping, write sequence, and query dictionaries; then `just run` with the adapter called from `App/` — no gate stores a Keychain item, because the Keychain answers `errSecMissingEntitlement` to a test runner with no app around it, on the host and under `just test-ios` alike, so the PR carries the log evidence (`persisting-data`'s `references/secure-storage.md`) |
 | `.github/rulesets/main.json`, or `scripts/apply-ruleset.sh` | `scripts/tests/apply-ruleset_test.sh`; `just check-harness` for `main.json` (`scripts/checks/ruleset-contexts.sh` reads it) |
 
 ## Architecture
@@ -124,8 +124,9 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, WidgetKit, or Security —
   in any spelling. Enforced twice: `.swiftlint.yml`'s `no_ui_import_in_core` and
   `ArchitectureBoundaryTests`; their module lists change together. Foundation re-exports
-  the Keychain calls (`SecItemAdd` and its siblings), so `ArchitectureBoundaryTests` also
-  scans Core for those names.
+  the four `SecItem` calls (`SecItemAdd`, `SecItemCopyMatching`, `SecItemUpdate`,
+  `SecItemDelete`), so `ArchitectureBoundaryTests` also scans Core for those four names —
+  and only those: no check looks for any other Security function, type, or constant.
 - The package also builds for macOS so `swift test` runs it on the host in seconds — the
   only way `scripts/coverage.sh` reads coverage — so every target compiles for macOS too
   (`.claude/rules/swift.md`); the app itself is iOS-only. Shipped code logs through

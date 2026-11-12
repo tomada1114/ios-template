@@ -61,7 +61,9 @@ what is private"). A pull request that changes either rewrites this skill in pla
 Where SwiftData may appear, the `@ModelActor` adapter, and never editing a shipped schema
 version are `.claude/rules/platform.md` › Persistence. Enforced by: `.swiftlint.yml`'s
 `no_ui_import_in_core` and `ArchitectureBoundaryTests` (Core never imports SwiftData or
-Security, names `UserDefaults`, or calls `SecItem*`).
+Security, names `UserDefaults`, or calls `SecItemAdd`, `SecItemCopyMatching`,
+`SecItemUpdate`, or `SecItemDelete` — the scan covers those four calls and no other
+Security name).
 
 ## A repository is a port
 

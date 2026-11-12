@@ -8,8 +8,8 @@ import MyAppCore
 /// expectations are declared up front. `SecureStoringContract` holds it to the port's
 /// promises, so a Core type tested against it is tested against the port.
 ///
-/// An actor, like the adapter, so it is `Sendable` without a lock and a caller under test
-/// crosses the same suspension points it will cross in the app.
+/// An actor, so it is `Sendable` without a lock and a caller under test suspends on every
+/// call, as it does on the adapter's queue in the app.
 package actor InMemorySecureStore: SecureStoring {
     /// A port method, as recorded in ``calls`` and targeted by ``fail(_:with:)``.
     package enum Operation: Equatable, Sendable {

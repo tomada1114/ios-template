@@ -9,9 +9,11 @@ import Testing
 /// `test` job, so removing either one still leaves the other catching a regression.
 ///
 /// Core also never names a Foundation type an adapter owns (`URLSession`, `UserDefaults`)
-/// or calls the Keychain (`SecItemAdd` and its siblings): Core imports Foundation, which
-/// brings those names with it, so no import ban can see one, and this suite is the only
-/// enforcement.
+/// or one of the four `SecItem` functions (`SecItemAdd`, `SecItemCopyMatching`,
+/// `SecItemUpdate`, `SecItemDelete`): Core imports Foundation, which brings those names
+/// with it, so no import ban can see one, and this suite is the only enforcement. It
+/// scans for those four calls only: no check looks for any other Security function,
+/// type, or constant in Core.
 ///
 /// `MyAppUI` and `MyAppPlatform` are siblings over Core and never import each other.
 /// SwiftPM's target graph already withholds the modules, but only until someone adds a
@@ -25,7 +27,8 @@ struct ArchitectureBoundaryTests {
     /// Frameworks `MyAppCore` must not import: the UI frameworks (`Cocoa` re-exports
     /// AppKit), the persistence frameworks a repository adapter wraps, and the iOS
     /// services an adapter reaches for first (notifications, location, photos, purchases,
-    /// widgets, the Keychain). Each belongs in `MyAppPlatform`, behind a Core-declared port.
+    /// widgets, `Security` for the Keychain). Each belongs in `MyAppPlatform`, behind a
+    /// Core-declared port.
     ///
     /// `os` and `OSLog` are deliberately absent: logging is not a UI or OS-integration
     /// framework, so Core logs directly through ``MyAppCore/AppLog``
@@ -48,10 +51,12 @@ struct ArchitectureBoundaryTests {
     /// only enforcement.
     static let forbiddenFoundationTypes = ["URLSession", "UserDefaults"]
 
-    /// Keychain calls `MyAppCore` must not make. Banning `import Security` is not enough:
-    /// Foundation re-exports these functions, so Core could call them without it. They
-    /// belong to `KeychainSecureStore`, behind the ``MyAppCore/SecureStoring`` port. Like
-    /// ``forbiddenFoundationTypes``, this list has no `.swiftlint.yml` twin.
+    /// The four `SecItem` calls `MyAppCore` must not make. Banning `import Security` is not
+    /// enough: Foundation re-exports these functions, so Core could call them without it.
+    /// They belong to `KeychainSecureStore`, behind the ``MyAppCore/SecureStoring`` port.
+    /// The scan covers exactly these four names; no check looks for any other Security
+    /// function, type, or constant. Like ``forbiddenFoundationTypes``, this list has no
+    /// `.swiftlint.yml` twin.
     static let forbiddenKeychainCalls = [
         "SecItemAdd", "SecItemCopyMatching", "SecItemUpdate", "SecItemDelete",
     ]
@@ -177,9 +182,9 @@ struct ArchitectureBoundaryTests {
         try Self.expectNoCoreSourceNames(Self.forbiddenFoundationTypes)
     }
 
-    /// The Keychain is never called from Core (``forbiddenKeychainCalls``).
+    /// None of the four `SecItem` functions is called from Core (``forbiddenKeychainCalls``).
     @Test
-    func `no MyAppCore source file calls the Keychain`() throws {
+    func `no MyAppCore source file calls one of the four SecItem functions`() throws {
         try Self.expectNoCoreSourceNames(Self.forbiddenKeychainCalls)
     }
 
