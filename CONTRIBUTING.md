@@ -22,9 +22,9 @@ just install
 ```
 
 If your Xcode lacks the iOS platform, `just test` and `just lint` still run, but
-`just check`'s simulator steps (`uitest-build`, `uitest-run`, `smoke`, `test-ios`)
-need it: no CI job runs them. CI's one macOS job, `Test & Coverage Gate`, runs the
-coverage floor and `just build`; a draft pull request skips its macOS work, so mark the
+`just check`'s simulator steps (`uitest-build`, `uitest-run`, `smoke`, `build-device`,
+`test-ios`) need it; no CI job runs the first three or `test-ios`. CI's one macOS job,
+`Test & Coverage Gate`, runs the coverage floor, `just build`, and `just build-device`; a draft pull request skips its macOS work, so mark the
 pull request ready for review to run it.
 
 ## Development Workflow
@@ -145,7 +145,7 @@ xcrun simctl bootstatus "$(scripts/simulator-destination.sh --udid)" -b
 xcodebuild test-without-building -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult   # just uitest-run (just uitest runs both)
 (cd Packages/MyAppKit && xcodebuild test -scheme MyAppKit-Package -destination "$(../../scripts/simulator-destination.sh)" -derivedDataPath ../../build/ios-test-derived-data -resultBundlePath ../../build/MyAppKitTests-iOS.xcresult)   # just test-ios
 mise exec -- scripts/smoke_launch.sh  # just smoke
-xcodebuild -project MyApp.xcodeproj -scheme MyApp -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/device-derived-data CODE_SIGNING_ALLOWED=NO build   # just build-device (after xcodegen generate; then check build/device-derived-data/Build/Products/Release-iphoneos/MyApp.app exists)
+mise exec -- scripts/build-device.sh  # just build-device (after xcodegen generate)
 scripts/sync-labels.sh                # just labels — writes labels to the GitHub repo gh is pointed at
 scripts/apply-ruleset.sh              # just ruleset — admin-only
 ```

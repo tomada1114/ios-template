@@ -62,9 +62,9 @@ check_require_file "${CI}"
 #   uitest-build, uitest-run, smoke, test-ios
 #                 the simulator checks run only here, to keep CI's macOS minutes
 #                 minimal: CI is the merge record for coverage and the app's compiles
-#                 (Debug simulator, and `build-device`'s Release device build, which
-#                 both sides run) alone, and `just check` runs these when
-#                 scripts/simulator-relevant.sh calls the change relevant.
+#                 alone, and `just check` runs these when scripts/simulator-relevant.sh
+#                 calls the change relevant. (build-device sits in the same
+#                 simulator-relevant tail but is no exception: CI runs it too.)
 LOCAL_ONLY="verify-hooks fmt uitest-build uitest-run smoke test-ios"
 # CI_ONLY — recipes CI runs that `just check` deliberately leaves out:
 #   build  CI compiles the Debug app once for the generic iOS Simulator destination;

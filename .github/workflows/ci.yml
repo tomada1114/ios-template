@@ -79,7 +79,8 @@ jobs:
     # as passing.
     needs: changes
     if: ${{ !cancelled() }}
-    timeout-minutes: 30
+    # 40, not 30: the job gained a second full app compile (Release, device SDK).
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: needs.changes.outputs.simulator != 'false'

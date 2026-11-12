@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prints `true` or `false`: whether a change set touches any path the Xcode checks
+# Prints `true` or `false`: whether a change set touches any path the simulator checks
 # (uitest-build, uitest-run, smoke, build-device, test-ios) exercise. `just check` runs
 # those checks only on `true`; CI's `changes` job uses the answer to decide whether its
 # macOS jobs (`test`, `bootstrap-smoke`) have work (#54).
