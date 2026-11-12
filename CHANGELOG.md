@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A per-configuration API base URL: `API_BASE_URL` in `Config/Debug.xcconfig` and a new
+  `Config/Release.xcconfig` (placeholder `.invalid` hosts, the `//` written `/$()/`),
+  expanded into `Info.plist` under `APIBaseURL` and parsed by Core's `AppConfiguration`,
+  which throws `missing` or `malformed`. `App/` reads it once at launch, stops on a
+  broken value, and builds the `APIClient` over `URLSessionHTTPClient` at that URL; no
+  feature calls it yet. Release no longer builds without an xcconfig, and never
+  includes `Config/Local.xcconfig`.
 - A `SecureStoring` port for secrets, with a Keychain adapter (`KeychainSecureStore`: a
   generic-password item per `SecureKeys` constant, the bundle identifier as its service,
   `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, no entitlement), the

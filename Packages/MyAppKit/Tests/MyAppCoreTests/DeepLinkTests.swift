@@ -38,7 +38,7 @@ struct DeepLinkTests {
                 .map(String.init)
         }
         return elements
-            .map { AppLogTests.unquoted($0.trimmingCharacters(in: .whitespaces)) }
+            .map { ProjectManifest.unquoted($0.trimmingCharacters(in: .whitespaces)) }
             .filter { !$0.isEmpty }
     }
 
