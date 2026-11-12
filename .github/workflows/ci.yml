@@ -308,6 +308,14 @@ jobs:
           # breaks a line width or the import order fails here.
           scripts/lint.sh
 
+      - name: Check the renamed skill descriptions
+        if: needs.changes.outputs.simulator != 'false'
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          # The rename lengthens every description that names the app, so one within the
+          # 1,024-character limit on the template can pass it in the app cut from it.
+          bash scripts/checks/skills-descriptions.sh
+
       - name: Test the renamed package
         if: needs.changes.outputs.simulator != 'false'
         run: |

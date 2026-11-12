@@ -9,7 +9,9 @@ required `Test & Coverage Gate`, the one macOS gate job: xcode-27 runs
 `scripts/coverage.sh`, then `just build` — the Debug app for the generic iOS Simulator
 destination), `bootstrap-smoke` (the required `Template Bootstrap Smoke`:
 `scripts/bootstrap.sh` renames a clone of the template, then the renamed tree is
-linted, tested, and built for the simulator — template-only, so the rename removes it
+linted, its skill descriptions are measured (`scripts/checks/skills-descriptions.sh`:
+the rename lengthens every one that names the app), tested, and built for the
+simulator — template-only, so the rename removes it
 from every app), `changes` (ubuntu, not required: says `simulator=false` on a push to
 `main` and on a draft pull request, otherwise runs `scripts/simulator-relevant.sh
 --base … --head …`, a `git diff --name-only` of the pull request against the one path

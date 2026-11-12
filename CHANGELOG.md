@@ -186,6 +186,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The `persisting-data` and `integrating-system-apis` skill descriptions name the Core
+  and Platform layers without the app prefix, so renaming the app no longer lengthens
+  them: after a rename to a 19-character name `persisting-data`'s was 1,046 characters,
+  past the 1,024-character limit `just check-harness` enforces. CI's
+  `Template Bootstrap Smoke` now runs `scripts/checks/skills-descriptions.sh` on the
+  renamed tree, so a description that the rename pushes past the limit fails there.
 - CI's `lint` job runs on `ubuntu-24.04` instead of `ubuntu-latest`, so SwiftLint
   starts again: `ubuntu-latest` moved to Ubuntu 26.04, whose image ships only
   `libxml2.so.16`, while the SwiftLint Linux binary mise installs needs

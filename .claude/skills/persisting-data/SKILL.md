@@ -1,9 +1,9 @@
 ---
 name: persisting-data
 description: >
-  Covers how this iOS app keeps state between launches - a repository port in MyAppCore
+  Covers how this iOS app keeps state between launches - a repository port in Core
   (TodoRepository, value types across it, typed throws, Core-defined ordering), the
-  SwiftData adapter in MyAppPlatform/Persistence (@ModelActor, PersistenceStore and the
+  SwiftData adapter in Platform/Persistence (@ModelActor, PersistenceStore and the
   one ModelContainer, Storage .onDisk/.inMemory/.file, AppSchemaV1 and AppMigrationPlan,
   @Attribute(.unique)), the UnavailableTodoRepository null object when the store will
   not open, small settings through the synchronous PreferencesStoring port
