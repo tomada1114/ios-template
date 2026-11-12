@@ -51,6 +51,7 @@ just test-scripts  # Run the plain-bash tests for scripts/ and the skills' Pytho
 just check-harness # Re-assert the harness's claims about itself (scripts/checks/run-all.sh)
 just build         # Build the app (Debug) for the iOS Simulator
 just build-device  # Build Release for the iOS device SDK, unsigned, and assert the app and its privacy manifest
+just analyze       # Run swiftlint analyze (unused declarations and imports) over a clean iOS Simulator build of the app and the package (scripts/analyze.sh)
 just run           # Build, then install and launch it on an iOS Simulator (SIMULATOR_DEVICE picks one)
 just run-device    # Build (Debug), then install and launch it on a connected iPhone (Config/Local.xcconfig; IOS_DEVICE picks one)
 just logs          # Stream this app's log output from the booted simulator (Ctrl-C to stop)
@@ -60,7 +61,7 @@ just uitest-build  # Build the app and the launch UI test for an iOS Simulator, 
 just uitest-run    # Run the launch UI test uitest-build compiled, without rebuilding
 just test-ios      # Run the package tests on an iOS Simulator (no coverage floor)
 just smoke         # Build Release and assert the app launches and stays alive on a simulator
-just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → test-ios, when simulator-relevant)
+just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → analyze → test-ios, when simulator-relevant)
 just clean         # Remove build artifacts and the generated project
 just labels        # Create/update GitHub labels from .github/labels.yml (never deletes)
 just ruleset       # Create/update the "main" branch ruleset from .github/rulesets/main.json (admin-only)
@@ -80,6 +81,7 @@ for the area you touched names its own check; the rest are here.
 | The Release configuration, or anything only a Release launch shows | `just smoke`; `just build-device` too for the Release device build — the one `iphoneos` compile, which a device-only branch (`#if !targetEnvironment(simulator)`), an API one SDK lacks, or asset-catalog or linker validation breaks while every simulator build passes |
 | Behavior only the running app shows | `just run`, then `just logs` — no gate asserts it, so the PR carries the evidence (a screenshot: `xcrun simctl io booted screenshot shot.png`; the `running-the-app` skill) |
 | A permission prompt, or behavior after a grant is revoked | `just reset-permissions`, then `just run` |
+| Swift code that may leave an `internal` or `private` declaration, or an import, unused — or `.swiftlint.yml`'s `analyzer_rules`, or `scripts/analyze.sh` | `just analyze` (`swiftlint analyze` over the compiler log of a clean iOS Simulator build-for-testing of the app and the package; `just lint` never runs analyzer rules); `scripts/tests/analyze_test.sh` for the script itself. Remove a flagged import by hand and rerun `just test`: the analysis sees only a Debug iOS Simulator compile, and the package also builds for macOS. A declaration or import used only under `#if os(macOS)`, `#if !DEBUG`, or `#if !targetEnvironment(simulator)` can be flagged falsely: do not delete it — restructure it so that build references it, or report it |
 | A `just` recipe name, a workflow's `uses:`, `permissions:`, `concurrency:`, or `run:` shell, a Dependabot or Renovate commit prefix or cooldown, a skill's frontmatter, the `## Product` section, `.claude/settings.json`'s `permissions` rules, the Core import ban list (`.swiftlint.yml`'s `no_ui_import_in_core` or `ArchitectureBoundaryTests.forbiddenModules`), the gates `just check` or `ci.yml` runs, `.github/rulesets/main.json`'s required contexts, or a label an issue form, a workflow, a dependency bot, or `scripts/label-pr.sh` applies | `just check-harness` |
 | A skill under `.claude/skills/` | `just check-harness`; `just test-scripts` when the skill ships scripts (it runs their `scripts/tests/` unittest suite) |
 | A workflow under `.github/workflows/` | `just lint` (actionlint), then `just check-harness` |
@@ -283,7 +285,7 @@ stops and asks.
 
 Before submitting a PR:
 
-1. `just check` passes (it runs `just uitest`, `just smoke`, `just build-device`, and `just test-ios` when the change
+1. `just check` passes (it runs `just uitest`, `just smoke`, `just build-device`, `just analyze`, and `just test-ios` when the change
    touches a simulator path; `CHECK_ALL=1 just check` forces them)
 2. New public APIs have `///` doc comments explaining *why*
 3. Tests cover the new functionality (happy path and error path)

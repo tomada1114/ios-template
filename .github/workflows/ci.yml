@@ -62,8 +62,10 @@ jobs:
         run: scripts/checks/run-all.sh
 
   # The one macOS gate on this tree: scripts/coverage.sh (what `just test` runs), then
-  # `just build` and `just build-device`, the unsigned Release compile for the device
-  # SDK no simulator build sees. The UI test, the Release smoke launch, and the iOS
+  # `just build-device`, the unsigned Release compile for the device SDK no simulator
+  # build sees, and `just analyze`, SwiftLint's analyzer rules over a clean Debug
+  # compile of the app for the generic iOS Simulator — the compile `just build` makes,
+  # so CI no longer runs `just build` itself. The UI test, the Release smoke launch, and the iOS
   # Simulator package tests run only in local `just check`, to keep CI's macOS minutes
   # minimal.
   test:
@@ -79,8 +81,10 @@ jobs:
     # as passing.
     needs: changes
     if: ${{ !cancelled() }}
-    # 40, not 30: the job gained a second full app compile (Release, device SDK).
-    timeout-minutes: 40
+    # 60, not 30: the job gained a second full app compile (Release, device SDK), then
+    # `just analyze` — two clean build-for-testing compiles plus swiftlint analyze, which
+    # took about 10 minutes locally (#84), in place of the `just build` compile.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: needs.changes.outputs.simulator != 'false'
@@ -97,10 +101,6 @@ jobs:
         if: needs.changes.outputs.simulator != 'false'
         run: scripts/coverage.sh
 
-      - name: Build app (Debug, iOS Simulator)
-        if: needs.changes.outputs.simulator != 'false'
-        run: just build
-
       - name: Build app (Release, iOS device, unsigned)
         # The one build for the iphoneos SDK: a device-only compile break or a Release
         # device failure (asset catalog, linker) shows here and in no simulator build,
@@ -108,6 +108,15 @@ jobs:
         # CODE_SIGNING_ALLOWED=NO, so it needs no team or secret; nothing is signed.
         if: needs.changes.outputs.simulator != 'false'
         run: just build-device
+
+      - name: Analyze (swiftlint analyze, unused declarations and imports)
+        # scripts/analyze.sh makes its own compiler log: a clean build-for-testing of the
+        # app scheme and of the package scheme for the iOS Simulator, since the analyzer
+        # needs every file's compile command (tests included, or an `internal` reached
+        # only through `@testable import` reads as unused). Its app build is the Debug
+        # simulator compile CI records, and it is clean, so it never passes on a cache.
+        if: needs.changes.outputs.simulator != 'false'
+        run: just analyze
 
   # Decides whether this run has macOS work: the `test` job (and, in the template,
   # `bootstrap-smoke`).

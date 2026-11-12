@@ -23,8 +23,8 @@ just install
 
 If your Xcode lacks the iOS platform, `just test` and `just lint` still run, but
 `just check`'s simulator steps (`uitest-build`, `uitest-run`, `smoke`, `build-device`,
-`test-ios`) need it; no CI job runs the first three or `test-ios`. CI's one macOS job,
-`Test & Coverage Gate`, runs the coverage floor, `just build`, and `just build-device`; a draft pull request skips its macOS work, so mark the
+`analyze`, `test-ios`) need it; no CI job runs the first three or `test-ios`. CI's one macOS job,
+`Test & Coverage Gate`, runs the coverage floor, `just build-device`, and `just analyze` (whose clean Debug simulator build is the compile `just build` makes); a draft pull request skips its macOS work, so mark the
 pull request ready for review to run it.
 
 ## Development Workflow
@@ -92,7 +92,10 @@ just smoke
 # Build Release for the iOS device SDK, unsigned, and assert the app and its privacy manifest
 just build-device
 
-# Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → test-ios, when simulator-relevant)
+# Run swiftlint analyze (unused declarations and imports) over a clean iOS Simulator build
+just analyze
+
+# Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → analyze → test-ios, when simulator-relevant)
 just check
 
 # Remove build artifacts and the generated project
@@ -119,7 +122,7 @@ competing, at a lower CPU QoS with half the cores. Three environment variables a
 
 **Without Just**, run the equivalent commands (`just check` is the justfile's
 `check` recipe: verify-hooks, fmt, lint, test-scripts, check-harness, test, then
-uitest-build, uitest-run, smoke, build-device, and test-ios when `scripts/simulator-relevant.sh` prints
+uitest-build, uitest-run, smoke, build-device, analyze, and test-ios when `scripts/simulator-relevant.sh` prints
 `true`; the throttle wrapper is left out below):
 
 ```bash
@@ -146,6 +149,7 @@ xcodebuild test-without-building -project MyApp.xcodeproj -scheme MyApp -destina
 (cd Packages/MyAppKit && xcodebuild test -scheme MyAppKit-Package -destination "$(../../scripts/simulator-destination.sh)" -derivedDataPath ../../build/ios-test-derived-data -resultBundlePath ../../build/MyAppKitTests-iOS.xcresult)   # just test-ios
 mise exec -- scripts/smoke_launch.sh  # just smoke
 mise exec -- scripts/build-device.sh  # just build-device (after xcodegen generate)
+mise exec -- scripts/analyze.sh       # just analyze (after xcodegen generate)
 scripts/sync-labels.sh                # just labels — writes labels to the GitHub repo gh is pointed at
 scripts/apply-ruleset.sh              # just ruleset — admin-only
 ```
