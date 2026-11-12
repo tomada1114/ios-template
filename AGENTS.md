@@ -50,7 +50,7 @@ just test-fast TodoItemTests  # Run only the matching tests, no coverage floor (
 just test-scripts  # Run the plain-bash tests for scripts/ and the skills' Python suites (scripts/tests/run.sh)
 just check-harness # Re-assert the harness's claims about itself (scripts/checks/run-all.sh)
 just build         # Build the app (Debug) for the iOS Simulator
-just build-device  # Build Release for the iOS device SDK, unsigned, and assert the app bundle exists
+just build-device  # Build Release for the iOS device SDK, unsigned, and assert the app and its privacy manifest
 just run           # Build, then install and launch it on an iOS Simulator (SIMULATOR_DEVICE picks one)
 just run-device    # Build (Debug), then install and launch it on a connected iPhone (Config/Local.xcconfig; IOS_DEVICE picks one)
 just logs          # Stream this app's log output from the booted simulator (Ctrl-C to stop)

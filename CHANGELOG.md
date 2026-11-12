@@ -17,14 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `RequiredReasonAPITests` ties `App/PrivacyInfo.xcprivacy` to the code: it scans
-  `Packages/MyAppKit/Sources/` and `App/` for the required-reason APIs Apple lists
+- `RequiredReasonAPITests` ties `App/PrivacyInfo.xcprivacy` to the code: it scans the
+  Swift, C, and Objective-C files under `Packages/MyAppKit/Sources/` and `App/`, outside
+  comments and string literals, for the required-reason APIs Apple lists
   (file timestamps, system boot time, disk space, active keyboards, `UserDefaults`) and
   fails `just test`, naming the file and line, when a category the code calls has no
   declared reason. `just build-device` (`scripts/build-device.sh`) now also fails with
   `ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST` when the Release device bundle holds no
-  `PrivacyInfo.xcprivacy`, so a `project.yml` edit that drops the manifest from the app
-  target no longer ships unseen.
+  `PrivacyInfo.xcprivacy`, and with `ERR_BUILD_DEVICE_PRIVACY_MANIFEST_INVALID` or
+  `ERR_BUILD_DEVICE_PRIVACY_MANIFEST_MISMATCH` when the bundled copy fails `plutil -lint`
+  or differs from `App/PrivacyInfo.xcprivacy`, so a `project.yml` edit that drops or
+  replaces the manifest no longer ships unseen.
 - The list refreshes quietly when a window comes back from the background, so changes
   made while the app was away show up. Each window keeps a `SceneLifecycleModel`
   (`AppModel.makeSceneLifecycleModel()`) and forwards its `scenePhase` to it as a

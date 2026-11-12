@@ -89,7 +89,7 @@ just test-ios
 # Build Release and assert the app launches and stays alive on a simulator
 just smoke
 
-# Build Release for the iOS device SDK, unsigned, and assert the app bundle exists
+# Build Release for the iOS device SDK, unsigned, and assert the app and its privacy manifest
 just build-device
 
 # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → test-ios, when simulator-relevant)

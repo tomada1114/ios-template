@@ -90,26 +90,35 @@ missing, when the accessed-API array is malformed, or when a category has two en
 
 A new required-reason API adds its own entry, with its own reason, in the same pull
 request as the code that calls it. `RequiredReasonAPITests` holds that: it scans every
-`.swift` file under `Packages/MyAppKit/Sources/` and `App/` for the symbols Apple lists
-per category — `UserDefaults` (and SwiftUI's `AppStorage` over it); file timestamps
-(`creationDate`, `modificationDate`, `fileModificationDate`, `contentModificationDateKey`,
-`creationDateKey`, and calls to `stat`, `lstat`, `fstat`, `fstatat`, `getattrlist` and
-its variants); system boot time (`systemUptime`, `mach_absolute_time()`); disk space
-(the `volume…CapacityKey` keys, `systemFreeSize`, `systemSize`, and calls to `statfs`,
-`statvfs`, `fstatfs`, `fstatvfs`); active keyboards (`activeInputModes`) — and fails,
-naming the file and line, for each category the manifest gives no reason for (the table
-was checked on 2026-11-11 against the list under `NSPrivacyAccessedAPIType`). The scan
-is textual: it skips `//` comment lines, it reports a domain identifier that happens to
-share a listed name (rename it, or declare the category), it cannot see a call inside a
-binary dependency or behind a renamed alias, and it cannot tell whether the declared
-reason is the right one — choosing the reason stays the author's and the reviewer's.
-When Apple adds a symbol or a category, the table in `RequiredReasonAPITests` gains it.
+Swift, C, and Objective-C file (`.swift`, `.c`, `.h`, `.m`, `.mm`) under
+`Packages/MyAppKit/Sources/` and `App/` for the symbols Apple lists per category, in
+their Swift and Objective-C spellings — `UserDefaults`/`NSUserDefaults` (and SwiftUI's
+`AppStorage` over it); file timestamps (`creationDate`, `modificationDate`,
+`fileModificationDate`, `contentModificationDateKey`, `creationDateKey`, and calls to
+`stat`, `lstat`, `fstat`, `fstatat`, `getattrlist` and its variants); system boot time
+(`systemUptime`, `mach_absolute_time`); disk space (the `volume…CapacityKey` keys,
+`systemFreeSize`, `systemSize`, and calls to `statfs`, `statvfs`, `fstatfs`,
+`fstatvfs`); active keyboards (`activeInputModes`) — and fails, naming the file and
+line, for each category the manifest gives no reason for (the table was checked on
+2026-11-11 against the list under `NSPrivacyAccessedAPIType`). The scan is textual. It
+strips `//` and `/* … */` comments and the text of one-line string literals before it
+matches, and it counts a C function whose name is an everyday word (`stat`, `statfs`,
+`getattrlist`) only as a call, the name followed by `(` on the same line. So it misses
+a reference to one of those functions, a call split before its `(`, a call inside a
+binary dependency or behind a renamed alias; it reports a listed name inside a
+multi-line `"""` string, or a domain identifier that shares one (rename it, or
+declare the category); and it cannot tell whether the declared reason is the right one
+— choosing the reason stays the author's and the reviewer's. When Apple adds a symbol
+or a category, the table in `RequiredReasonAPIScan` gains it.
 
 The manifest only counts once it is in the bundle, and both suites read the source
 file. `scripts/build-device.sh` (`just build-device`, in `just check` and CI's `test`
-job) therefore fails with `ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST` when the Release
-device build's `MyApp.app` has no `PrivacyInfo.xcprivacy` at its root — what a
-`project.yml` that narrows `sources: [App]` or excludes the file would ship. The
+job) therefore fails when the Release device build's `MyApp.app` has no
+`PrivacyInfo.xcprivacy` at its root (`ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST`, what a
+`project.yml` that narrows `sources: [App]` or excludes the file would ship), when the
+bundled file fails `plutil -lint` (`ERR_BUILD_DEVICE_PRIVACY_MANIFEST_INVALID`), or when
+it differs from `App/PrivacyInfo.xcprivacy`, byte for byte and again as XML after
+`plutil -convert xml1` (`ERR_BUILD_DEVICE_PRIVACY_MANIFEST_MISMATCH`). The
 Keychain is not one of the required-reason categories: storing a secret through
 `SecureStoring` adds no required-reason declaration.
 

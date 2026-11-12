@@ -19,10 +19,13 @@
 # The bundle must also hold PrivacyInfo.xcprivacy at its root: App Store Connect reads
 # the manifest from there, and PrivacyManifestTests and RequiredReasonAPITests read only
 # the source file, so a `project.yml` edit that drops App/PrivacyInfo.xcprivacy from the
-# app target would pass every other gate and ship an app without one.
+# app target would pass every other gate and ship an app without one. The bundled file
+# must also pass `plutil -lint` and match App/PrivacyInfo.xcprivacy — byte for byte, or
+# as XML after `plutil -convert xml1` on both sides, should Xcode ever re-encode it — so
+# an empty, corrupt, or stale manifest fails too.
 #
 # Tools: xcbeautify comes from the caller's PATH (`just build-device` runs this under
-# `mise exec --`); xcodebuild comes with Xcode.
+# `mise exec --`); xcodebuild comes with Xcode; plutil and cmp come with macOS.
 #
 # Git work tree: not required — it builds the project under --root, which defaults to
 # the checkout containing this script.
@@ -31,7 +34,10 @@
 #   ERR_BUILD_DEVICE_USAGE   unknown argument, or a --root DIR that does not exist
 #   ERR_BUILD_DEVICE_FAILED  the Release device build failed
 #   ERR_BUILD_DEVICE_NO_APP  the build exited 0 but left no linked executable
-#   ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST  the bundle holds no PrivacyInfo.xcprivacy
+#   ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST       the bundle holds no PrivacyInfo.xcprivacy
+#   ERR_BUILD_DEVICE_PRIVACY_MANIFEST_INVALID  the bundled manifest fails `plutil -lint`
+#   ERR_BUILD_DEVICE_PRIVACY_MANIFEST_MISMATCH the bundled manifest differs from
+#                                              App/PrivacyInfo.xcprivacy
 set -euo pipefail
 
 APP_NAME="MyApp"
@@ -89,10 +95,30 @@ xcodebuild ${JOBS_ARGS[@]+"${JOBS_ARGS[@]}"} \
         "no executable there, though xcodebuild exited 0" \
         "check the scheme's product name in project.yml, then rerun \`just build-device\`"
 
-[ -f "${APP_BUNDLE}/PrivacyInfo.xcprivacy" ] ||
+SOURCE_MANIFEST="App/PrivacyInfo.xcprivacy"
+BUNDLED_MANIFEST="${APP_BUNDLE}/PrivacyInfo.xcprivacy"
+[ -f "${BUNDLED_MANIFEST}" ] ||
     fail ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST "the Release device bundle holds no privacy manifest" \
-        "App/PrivacyInfo.xcprivacy copied to ${APP_BUNDLE}/PrivacyInfo.xcprivacy" \
+        "${SOURCE_MANIFEST} copied to ${BUNDLED_MANIFEST}" \
         "no PrivacyInfo.xcprivacy there" \
-        "keep App/PrivacyInfo.xcprivacy in the app target's sources in project.yml (not excluded), then rerun \`just build-device\`"
+        "keep ${SOURCE_MANIFEST} in the app target's sources in project.yml (not excluded), then rerun \`just build-device\`"
+
+if ! LINT_OUTPUT=$(plutil -lint "${BUNDLED_MANIFEST}" 2>&1); then
+    fail ERR_BUILD_DEVICE_PRIVACY_MANIFEST_INVALID "the bundled privacy manifest is not a valid property list" \
+        "\`plutil -lint ${BUNDLED_MANIFEST}\` to pass" "${LINT_OUTPUT}" \
+        "run \`plutil -lint ${SOURCE_MANIFEST}\`, fix the file, then rerun \`just build-device\`"
+fi
+
+# Byte-equal is the usual case (Xcode copies the file as is); comparing both sides as
+# XML keeps a re-encoding by a later Xcode from reading as a different manifest.
+if ! cmp -s "${SOURCE_MANIFEST}" "${BUNDLED_MANIFEST}"; then
+    SOURCE_XML=$(plutil -convert xml1 -o - "${SOURCE_MANIFEST}" 2>&1) || SOURCE_XML="unreadable: ${SOURCE_XML}"
+    BUNDLED_XML=$(plutil -convert xml1 -o - "${BUNDLED_MANIFEST}" 2>&1) || BUNDLED_XML="unreadable: ${BUNDLED_XML}"
+    [ "${SOURCE_XML}" = "${BUNDLED_XML}" ] ||
+        fail ERR_BUILD_DEVICE_PRIVACY_MANIFEST_MISMATCH "the bundled privacy manifest is not ${SOURCE_MANIFEST}" \
+            "${BUNDLED_MANIFEST} to hold what ${SOURCE_MANIFEST} holds" \
+            "the two differ (compare them with \`diff ${SOURCE_MANIFEST} ${BUNDLED_MANIFEST}\`)" \
+            "check that project.yml copies ${SOURCE_MANIFEST} and no other PrivacyInfo.xcprivacy into the app target, then rerun \`just build-device\`"
+fi
 
 echo "BUILD-DEVICE OK: ${APP_BUNDLE}"
