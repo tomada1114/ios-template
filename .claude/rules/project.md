@@ -60,12 +60,35 @@ gate: it needs the sign-off in AGENTS.md › Security and human approval, and th
   scheme or the bundle identifier also runs `just test`: `DeepLinkTests` and `AppLogTests`
   hold Core's copies to `project.yml`
 
+## Per-configuration values
+
+- A value that differs between Debug and Release — the API base URL is the shipped one —
+  is a build setting in both `Config/Debug.xcconfig` and `Config/Release.xcconfig`
+  (`API_BASE_URL`), never in `project.yml`'s `settings:`, where a target setting would
+  override both files
+- `project.yml`'s `info.properties` expands it into `Info.plist` under one key
+  (`APIBaseURL: $(API_BASE_URL)`); `App/` reads `Bundle.main.infoDictionary` once and
+  Core's `AppConfiguration` parses it, with the key as a constant
+  (`AppConfiguration.apiBaseURLKey`). `AppConfigurationTests` fails when the key, the
+  setting's name, or either file's value drifts. A new value adds a property, a key
+  constant, and its tests there, not a second reader
+- `//` starts an xcconfig comment, so `https://api…` silently becomes `https:`; write
+  `https:/$()/api…`, an empty expansion between the slashes. `AppConfiguration`
+  rejects the truncated value, and the app stops at launch on it, so `just smoke`
+  catches a broken Release value
+- Template values use `.invalid` hosts, which never resolve; the app's real servers are
+  its own decision
+- Never a secret: both xcconfigs are committed and `Info.plist` ships readable inside
+  the app. A token or key goes through the `SecureStoring` port (`persisting-data`)
+- Verify with `just generate && just build`, `just test`, and `just smoke` (Release)
+
 ## Local Signing Identity
 
 - `DEVELOPMENT_TEAM` for device runs (`just run-device`) lives only in the gitignored
-  `Config/Local.xcconfig`, which `Config/Debug.xcconfig` includes with `#include?`
+  `Config/Local.xcconfig`, which `Config/Debug.xcconfig` includes with `#include?`;
+  `Config/Release.xcconfig` never includes it
 - A tracked file never holds a team ID or a provisioning profile name — not
-  `project.yml`, not `Config/Debug.xcconfig`, not a workflow. Setting
+  `project.yml`, not either committed xcconfig, not a workflow. Setting
   `DEVELOPMENT_TEAM` in `project.yml`, even empty, overrides the xcconfig and silently
   breaks `Local.xcconfig`
 - Never read `Config/Local.xcconfig`; `scripts/run-device.sh` checks the resolved team
