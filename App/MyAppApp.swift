@@ -71,13 +71,15 @@ private struct SceneRoot: View {
                 lifecycle.sceneDidEnter(Self.lifecyclePhase(phase))
                 Task { await lifecycle.refreshIfNeeded() }
             }
+            // The window is gone: Core hands a failure it was presenting to another one.
+            .onDisappear { lifecycle.sceneDidClose() }
     }
 
     /// The root view, with path restoration unless this launch opts out. The one place
     /// the opt-out is read: without the modifier nothing is stored, read, or encoded.
     /// `restoresPath` never changes while the process lives, so the branch never flips.
     @ViewBuilder private var root: some View {
-        let rootView = RootView(app: app, navigation: navigation)
+        let rootView = RootView(app: app, navigation: navigation, lifecycle: lifecycle)
         if restoresPath {
             rootView.modifier(PathRestoration(navigation: navigation))
         } else {
@@ -93,8 +95,9 @@ private struct SceneRoot: View {
         _lifecycle = State(initialValue: app.makeSceneLifecycleModel())
     }
 
-    /// SwiftUI's phase as Core's. A phase a later SDK adds is `inactive`, the one value
-    /// that neither arms nor asks for a refresh.
+    /// SwiftUI's phase as Core's. A phase a later SDK adds is `background`: nothing says
+    /// the window is on screen in it, so it must not be the window a failure is presented
+    /// in. The price is one quiet refresh at the window's next active.
     private static func lifecyclePhase(_ phase: ScenePhase) -> LifecyclePhase {
         switch phase {
         case .active:
@@ -107,7 +110,7 @@ private struct SceneRoot: View {
             .inactive
 
         @unknown default:
-            .inactive
+            .background
         }
     }
 }

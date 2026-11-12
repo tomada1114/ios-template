@@ -8,15 +8,17 @@ import SwiftUI
 /// topmost (`failureAlerts(on:isTopmost:)`). Attached to the root screen inside the stack
 /// instead, a failure on a pushed screen showed nothing until the user went back (#78);
 /// attached only outside the stack, a failure while a sheet was up did not show over it
-/// (#124).
+/// (#124). Which window is handed a shared model's failure at all is Core's
+/// (`SceneLifecycleModel.presented(_:)`, #133).
 private struct FailureAlert<Failure: PresentableFailure>: ViewModifier {
     let failure: Failure?
     let dismiss: () -> Void
 
     /// Derived from `failure`, so a new failure presents the alert. Only the alert's button
     /// clears the failure: SwiftUI also writes `false` when it tears the presentation down
-    /// — the sheet under the alert closed by code, or the failure handed to another layer —
-    /// and the failure must survive that to present again where it is handed next.
+    /// — the sheet under the alert closed by code, or the failure handed to another layer
+    /// or another window — and the failure must survive that to present again where it is
+    /// handed next.
     private var isPresented: Binding<Bool> {
         Binding(
             get: { failure != nil },

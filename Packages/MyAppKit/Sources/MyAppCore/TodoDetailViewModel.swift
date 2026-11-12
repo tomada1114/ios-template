@@ -5,7 +5,7 @@ import Observation
 ///
 /// The worked example of a pushed screen with a view model of its own: the screen
 /// ``AppRoute/todoDetail(_:)`` pushes is handed one by
-/// ``AppModel/makeTodoDetailViewModel(id:)``, never the list's view model. It holds the
+/// ``AppModel/makeTodoDetailViewModel(id:scene:)``, never the list's view model. It holds the
 /// shared ``TodoListViewModel`` and the item's identifier, not a copy of the item, so it
 /// shows the item as it is now — a toggle on the row, or a delete in another window,
 /// shows here too — and decides what the screen shows while the list is still loading.
@@ -25,6 +25,8 @@ public final class TodoDetailViewModel {
 
     private let list: TodoListViewModel
     private let id: TodoItem.ID
+    /// The window this screen is pushed in: the scene its list actions are asked from.
+    private let scene: SceneID?
 
     /// What the screen shows now: the item when the list holds it — hidden by Hide
     /// Completed or not — progress while the list is still awaiting its items, and not
@@ -39,11 +41,12 @@ public final class TodoDetailViewModel {
         }
     }
 
-    /// Created only by ``AppModel/makeTodoDetailViewModel(id:)``, which decides what the
-    /// model shares.
-    init(list: TodoListViewModel, id: TodoItem.ID) {
+    /// Created only by ``AppModel/makeTodoDetailViewModel(id:scene:)``, which decides what
+    /// the model shares.
+    init(list: TodoListViewModel, id: TodoItem.ID, scene: SceneID?) {
         self.list = list
         self.id = id
+        self.scene = scene
     }
 
     /// Asks the shared list for its first load, if nothing has asked yet: a deep link can
@@ -51,14 +54,14 @@ public final class TodoDetailViewModel {
     /// or is loading is left alone.
     public func load() async {
         if list.phase == .idle {
-            await list.load()
+            await list.load(from: scene)
         }
     }
 
-    /// Flips the item's done state — the list's own ``TodoListViewModel/toggle(_:)``, so a
-    /// failure is reported where the list reports it.
+    /// Flips the item's done state — the list's own ``TodoListViewModel/toggle(_:from:)``,
+    /// so a failure is the list's, presented in this screen's window.
     public func toggle() async {
-        await list.toggle(id)
+        await list.toggle(id, from: scene)
     }
 
     /// What VoiceOver reads for the done toggle of `item`, which is otherwise a glyph.
