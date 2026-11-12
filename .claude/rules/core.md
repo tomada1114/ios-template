@@ -42,7 +42,8 @@ ports. A port exists only when the answer comes from a framework Core may not im
 
 - **Waiting** (a delay, debounce, timeout, tick): take `any Clock<Duration>` defaulting
   to `ContinuousClock()` and call `clock.sleep(for:)`, never `Task.sleep` against the
-  real clock. A generic `C: Clock` only when a profiler shows the existential matters.
+  real clock (`RetryingAPIClient`'s backoff wait). A generic `C: Clock` only when a
+  profiler shows the existential matters.
 - **Now:** a long-lived view model takes `now: @Sendable () -> Date` defaulting to
   `{ Date() }` (`TodoListViewModel.init`); a pure function takes the `Date` as an
   argument (`TodoItem`'s `createdAt`). Never `Date()` or `Date.now` inside a branch.
@@ -54,15 +55,22 @@ ports. A port exists only when the answer comes from a framework Core may not im
   (default `.current` at the initializer) and passes it on explicitly —
   `value.formatted(.number.locale(locale))`.
 - **Randomness:** a method that draws takes `using generator: inout some
-  RandomNumberGenerator`, as `shuffled(using:)` does; a `@MainActor` view model that
+  RandomNumberGenerator`, as `shuffled(using:)` does
+  (`RetryPolicy.delay(afterAttempt:using:)`'s jitter); a `@MainActor` view model that
   owns one stores `any RandomNumberGenerator`, defaulting to
-  `SystemRandomNumberGenerator()`.
+  `SystemRandomNumberGenerator()`, and an actor that owns one stores
+  `any RandomNumberGenerator & Sendable` (`RetryingAPIClient`).
 - **In tests:** pinned values (`TodoListViewModelFixture` pins `now` and `makeID`),
   `Calendar(identifier: .gregorian)` with `TimeZone(identifier: "UTC")`,
   `Locale(identifier: "en_US_POSIX")` plus a second locale when localization is the
   behavior under test. The standard library ships no test clock and no seeded
-  generator, so a manually advanced `Clock` and a SplitMix64 generator live in
-  `Tests/`, never `Sources/`. A zero `Duration` through `Tuning` often needs no clock.
+  generator, so a manually advanced `Clock` (`ManualClock`) and a SplitMix64 generator
+  (`SplitMix64`) live in `Tests/MyAppTestSupport`, never `Sources/`. A test starts the
+  work in a `Task`, awaits `clock.nextSleep()` — which returns once the code under test
+  is parked in a sleep, with no polling — then advances the clock or cancels the task;
+  a suite that does so carries `.timeLimit`, since a wait that never comes would
+  otherwise hang. The `RetryPolicy…Tests` suites are the worked example. A zero
+  `Duration` through `Tuning` often needs no clock.
 
 ## One `Tuning` type
 
@@ -71,7 +79,8 @@ creates one `public struct Tuning: Sendable, Equatable` in Core with a
 `` static let `default` ``; no tunable is a literal in a method body. Types take a
 `Tuning` in their initializer (default `.default`) so a test reaches a boundary
 quickly. Durations are `Duration`, counts `Int`, and each property's `///` says why it
-has that value. A domain invariant is not a tunable (`TodoItem.normalizedTitle(_:)`'s
+has that value: `Tuning.retry`, the `RetryPolicy` that `RetryingAPIClient` takes, is
+the worked example. A domain invariant is not a tunable (`TodoItem.normalizedTitle(_:)`'s
 non-blank rule is what the type means): ask whether changing it is a product tweak or
 changes the type's meaning. Past a screenful, nest structs by feature under the one
 root type.

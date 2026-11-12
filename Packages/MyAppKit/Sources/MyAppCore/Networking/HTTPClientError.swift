@@ -22,8 +22,8 @@ public enum HTTPClientError: Error, Equatable, Sendable {
     case notConnected
 
     /// The server went silent for longer than ``HTTPRequest/timeout`` — an idle timeout,
-    /// not a total deadline. Core may retry, ideally with a backoff, or show a "try again"
-    /// state.
+    /// not a total deadline. Core may retry with a backoff (``RetryingAPIClient``), or
+    /// show a "try again" state.
     case timedOut
 
     /// Any other transport failure (a TLS error, a malformed response), identified only
