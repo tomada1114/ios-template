@@ -25,8 +25,23 @@
 # as XML after `plutil -convert xml1` on both sides, should Xcode ever re-encode it — so
 # an empty, corrupt, or stale manifest fails too.
 #
+# Last, the linked executable is held to that manifest: every required-reason API
+# category the binary uses must have an NSPrivacyAccessedAPITypes entry with at least
+# one reason in the bundled file. "Uses" is read from the binary, not the source: the
+# symbols it imports (`xcrun nm -u`: C functions, Foundation's key constants, Objective-C
+# class references, and Swift symbols whose mangled name carries an Objective-C type)
+# and the Objective-C selectors it sends (`xcrun otool -v -s __TEXT __objc_methname`),
+# matched against REQUIRED_REASON_APIS below, one line per symbol. This is the
+# authoritative check, the one that sees code reached through a package, an alias, or
+# generated code; RequiredReasonAPITests' source scan stays as `just test`'s fast signal
+# (changing-gates › references/enforcement-layers.md says why both run). It reads only
+# the main executable, so a framework under MyApp.app/Frameworks/, a symbol looked up
+# with dlsym, or a selector built at run time is not seen, and it cannot judge whether
+# a declared reason is the right one.
+#
 # Tools: xcbeautify comes from the caller's PATH (`just build-device` runs this under
-# `mise exec --`); xcodebuild comes with Xcode; plutil and cmp come with macOS.
+# `mise exec --`); xcodebuild, and `nm` and `otool` through xcrun, come with Xcode;
+# plutil, cmp, and awk come with macOS.
 #
 # Git work tree: not required — it builds the project under --root, which defaults to
 # the checkout containing this script.
@@ -39,12 +54,65 @@
 #   ERR_BUILD_DEVICE_PRIVACY_MANIFEST_INVALID  the bundled manifest fails `plutil -lint`
 #   ERR_BUILD_DEVICE_PRIVACY_MANIFEST_MISMATCH the bundled manifest differs from
 #                                              App/PrivacyInfo.xcprivacy
+#   ERR_BUILD_DEVICE_SYMBOLS_UNREADABLE        `xcrun nm` or `xcrun otool` could not read
+#                                              the executable, or it imports nothing
+#   ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API  the executable uses a required-reason
+#                                              API category the bundled manifest gives
+#                                              no reason for
 set -euo pipefail
 
 APP_NAME="MyApp"
 DERIVED_DATA="build/device-release-derived-data"
 APP_BUNDLE="${DERIVED_DATA}/Build/Products/Release-iphoneos/${APP_NAME}.app"
 USAGE="usage: scripts/build-device.sh [--root DIR]"
+
+# Apple's required-reason APIs as a linked arm64 binary spells them, one per line:
+# CATEGORY|KIND|VALUE, where CATEGORY follows NSPrivacyAccessedAPICategory and KIND is
+#   import       an imported symbol, matched whole (`_stat` is not `_statfs`)
+#   import-part  text inside an imported symbol: a Swift API whose mangled name carries
+#                the Objective-C type (SwiftUI's AppStorage takes `So14NSUserDefaultsC`)
+#   selector     an Objective-C selector the binary sends, matched whole
+# Every spelling here was read with `xcrun nm -u` and `xcrun otool` from an iOS
+# 27.0-SDK probe that called each API (2026-11-12), and the list follows the symbols
+# RequiredReasonAPIScan names from Apple's list under NSPrivacyAccessedAPIType. Swift's
+# FileAttributeKey and URLResourceKey members (`.creationDate`,
+# `.contentModificationDateKey`, `.volumeTotalCapacityKey`, `.systemSize`) link as the
+# Foundation constants below; `getattrlist`, `fgetattrlist`, and `getattrlistat` are in
+# two categories, as Apple lists them. A new API is one line.
+REQUIRED_REASON_APIS='
+FileTimestamp|import|_stat
+FileTimestamp|import|_fstat
+FileTimestamp|import|_fstatat
+FileTimestamp|import|_lstat
+FileTimestamp|import|_getattrlist
+FileTimestamp|import|_getattrlistbulk
+FileTimestamp|import|_fgetattrlist
+FileTimestamp|import|_getattrlistat
+FileTimestamp|import|_NSFileCreationDate
+FileTimestamp|import|_NSFileModificationDate
+FileTimestamp|import|_NSURLContentModificationDateKey
+FileTimestamp|import|_NSURLCreationDateKey
+FileTimestamp|selector|fileModificationDate
+SystemBootTime|import|_mach_absolute_time
+SystemBootTime|selector|systemUptime
+DiskSpace|import|_statfs
+DiskSpace|import|_statvfs
+DiskSpace|import|_fstatfs
+DiskSpace|import|_fstatvfs
+DiskSpace|import|_getattrlist
+DiskSpace|import|_fgetattrlist
+DiskSpace|import|_getattrlistat
+DiskSpace|import|_NSURLVolumeAvailableCapacityKey
+DiskSpace|import|_NSURLVolumeAvailableCapacityForImportantUsageKey
+DiskSpace|import|_NSURLVolumeAvailableCapacityForOpportunisticUsageKey
+DiskSpace|import|_NSURLVolumeTotalCapacityKey
+DiskSpace|import|_NSFileSystemFreeSize
+DiskSpace|import|_NSFileSystemSize
+ActiveKeyboards|selector|activeInputModes
+UserDefaults|import|_OBJC_CLASS_$_NSUserDefaults
+UserDefaults|import-part|So14NSUserDefaultsC
+'
+CATEGORY_PREFIX="NSPrivacyAccessedAPICategory"
 
 fail() { # fail <code> <what failed> <expected> <actual> <next>
     echo "$1: $2" >&2
@@ -121,5 +189,82 @@ if ! cmp -s "${SOURCE_MANIFEST}" "${BUNDLED_MANIFEST}"; then
             "the two differ (compare them with \`diff ${SOURCE_MANIFEST} ${BUNDLED_MANIFEST}\`)" \
             "check that project.yml copies ${SOURCE_MANIFEST} and no other PrivacyInfo.xcprivacy into the app target, then rerun \`just build-device\`"
 fi
+
+EXECUTABLE="${APP_BUNDLE}/${APP_NAME}"
+SYMBOLS_NEXT="check that ${EXECUTABLE} is a Mach-O executable (\`file ${EXECUTABLE}\`) and that \`xcrun --find nm\` and \`xcrun --find otool\` resolve in the selected Xcode, then rerun \`just build-device\`"
+# Read once with stderr dropped, so a tool's warning cannot land in the list; a failure
+# is read again for the message.
+if ! IMPORTS=$(xcrun nm -u "${EXECUTABLE}" 2>/dev/null) || [ -z "${IMPORTS}" ]; then
+    NM_ERROR=$(xcrun nm -u "${EXECUTABLE}" 2>&1 >/dev/null) || true
+    fail ERR_BUILD_DEVICE_SYMBOLS_UNREADABLE "could not read the symbols ${EXECUTABLE} imports" \
+        "\`xcrun nm -u ${EXECUTABLE}\` to list them" "${NM_ERROR:-it listed none}" "${SYMBOLS_NEXT}"
+fi
+if ! METHNAMES=$(xcrun otool -v -s __TEXT __objc_methname "${EXECUTABLE}" 2>/dev/null); then
+    OTOOL_ERROR=$(xcrun otool -v -s __TEXT __objc_methname "${EXECUTABLE}" 2>&1 >/dev/null) || true
+    fail ERR_BUILD_DEVICE_SYMBOLS_UNREADABLE "could not read the Objective-C selectors in ${EXECUTABLE}" \
+        "\`xcrun otool -v -s __TEXT __objc_methname ${EXECUTABLE}\` to list them" \
+        "${OTOOL_ERROR:-it failed and printed nothing}" "${SYMBOLS_NEXT}"
+fi
+# otool prints a path line and a "Contents of" line, then "ADDRESS  SELECTOR" per string.
+SELECTORS=$(awk 'NF == 2 && $1 ~ /^[0-9a-fA-F]+$/ { print $2 }' <<<"${METHNAMES}")
+
+# USES: one "CATEGORY|KIND VALUE" line per table row the executable matches.
+USES=""
+while IFS='|' read -r CATEGORY KIND VALUE; do
+    [ -n "${CATEGORY}" ] || continue
+    MATCHED=false
+    case "${KIND}" in
+        import) grep -qxF -- "${VALUE}" <<<"${IMPORTS}" && MATCHED=true ;;
+        import-part) grep -qF -- "${VALUE}" <<<"${IMPORTS}" && MATCHED=true ;;
+        selector) grep -qxF -- "${VALUE}" <<<"${SELECTORS}" && MATCHED=true ;;
+    esac
+    if [ "${MATCHED}" = true ]; then
+        USES="${USES}${CATEGORY_PREFIX}${CATEGORY}|${KIND} ${VALUE}"$'\n'
+    fi
+done <<<"${REQUIRED_REASON_APIS}"
+
+# DECLARED: each category with an entry holding at least one reason, as
+# RequiredReasonAPITests counts it. `plutil -extract … raw` prints an array's count and
+# exits 1 for a missing key, which counts as nothing declared.
+DECLARED=""
+ENTRY_COUNT=$(plutil -extract NSPrivacyAccessedAPITypes raw -o - "${BUNDLED_MANIFEST}" 2>/dev/null) || ENTRY_COUNT=0
+case "${ENTRY_COUNT}" in '' | *[!0-9]*) ENTRY_COUNT=0 ;; esac
+INDEX=0
+while [ "${INDEX}" -lt "${ENTRY_COUNT}" ]; do
+    ENTRY="NSPrivacyAccessedAPITypes.${INDEX}"
+    DECLARED_TYPE=$(plutil -extract "${ENTRY}.NSPrivacyAccessedAPIType" raw -o - "${BUNDLED_MANIFEST}" 2>/dev/null) || DECLARED_TYPE=""
+    REASON_COUNT=$(plutil -extract "${ENTRY}.NSPrivacyAccessedAPITypeReasons" raw -o - "${BUNDLED_MANIFEST}" 2>/dev/null) || REASON_COUNT=0
+    case "${REASON_COUNT}" in '' | *[!0-9]*) REASON_COUNT=0 ;; esac
+    if [ -n "${DECLARED_TYPE}" ] && [ "${REASON_COUNT}" -gt 0 ]; then
+        DECLARED="${DECLARED}${DECLARED_TYPE}"$'\n'
+    fi
+    INDEX=$((INDEX + 1))
+done
+
+# Each category used, in table order, with every symbol that put the executable in it.
+USED_CATEGORIES=""
+while IFS='|' read -r CATEGORY _; do
+    [ -n "${CATEGORY}" ] || continue
+    grep -qxF -- "${CATEGORY}" <<<"${USED_CATEGORIES}" || USED_CATEGORIES="${USED_CATEGORIES}${CATEGORY}"$'\n'
+done <<<"${USES}"
+UNDECLARED=""
+while read -r CATEGORY; do
+    [ -n "${CATEGORY}" ] || continue
+    EVIDENCE=""
+    while IFS='|' read -r USE_CATEGORY USE_SYMBOL; do
+        [ "${USE_CATEGORY}" = "${CATEGORY}" ] || continue
+        EVIDENCE="${EVIDENCE:+${EVIDENCE}, }${USE_SYMBOL}"
+    done <<<"${USES}"
+    if grep -qxF -- "${CATEGORY}" <<<"${DECLARED}"; then
+        echo "==> ${CATEGORY}: declared (${EVIDENCE})"
+    else
+        UNDECLARED="${UNDECLARED:+${UNDECLARED}; }${CATEGORY} (${EVIDENCE})"
+    fi
+done <<<"${USED_CATEGORIES}"
+[ -z "${UNDECLARED}" ] ||
+    fail ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API "${EXECUTABLE} uses a required-reason API the bundled privacy manifest declares no reason for" \
+        "an NSPrivacyAccessedAPITypes entry with at least one reason in ${BUNDLED_MANIFEST} for every required-reason API category the executable uses" \
+        "undeclared: ${UNDECLARED}" \
+        "add an entry with Apple's reason for each category to ${SOURCE_MANIFEST} (integrating-system-apis › references/permissions.md), or remove the call; if a listed symbol is not that API, report it rather than editing REQUIRED_REASON_APIS to pass; then rerun \`just build-device\`"
 
 echo "BUILD-DEVICE OK: ${APP_BUNDLE}"
