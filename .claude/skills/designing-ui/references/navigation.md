@@ -1,4 +1,4 @@
-# Navigation: routes, the path, and deep links
+# Navigation: routes, the path, sheets, and deep links
 
 Why navigation is shaped the way it is. The rules a view follows — one
 `NavigationStack(path:)` and one `navigationDestination(for: AppRoute.self)` in
@@ -6,8 +6,9 @@ Why navigation is shaped the way it is. The rules a view follows — one
 are `.claude/rules/ui.md` › Navigation, sheets, and alerts; this file holds the reasoning
 and the parts no rule states.
 
-Which screen shows is Core state, not `@State` inside a view, so a deep link and state
-restoration have something to hold on to and a test can drive navigation without a view.
+Which screen shows, and which sheet is presented over it, is Core state, not `@State`
+inside a view, so a deep link and state restoration have something to hold on to and a
+test can drive navigation without a view.
 The template binds its one stack to a Core `NavigationModel` and parses a custom URL
 scheme (`my-app`, `project.yml`'s `info:` block) with Core's `DeepLink`. A custom scheme
 is an `Info.plist` entry, not an entitlement; universal links (Associated Domains) are an
@@ -24,16 +25,18 @@ an identifier nothing holds shows a not-found state.
 
 ## The path is a Core view model, owned per scene
 
-`NavigationModel` is a `@MainActor @Observable` class holding `path: [AppRoute]`, with
-one action per intent: `show(_:)` pushes, `popToRoot()` returns, `open(_:)` handles a
-deep link. `App/`'s scene root holds it in `@State` and hands it to the root view, while
+`NavigationModel` is a `@MainActor @Observable` class holding `path: [AppRoute]` and
+`sheet: AppSheet?`, with one action per intent: `show(_:)` pushes, `popToRoot()` returns,
+`present(_:)` and `dismissSheet()` present and dismiss a sheet, `open(_:)` handles a deep
+link. `App/`'s scene root holds it in `@State` and hands it to the root view, while
 the shared view models it routes between stay app-level, in `AppModel`. It never moves
 into `AppModel`: the app supports multiple scenes (two windows on iPad), so an app-level
 path would move every window in lockstep and a deep link would move them all.
 
 ## Why the stack and its destinations live in `RootView`
 
-The back button writes the path back, which is why `path` is the one settable property.
+The back button writes the path back, which is why `path` is the one settable property;
+`sheet` is `private(set)`, and the sheet binding writes back through `dismissSheet()`.
 Declaring every destination in one switch means a new screen adds an `AppRoute` case and
 a branch of that switch, and edits no other screen.
 
@@ -43,13 +46,43 @@ re-render builds a fresh model that the screen discards unused (which is why
 construction has no side effects), and each destination is identified by its route, so a
 deep link that swaps one pushed item for another gets a fresh screen and model.
 
+## Sheets are a Core enum too
+
+`AppSheet` (`Sources/MyAppCore/Navigation/`) has one case per sheet, carrying at most an
+identifier, like a route, and is its own `Identifiable` id, so `.sheet(item:)` presents
+a new sheet when the case changes. `RootView` holds the one `.sheet(item:)`, outside the
+stack so it presents over whichever screen is pushed, bound through a `Binding` whose
+getter reads `sheet` and whose setter calls `dismissSheet()`: SwiftUI writes that binding
+only to dismiss (a swipe down), so a swipe and the sheet's close button reach the same
+action. Its `sheet(for:)` switch builds each sheet, as `destination(for:)` builds each
+pushed screen; a sheet that edits something takes its view model from an `AppModel`
+factory there. The template's sheet is `.about` (`AboutView`): static Core wording and
+the system's close button, the smallest sheet that has a dismiss action.
+
+One sheet presents at a time: `present(_:)` replaces a sheet already up rather than
+stacking one on it. The sheet sits over the stack, so every action that moves the stack
+— `show(_:)`, `popToRoot()`, and a link `open(_:)` accepts — dismisses the sheet first;
+otherwise the screen it asked for would change out of sight under the sheet, and the
+person would close the sheet onto a stack they did not see move. A link `open(_:)`
+rejects leaves both the path and the sheet alone.
+
+Full-screen covers, popovers, and a sheet presented from inside a sheet are not modeled.
+
 ## Deep links are parsed in Core
 
 `DeepLink.route(for:)` accepts exactly `my-app://todo/<uuid>` — the scheme in any case,
 the host `todo`, one `UUID` path component — and rejects every other shape rather than
 guessing; `DeepLink.url(for:)` is its inverse. The scene root forwards `.onOpenURL` to
-its `NavigationModel.open(_:)`, which replaces the path with the parsed route or logs the
-rejected link's scheme and host in the `navigation` category.
+its `NavigationModel.open(_:)`, which replaces the path with the parsed route (dismissing
+any sheet) or logs the rejected link's scheme and host in the `navigation` category.
+
+No link presents a sheet: About is not worth a URL that becomes contract the day a build
+ships. A sheet that is worth one gets a new link shape in `DeepLink` (for example
+`my-app://about`), parsed to a value that names either a route or a sheet — `DeepLink`
+then returns that value instead of an `AppRoute` — and `open(_:)` switches on it, calling
+`present(_:)` for a sheet over the path it leaves as it is. The new shape gets its
+`DeepLinkTests` cases and `NavigationModelTests` for what it leaves behind, and every
+old shape keeps parsing.
 
 The scheme is registered under `project.yml`'s `info:` block (XcodeGen writes the
 gitignored `App/Info.plist` from it on every `just generate`, and the build merges it

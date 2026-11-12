@@ -4,10 +4,12 @@ import XCTest
 /// the core interaction — adding an item — reaches the screen. Hiding completed items
 /// proves the preferences wiring in `App/` reaches the view model, and opening an item
 /// proves the navigation model reaches the stack; opening it by a deep link proves the
-/// registered scheme and `App/`'s URL handling reach that model. Deleting in Edit mode
-/// proves a swipe is not the only way to delete. Xcode's accessibility audit runs on the
-/// empty list, the list with an item, the detail screen, its not-found state, and the All
-/// Done state (`Support/XCTestCase+AccessibilityAudit.swift`).
+/// registered scheme and `App/`'s URL handling reach that model, and opening and closing
+/// the About sheet proves the model's sheet reaches `RootView`'s `.sheet(item:)`. Deleting
+/// in Edit mode proves a swipe is not the only way to delete. Xcode's accessibility audit
+/// runs on the empty list, the list with an item, the About sheet, the detail screen, its
+/// not-found state, and the All Done state
+/// (`Support/XCTestCase+AccessibilityAudit.swift`).
 ///
 /// XCTest by necessity — Apple has not ported UI automation to Swift Testing.
 /// All other tests use Swift Testing in Packages/MyAppKit.
@@ -22,7 +24,8 @@ final class LaunchTests: XCTestCase {
 
     /// One launch walks every scenario in turn, because each relaunch costs tens of
     /// seconds on CI (#57). The steps are ordered so none undoes what a later one needs:
-    /// audit the empty list, add, audit the list, open the detail, audit it and come back,
+    /// audit the empty list, add, audit the list, open the About sheet, audit it and close
+    /// it, open the detail, audit it and come back,
     /// open it and an unknown item by deep link, audit the not-found state and come back,
     /// complete and hide the item and audit the All Done state, show it again, then delete
     /// it in Edit mode.
@@ -54,6 +57,10 @@ final class LaunchTests: XCTestCase {
         try XCTContext.runActivity(named: "Audit the list's accessibility with an item") { _ in
             try auditTheListWithAnItem(in: app)
         }
+        try XCTContext
+            .runActivity(named: "Open the About sheet, audit it, then close it") { _ in
+                try openTheAboutSheetAuditItAndCloseIt(in: app)
+            }
         try XCTContext
             .runActivity(named: "Open the item's detail, audit it, then go back") { _ in
                 try openTheDetailAuditItAndGoBack(in: app)
@@ -160,7 +167,7 @@ final class LaunchTests: XCTestCase {
             app.buttons["detailToggle"].exists,
             "the detail screen should show the item it was opened for",
         )
-        waitForThePushToSettle(in: app)
+        waitForTheListToBeCovered(in: app)
         try auditAccessibility(of: app)
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(
@@ -211,7 +218,7 @@ final class LaunchTests: XCTestCase {
             waitForDisappearance(of: app.buttons["detailToggle"]),
             "the not-found state should show no item",
         )
-        waitForThePushToSettle(in: app)
+        waitForTheListToBeCovered(in: app)
         try auditAccessibility(of: app)
 
         app.navigationBars.buttons.firstMatch.tap()
@@ -349,21 +356,5 @@ extension LaunchTests {
             "Return on the empty field should dismiss the keyboard",
         )
         try auditAccessibility(of: app)
-    }
-
-    /// Waits until the list's new-item field is no longer hittable, which is when a
-    /// pushed screen has covered the list, so an audit judges the pushed screen settled
-    /// rather than mid-transition.
-    @MainActor
-    private func waitForThePushToSettle(in app: XCUIApplication) {
-        let covered = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == false OR hittable == false"),
-            object: app.textFields["newItemField"],
-        )
-        XCTAssertEqual(
-            XCTWaiter().wait(for: [covered], timeout: Timeout.elementAppears),
-            .completed,
-            "the pushed screen should cover the list",
-        )
     }
 }

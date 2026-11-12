@@ -102,6 +102,14 @@ design-lock decision, never a per-screen one.
 - Whether something is presented is view-model state (a `Bool`, or an optional whose
   presence presents it), bound through an action-built `Binding` so every dismissal
   goes through the action.
+- A sheet is an `AppSheet` case, presented by `NavigationModel.present(_:)` and
+  dismissed by `dismissSheet()`. `RootView` holds the app's only `.sheet(item:)`, outside
+  the stack, bound through a `Binding` whose setter calls `dismissSheet()`, and builds
+  each sheet in one switch (`sheet(for:)`). A new sheet is a new `AppSheet` case and a
+  new branch of that switch, never a `.sheet` on a screen or a `Bool` in a view's
+  `@State`. A sheet's own title bar and close button come from a plain
+  `NavigationStack { … }` inside it (`AboutView`), which pushes nothing; its close
+  button is the system's `Button(role: .close)`.
 - A failure is presented once, from `RootView`, outside the stack, with
   `.failureAlert(_:dismiss:)`: an alert on a screen inside the stack does not present
   while another screen is pushed over it (#78). A feature's failure type adopts Core's
@@ -179,8 +187,8 @@ helper more than one test file needs (`focus`, `waitForDisappearance`) goes in
 
 The launch walk runs Xcode's accessibility audit (`auditAccessibility(of:)`,
 `Support/XCTestCase+AccessibilityAudit.swift`) on exactly these states: the empty list,
-the list with an item (keyboard dismissed), the item's detail screen, the detail
-screen's not-found state, and the All Done state. Edit mode, the load-failure state, and
+the list with an item (keyboard dismissed), the About sheet, the item's detail screen,
+the detail screen's not-found state, and the All Done state. Edit mode, the load-failure state, and
 the failure alert go unaudited; a new screen or state the walk reaches gets the same
 call. The walk pins light appearance and the default text size, so dark mode and large
 text are not audited. Its issue handler accepts only a named exception matched on the

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Sheets as Core state: an `AppSheet` enum and a read-only `NavigationModel.sheet` with
+  `present(_:)` and `dismissSheet()`. `RootView` presents it with its one
+  `.sheet(item:)`, whose binding dismisses through `dismissSheet()`, and the list's
+  toolbar gains an About button that presents the worked sheet, `AboutView` (Core
+  wording and the system's close button). Pushing a screen, returning to the root, or
+  opening an accepted deep link dismisses a sheet that is up; a rejected link leaves it.
+  The launch walk opens, audits, and closes the About sheet.
 - A per-configuration API base URL: `API_BASE_URL` in `Config/Debug.xcconfig` and a new
   `Config/Release.xcconfig` (placeholder `.invalid` hosts, the `//` written `/$()/`),
   expanded into `Info.plist` under `APIBaseURL` and parsed by Core's `AppConfiguration`,
