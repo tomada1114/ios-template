@@ -2,7 +2,7 @@
 
 What every screen in this app looks like, one value per field. The lock lives here, in
 the skill, and binds every screen; `SKILL.md` says when it is written and how it changes,
-and `refero-workflow.md`, beside this file, how its values are researched.
+and `research-workflow.md`, beside this file, how its values are researched.
 `docs/design-system.md` is the research record the values came from — the brief, the
 reviewed references, the decision ledger, and the sources — and is never a second copy
 of the lock.

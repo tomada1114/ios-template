@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The repository no longer depends on the owner's user-level skills. `designing-ui`
+  researches the design lock from the HIG and Apple's own apps
+  (`references/research-workflow.md`, formerly `refero-workflow.md`) instead of
+  `/refero-design` and the Refero MCP tools, and `AGENTS.md` and `shipping-issues` no
+  longer name the skill that generates `.claude/agents/`.
 - CI now runs one macOS job: `Test & Coverage Gate` runs the coverage floor and then
   `just build`. The `App Build & UI Test (iOS Simulator)`, `Release Smoke Launch (iOS
   Simulator)`, and `Package Tests (iOS Simulator)` jobs and their required contexts are
