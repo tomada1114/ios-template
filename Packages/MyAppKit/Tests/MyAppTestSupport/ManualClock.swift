@@ -51,7 +51,11 @@ package final class ManualClock: Clock, Sendable {
         var now = Instant(offset: .zero)
         var lastSleepID = 0
         var sleepers: [Int: Sleeper] = [:]
-        /// Sleeps whose task was cancelled before they parked.
+        /// Sleeps that have an identifier but have not reached `park` yet. Every one
+        /// leaves when it parks, so the set is empty whenever nothing is mid-call.
+        var notYetParked: Set<Int> = []
+        /// The members of `notYetParked` whose task was cancelled meanwhile. `park`
+        /// removes each one it finds, so this set drains too.
         var cancelledBeforeParking: Set<Int> = []
         var watchers: [CheckedContinuation<Duration, Never>] = []
         var sleeps: [Duration] = []
@@ -87,6 +91,7 @@ package final class ManualClock: Clock, Sendable {
     package func sleep(until deadline: Instant, tolerance _: Duration?) async throws {
         let id = state.withLock { state in
             state.lastSleepID += 1
+            state.notYetParked.insert(state.lastSleepID)
             return state.lastSleepID
         }
         try await withTaskCancellationHandler {
@@ -106,12 +111,16 @@ package final class ManualClock: Clock, Sendable {
             }
         } onCancel: {
             let parked = state.withLock { state in
-                guard let sleeper = state.sleepers.removeValue(forKey: id) else {
+                if let sleeper = state.sleepers.removeValue(forKey: id) {
+                    return sleeper.continuation as CheckedContinuation<Void, any Error>?
+                }
+                if state.notYetParked.contains(id) {
                     // Cancelled before the sleep parked: `park` finds this and throws.
                     state.cancelledBeforeParking.insert(id)
-                    return nil as CheckedContinuation<Void, any Error>?
                 }
-                return sleeper.continuation
+                // Otherwise the sleep already ended — woken by `advance(by:)`, or due
+                // when it parked — and there is nothing left to cancel or to remember.
+                return nil
             }
             parked?.resume(throwing: CancellationError())
         }
@@ -154,6 +163,7 @@ package final class ManualClock: Clock, Sendable {
 
     private func park(_ sleeper: Sleeper, id: Int) -> Parking {
         state.withLock { state in
+            state.notYetParked.remove(id)
             if state.cancelledBeforeParking.remove(id) != nil {
                 return .cancelled
             }

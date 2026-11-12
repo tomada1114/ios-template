@@ -72,11 +72,12 @@ struct RetryPolicyAttemptTests {
         (HTTPStubOutcome.fail(.timedOut), APIError.timedOut),
         (.fail(.notConnected), .offline),
         (RetryPolicyFixture.status(500), .server(status: 500)),
+        (RetryPolicyFixture.status(502), .server(status: 502)),
         (RetryPolicyFixture.status(503), .server(status: 503)),
-        (RetryPolicyFixture.status(599), .server(status: 599)),
+        (RetryPolicyFixture.status(504), .server(status: 504)),
         (RetryPolicyFixture.status(429), .rateLimited(retryAfter: nil)),
     ])
-    func `a timeout, no connection, a 5xx, and a 429 are retried`(
+    func `a timeout, no connection, a 500, 502, 503, or 504, and a 429 are retried`(
         outcome: HTTPStubOutcome,
         expected: APIError,
     ) async {
@@ -100,6 +101,10 @@ struct RetryPolicyAttemptTests {
         (RetryPolicyFixture.status(401), .unauthorized),
         (RetryPolicyFixture.status(403), .forbidden),
         (RetryPolicyFixture.status(404), .notFound),
+        // A 5xx that says the server will never do this, not that it cannot right now.
+        (RetryPolicyFixture.status(501), .server(status: 501)),
+        (RetryPolicyFixture.status(505), .server(status: 505)),
+        (RetryPolicyFixture.status(599), .server(status: 599)),
         // A 2xx whose (empty) body is not an item.
         (RetryPolicyFixture.status(200), .decoding),
     ])
@@ -135,16 +140,15 @@ struct RetryPolicyAttemptTests {
     @Test(arguments: [
         // Longer than the 1 s backoff, and honored.
         (["Retry-After": "3"], Duration.seconds(3)),
-        // 2 minutes, in either form the header allows: capped at the policy's 5 s.
-        (["retry-after": "120"], .seconds(5)),
-        (["Retry-After": "Sun, 06 Nov 1994 08:51:37 GMT"], .seconds(5)),
+        // Exactly the policy's 5 s cap.
+        (["retry-after": "5"], .seconds(5)),
         // 2 s after the pinned now.
         (["Retry-After": "Sun, 06 Nov 1994 08:49:39 GMT"], .seconds(2)),
         // Missing or unreadable: the policy's own backoff.
         ([:], .seconds(1)),
         (["Retry-After": "soon"], .seconds(1)),
     ])
-    func `a 429 waits as long as its Retry-After asks, up to the cap`(
+    func `a 429 waits exactly as long as its Retry-After asks`(
         headers: [String: String],
         expected: Duration,
     ) async throws {
@@ -158,6 +162,27 @@ struct RetryPolicyAttemptTests {
         )
         #expect(try run.result.get() == RetryPolicyFixture.item)
         #expect(run.sleeps == [expected])
+    }
+
+    @Test(arguments: [
+        // 2 minutes, in either form the header allows, against a 5 s cap.
+        ["retry-after": "120"],
+        ["Retry-After": "Sun, 06 Nov 1994 08:51:37 GMT"],
+    ])
+    func `a 429 whose Retry-After is longer than the cap is thrown at once, not retried early`(
+        headers: [String: String],
+    ) async {
+        let run = await RetryPolicyFixture.run(
+            RetryPolicyFixture.getItem,
+            answering: [
+                RetryPolicyFixture.status(429, headers: headers),
+                .respond(RetryPolicyFixture.itemResponse),
+            ],
+            waits: 0,
+        )
+        #expect(run.error == .rateLimited(retryAfter: .seconds(120)))
+        #expect(run.requests.count == 1)
+        #expect(run.sleeps.isEmpty)
     }
 
     @Test

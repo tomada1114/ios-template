@@ -10,8 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `RetryingAPIClient`, a Core service over `APIClient` that sends a failed call again:
-  only a timeout, no connection, a 5xx, or a 429; after a jittered exponential backoff
-  or the 429's `Retry-After`, up to a cap; never a `POST` or `PATCH` unless its
+  only a timeout, no connection, a 500, 502, 503, or 504, or a 429; after a jittered
+  exponential backoff, or exactly the 429's `Retry-After` (a wait longer than the cap is
+  not retried at all); never a `POST` or `PATCH` unless its
   `Endpoint` is declared `isSafeToRepeat`; and never after cancellation, which ends a
   backoff wait at once. Its numbers are `Tuning.default.retry`, a `RetryPolicy` — the
   first tunables in Core's one `Tuning` type. It waits on an injected

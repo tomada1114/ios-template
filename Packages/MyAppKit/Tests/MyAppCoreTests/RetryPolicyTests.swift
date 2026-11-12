@@ -133,20 +133,62 @@ struct RetryPolicyTests {
         #expect(delays != (1 ... 4).map { policy.delay(afterAttempt: $0, using: &otherSeed) })
     }
 
+    @Test(arguments: [
+        // Not a number, or not finite: read as 1, a constant wait.
+        (Double.infinity, 3, Duration.seconds(1)),
+        (.nan, 3, .seconds(1)),
+        // Below 1, negative included: a backoff never shrinks or goes negative.
+        (-2, 3, .seconds(1)),
+        (0.5, 3, .seconds(1)),
+        (1, 60, .seconds(1)),
+        // Far past anything a `Duration` holds: the cap, not a trap.
+        (1e40, 2, .seconds(5)),
+        (1e40, 60, .seconds(5)),
+    ])
+    func `a multiplier that is not a finite number of at least 1 is read as 1, and a huge one stops at the cap`(
+        multiplier: Double,
+        attempt: Int,
+        expected: Duration,
+    ) {
+        var policy = RetryPolicyFixture.policy
+        policy.multiplier = multiplier
+        var generator = SplitMix64(seed: 0)
+        #expect(policy.delay(afterAttempt: attempt, using: &generator) == expected)
+    }
+
+    @Test
+    func `a negative base delay or cap waits for nothing rather than a negative time`() {
+        var generator = SplitMix64(seed: 0)
+        var negativeBase = RetryPolicyFixture.policy
+        negativeBase.baseDelay = .seconds(-1)
+        #expect(negativeBase.delay(afterAttempt: 3, using: &generator) == .zero)
+
+        var negativeCap = RetryPolicyFixture.policy
+        negativeCap.maxDelay = .seconds(-1)
+        #expect(negativeCap.delay(afterAttempt: 3, using: &generator) == .zero)
+        #expect(negativeCap.delay(honoring: .zero) == .zero)
+        #expect(negativeCap.delay(honoring: .seconds(1)) == nil)
+    }
+
     // MARK: - Retry-After
 
     @Test(arguments: [
         // Longer or shorter than the backoff (1 s): the server's wait wins either way.
-        (Duration.seconds(3), Duration.seconds(3)),
+        (Duration.seconds(3), Duration?.some(.seconds(3))),
         (.milliseconds(250), .milliseconds(250)),
         (.zero, .zero),
-        // At the cap, and past it.
+        // At the cap: still honored.
         (.seconds(5), .seconds(5)),
-        (.seconds(120), .seconds(5)),
+        // Past it, by a millisecond or by minutes: no wait the policy allows would
+        // satisfy the server, so there is none.
+        (.milliseconds(5_001), nil),
+        (.seconds(120), nil),
+        // A wait is never negative.
+        (.seconds(-1), .zero),
     ])
-    func `a Retry-After is waited out exactly, up to the cap`(
+    func `a Retry-After is waited out exactly, or not at all when it is past the cap`(
         retryAfter: Duration,
-        expected: Duration,
+        expected: Duration?,
     ) {
         #expect(RetryPolicyFixture.policy.delay(honoring: retryAfter) == expected)
     }

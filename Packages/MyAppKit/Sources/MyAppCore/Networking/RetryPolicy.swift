@@ -14,7 +14,8 @@ public struct RetryPolicy: Sendable, Equatable {
     public var baseDelay: Duration
 
     /// What each further retry multiplies the previous wait by: `2` doubles it, `1`
-    /// keeps it constant.
+    /// keeps it constant. A value that is not a finite number of at least 1 is read
+    /// as 1.
     public var multiplier: Double
 
     /// The fraction of each backoff wait that is random, `0` through `1`: `0` waits the
@@ -25,8 +26,16 @@ public struct RetryPolicy: Sendable, Equatable {
     public var jitter: Double
 
     /// The longest any single wait may be: the ceiling the backoff grows to, and the
-    /// most a server's `Retry-After` is honored for.
+    /// longest `Retry-After` that is waited out — a server asking for more is not
+    /// retried at all (``delay(honoring:)``).
     public var maxDelay: Duration
+
+    /// ``multiplier`` as the backoff uses it: a finite number of at least 1. Anything
+    /// else — `nan`, an infinity, a value below 1 — is read as 1, a constant wait, so a
+    /// mistyped policy can slow a retry down but never shrink a wait below zero.
+    private var growth: Double {
+        multiplier.isFinite ? max(multiplier, 1) : 1
+    }
 
     /// A policy with every value given. The app's own is ``Tuning/default``'s.
     public init(
@@ -47,15 +56,22 @@ public struct RetryPolicy: Sendable, Equatable {
     /// server did not say: ``baseDelay`` multiplied by ``multiplier`` once per earlier
     /// retry, held to ``maxDelay``, then shortened by a random share of ``jitter``.
     ///
-    /// The generator is a parameter so a test seeds it; with no jitter nothing is drawn.
+    /// Always within zero through ``maxDelay``, whatever the policy holds: a negative
+    /// delay is read as zero, and a multiplier too large for a `Duration` stops at the
+    /// cap instead of overflowing. The generator is a parameter so a test seeds it; with
+    /// no jitter nothing is drawn.
     public func delay(
         afterAttempt attempt: Int,
         using generator: inout some RandomNumberGenerator,
     ) -> Duration {
-        var backoff = min(baseDelay, maxDelay)
+        let cap = max(maxDelay, .zero)
+        var backoff = max(min(baseDelay, cap), .zero)
+        let factor = growth
         var failures = 1
-        while failures < attempt, backoff < maxDelay {
-            backoff = min(backoff * multiplier, maxDelay)
+        // A wait of zero, or a factor of 1, never changes: there is nothing to repeat.
+        while factor > 1, attempt > failures, backoff > .zero, backoff < cap {
+            // Compared as a ratio first: multiplying a `Duration` past its range traps.
+            backoff = factor >= cap / backoff ? cap : min(backoff * factor, cap)
             failures += 1
         }
         let fraction = min(max(jitter, 0), 1)
@@ -65,11 +81,16 @@ public struct RetryPolicy: Sendable, Equatable {
         return backoff * (1 - fraction * Double.random(in: 0 ..< 1, using: &generator))
     }
 
-    /// How long to wait when the server asked for `retryAfter`: exactly that, since the
-    /// server knows when it will accept the call and the backoff is only a guess, but no
-    /// longer than ``maxDelay``. No jitter: waiting less than the server asked would
-    /// only earn another refusal.
-    public func delay(honoring retryAfter: Duration) -> Duration {
-        min(retryAfter, maxDelay)
+    /// How long to wait when the server asked for `retryAfter`: exactly that — the
+    /// server knows when it will accept the call, and the backoff is only a guess — or
+    /// `nil` when it is longer than ``maxDelay``.
+    ///
+    /// Never a shortened wait: coming back sooner than the server asked would only earn
+    /// another refusal, and count against the client. So a `Retry-After` past the cap is
+    /// not a wait at all; the caller gives up and reports the rate limit. No jitter, for
+    /// the same reason. A negative value is read as zero.
+    public func delay(honoring retryAfter: Duration) -> Duration? {
+        let wait = max(retryAfter, .zero)
+        return wait > max(maxDelay, .zero) ? nil : wait
     }
 }
