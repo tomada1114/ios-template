@@ -9,8 +9,8 @@ states the four kinds; this is the same split applied to a system API.
 | A decision — when to ask, what a denied state shows, what a delivered notification changes | Swift Testing against the port's fake | `Tests/MyAppCoreTests` | `just test`, CI `test` — inside the coverage floor |
 | The port's promises | the contract function, against the fake | `Tests/MyAppCoreTests` | `just test`, CI `test` |
 | Translation over a framework that runs on the host (SwiftData, Foundation) | the contract function and adapter-only cases, against the real adapter | `Tests/MyAppPlatformTests` | `just test`, CI `test` |
-| Translation through an iOS-only API, or one that needs an app process | the same, inside `#if os(iOS)` | `Tests/MyAppPlatformTests` | `just test-ios`, local `just check` only — compiled away under `swift test` |
-| The wiring in `App/` — the adapter handed over, a delegate or task handler registered | the launch test, when that wiring is what could break | `LaunchUITests/` | `just uitest`, local `just check` only |
+| Translation through an iOS-only API, or one that needs an app process | the same, inside `#if os(iOS)` | `Tests/MyAppPlatformTests` | `just test-ios`, local `just check` (platform-adapter paths) and `just check-release` only — compiled away under `swift test` |
+| The wiring in `App/` — the adapter handed over, a delegate or task handler registered | the launch test, when that wiring is what could break | `LaunchUITests/` | `just uitest`, local `just check` (UI and app paths) and `just check-release` only |
 | A real prompt, a delivered push, the camera, a background launch | none — a person on the Simulator or a device | the pull request | nowhere; the evidence is a screenshot or a log excerpt (`running-the-app`) |
 
 ## Reading the table
@@ -18,10 +18,11 @@ states the four kinds; this is the same split applied to a system API.
 - **The top row is the default.** If an adapter seems to need a test for a decision,
   the decision is in the wrong module: move it into Core. Adapters stay
   translation-only precisely so the rows below it never hold the only test of a rule.
-- **`just check` runs `just test-ios` only for a simulator-relevant change.** It runs
-  when the branch touches a path `scripts/simulator-relevant.sh` lists (`Packages/`
-  among them, so code behind `#if os(iOS)` always qualifies), and the coverage floor
-  never measures it. `CHECK_ALL=1 just check` or a plain `just test-ios` forces it.
+- **`just check` runs `just test-ios` only for a platform-adapter change.** It runs
+  when the branch touches a path `scripts/simulator-relevant.sh --check test-ios` lists
+  (`MyAppPlatform`, its tests, `MyAppTestSupport`, `Package.swift`; `MyAppCore` holds no
+  `#if os(iOS)` code, so it is not among them), and the coverage floor never measures
+  it. `CHECK_ALL=1 just check` or a plain `just test-ios` forces it.
 - **"Runs on the host" is checked, not assumed.** A framework can compile for macOS and
   still refuse a test process: `UNUserNotificationCenter.current()` raises
   `bundleProxyForCurrentProcess is nil` without an app bundle (checked 2026-09-30).

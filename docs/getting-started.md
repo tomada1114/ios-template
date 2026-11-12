@@ -24,12 +24,12 @@ mise refuses to read config files it has not been told to trust, so a fresh clon
 needs `mise trust` first. `just install` then runs `mise install` (SwiftLint,
 SwiftFormat, XcodeGen, xcbeautify, actionlint, ShellCheck, typos — all pinned), points
 `core.hooksPath` at `.githooks/` for the pre-commit gate, and generates
-`MyApp.xcodeproj`. `just check` runs the full local gate once, so you start from green.
+`MyApp.xcodeproj`. `just check` runs the pull-request gate once, so you start from green.
 
 ## Everyday Commands
 
 ```bash
-just check     # the full local gate: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → analyze → test-ios, when simulator-relevant)
+just check     # the pull-request gate: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run, when the UI or app paths changed) → (test-ios, when the platform-adapter paths changed)
 just test      # Swift Testing suites on the host Mac + 80% line / 75% function coverage floors on MyAppCore
 just test-fast TodoItemTests   # only the matching tests, no coverage floor (while iterating)
 just uitest    # the XCUITest launch test on an iOS Simulator

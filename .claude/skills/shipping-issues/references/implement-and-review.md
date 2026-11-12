@@ -153,8 +153,10 @@ Either path writes code this session did not write, so **reading what the fix pa
 changed is the safeguard**: `git -C <workdir> diff <impl-commit>..HEAD`, not the whole
 branch. Revert what it got wrong. Read the findings it would *not* apply (`skipped` from
 `--fix`, `REJECTED` from the sub-agent) -- neither is clean; real-but-out-of-scope goes
-to step 8. Re-run the verification command **in `<workdir>`** only if something
-actually changed, then push.
+to step 8. Only if something actually changed, run **in `<workdir>`** the narrowest
+check that covers what the fix touched (the touched area's `.claude/rules/` file, else
+AGENTS.md's "Validating a change" table) -- not the full verification command, which
+ran once after implementation -- then push.
 
 Record, per branch: `--event review --field issue=<n> --field
 status=<code-review|code-review+agent-fix|DELEGATED> --field effort=<medium|high>

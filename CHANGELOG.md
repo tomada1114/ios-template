@@ -127,6 +127,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The checks run in three tiers, so a pull request no longer pays for every clean build.
+  `just check`, run once before a pull request, now runs each simulator check only for
+  the paths it exercises (`scripts/simulator-relevant.sh --check`): `uitest-build` and
+  `uitest-run` for `App/`, `LaunchUITests/`, `MyAppUI`, `Config/`, `project.yml`,
+  `.xcode-version`, or `scripts/simulator-destination.sh`, and `test-ios` for
+  `MyAppPlatform`, its tests, `MyAppTestSupport`, `Package.swift`, `.xcode-version`, or
+  `scripts/simulator-destination.sh` (both also for the `justfile`, `mise.toml`, a
+  `Package.resolved`, and `scripts/run-throttled.sh`); a `MyAppCore`-only change runs neither, and
+  `CHECK_ALL=1` or a git failure runs both (an empty change set runs neither). It no longer runs
+  `smoke`, `build-device`, or `analyze`. CI's `Test & Coverage Gate` runs only
+  `scripts/coverage.sh`, within a 20-minute timeout, and no longer runs `just
+  build-device` or `just analyze`. The new `just check-release` runs `CHECK_ALL=1 just
+  check`, then `just smoke`, `just build-device`, and `just analyze`: run it on `main`
+  before a release tag and after a batch of merges (`shipping-issues all` runs it once at
+  the end of a run and files what fails), so what those checks find was merged earlier.
 - `RetryingAPIClient` honors a 503's `Retry-After` as it does a 429's: it waits exactly
   that long, falls back to its backoff when the header is missing or unreadable, and
   throws a wait longer than `RetryPolicy.maxDelay` at once instead of retrying early (a

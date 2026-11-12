@@ -75,7 +75,7 @@ Read the block; do not re-derive it ([plan-output.md](references/plan-output.md)
 - `preflight: BLOCKED` stops the run; `tree: DIRTY` is a question to ask now;
   `existing-worktrees: BLOCKED` is a stop condition.
 - `verify-check:` is a guess; confirm it. Here it is `just check` (`just test` skips
-  lint, the harness checks, and the build).
+  lint, the harness checks, and the simulator checks the change touches).
 - `needs-design:` -> spawn step 8b now. `stale-labels:` -> run its command unasked.
 - `labels: COMPLETE` -> skip step 2. `github: write=no` -> report instead of writing.
 
@@ -106,7 +106,12 @@ rule for each area the issue touches before designing. Take a baseline
 of the confirmed verify command (serial: once on the branch; parallel: through
 `worktree_setup.sh`, the first worktree alone). Spawn
 [agents/implementation.md](references/agents/implementation.md) per issue, a batch's
-spawns in one message. Judge each result here: a `not-met` `ACCEPTANCE` line, an
+spawns in one message. **The full verify command runs once per branch** for the change:
+after implementation, before the push the PR opens from -- the implementer iterates on
+the narrowest checks and runs `just check` last. Every implementer uses the simulator
+`scripts/simulator-destination.sh` picks (no per-worker `SIMULATOR_DEVICE`) and shuts
+down each simulator it booted (`xcrun simctl shutdown <udid>`) when done: several booted
+devices exhaust the Mac's memory. Judge each result here: a `not-met` `ACCEPTANCE` line, an
 unaccepted `UNRESOLVED` call, or a user-facing change without a `CHANGELOG.md` entry
 under `[Unreleased]` goes back. At most 2 resumes; a third miss is `NEEDS-CLARIFICATION`
 ([implement-and-review.md](references/implement-and-review.md#3-implement), [recovery.md](references/recovery.md)).
@@ -122,7 +127,7 @@ second.** **`medium` is the standing default**, `high` only on the triggers in
 [cost-discipline.md](references/cost-discipline.md#code-review-effort), never `low` or
 `ultra`. `--fix` is serial-only; in parallel, numbered findings go to one `executor` per
 branch ([agents/review-fix.md](references/agents/review-fix.md)). Read what the fix
-changed, run the narrowest check that covers it (the touched area's `.claude/rules/` file, else AGENTS.md's Validating table), push, record `--event review`
+changed, run the narrowest check that covers it (the touched area's `.claude/rules/` file, else AGENTS.md's Validating table) -- never the full `just check` again -- push, record `--event review`
 ([implement-and-review.md](references/implement-and-review.md#4-review-the-branch)).
 
 ## 5. Open the PR
@@ -152,7 +157,10 @@ Run `land_pr.sh <pr> --issue <n>` and read `result:` and `issue:`
 as `triaging-issues` asks of whoever lands a blocker: re-plan with `--refresh` and run
 its `stale-labels:` command, which drops `blocked: dependency` wherever every `Depends
 on` blocker is now closed. Then continue with the next issue
-([pr-ci-merge.md](references/pr-ci-merge.md#7-merge-and-confirm-the-issue-closed)).
+([pr-ci-merge.md](references/pr-ci-merge.md#7-merge-and-confirm-the-issue-closed)). A
+branch brought up to date by merging the default branch reruns `just check` only when
+the merge touched a file besides `CHANGELOG.md`
+([recovery.md](references/recovery.md#bringing-the-rest-of-a-parallel-batch-up-to-date)).
 
 ## 8. Close out the findings the run turned up
 
@@ -176,6 +184,20 @@ re-plans each candidate by number) and ship step 8's follow-ups and step 8b's un
 issues through steps 3-8 when all hold: **depth 1**, the
 [readiness gate](references/dependency-triage.md#readiness-gate), and
 [budget left](references/cost-discipline.md#run-budget). Otherwise name it at step 10.
+
+## 8d. Run the release checks on the default branch
+
+Only in an `all` run that merged at least one pull request -- a single-issue run skips
+this step, because the sweep costs more than the issue and is owed once per batch, not
+per pull request. Once, after the last merge (8c's included), in the main checkout on
+the up-to-date default branch: `just check-release`, output redirected to
+`<runstate>/verify/check-release.log`, with `run_in_background` -- it runs several clean
+builds and outlasts the 600-second cap -- then wait for its completion notification, and shut down the simulators it booted.
+It runs what no pull request did (`just smoke`, `just build-device`, `just analyze`,
+and every simulator check), so what it finds was merged by this run or earlier. A
+failure is not fixed in this run: file each distinct one with `file_followup.py`
+([filing-followups.md](references/filing-followups.md)), record `--event followup`, and
+state the result at step 10.
 
 ## 9. Clean up
 

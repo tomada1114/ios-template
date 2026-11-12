@@ -59,16 +59,14 @@ check_require_file "${CI}"
 #                 hook runs, scripts/lint.sh, directly.
 #   fmt           rewrites files; CI checks the same formatting read-only through
 #                 scripts/lint.sh's `swiftformat --lint` (`just lint`).
-#   uitest-build, uitest-run, smoke, test-ios
-#                 the simulator checks run only here, to keep CI's macOS minutes
-#                 minimal: CI is the merge record for coverage and the app's compiles
-#                 alone, and `just check` runs these when scripts/simulator-relevant.sh
-#                 calls the change relevant. (build-device and analyze sit in the
-#                 same simulator-relevant tail but are no exception: CI runs them too.)
-LOCAL_ONLY="verify-hooks fmt uitest-build uitest-run smoke test-ios"
-# CI_ONLY — recipes CI runs that `just check` deliberately leaves out: none. (`build`
-#   was one until #84: `just analyze` compiles the same Debug app for the same generic
-#   iOS Simulator destination, clean, so CI no longer runs `just build`.)
+#   uitest-build, uitest-run, test-ios
+#                 the simulator checks run only locally, to keep a pull request's
+#                 macOS minutes to one `swift test`: `just check` runs each when
+#                 `scripts/simulator-relevant.sh --check` calls the change relevant.
+#                 (smoke, build-device, and analyze are on neither side: `just
+#                 check-release` runs them, before a release.)
+LOCAL_ONLY="verify-hooks fmt uitest-build uitest-run test-ios"
+# CI_ONLY — recipes CI runs that `just check` deliberately leaves out: none.
 CI_ONLY=""
 # CI_ONLY_JOBS — whole jobs outside the comparison:
 #   bootstrap-smoke  renames a throwaway clone of the template and builds it; it is a

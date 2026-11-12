@@ -149,15 +149,28 @@ test-ios:
 smoke:
     mise exec -- scripts/run-throttled.sh --lock -- scripts/smoke_launch.sh
 
-# Run all checks: verify hooks, format, lint, script tests, harness checks, test, then
-# the simulator checks (uitest-build, uitest-run, smoke, build-device, analyze, test-ios) when
-# the change since origin/main touches a path they exercise (scripts/simulator-relevant.sh
-# holds the list). CHECK_ALL=1 runs them regardless; CHECK_JOBS and CHECK_QOS set the
-# throttle (scripts/run-throttled.sh). uitest-build is the Debug compile, so `build` is
-# not run.
-[doc("Run all checks: verify-hooks, fmt, lint, test-scripts, check-harness, test, and the simulator checks when relevant")]
+# Run the checks a pull request needs: verify hooks, format, lint, script tests, harness
+# checks, test, then each simulator check the change since origin/main touches
+# (scripts/simulator-relevant.sh --check holds the path lists): the launch UI test for a
+# UI or app change, the iOS package tests for a platform-adapter change. CHECK_ALL=1 runs
+# both regardless; CHECK_JOBS and CHECK_QOS set the throttle (scripts/run-throttled.sh).
+# smoke, build-device, and analyze are not here: `just check-release` runs them.
+[doc("Run the pull-request checks: verify-hooks, fmt, lint, test-scripts, check-harness, test, and the simulator checks the change touches")]
 check: verify-hooks fmt lint test-scripts check-harness test
-    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just build-device && just analyze && just test-ios; else echo "Skipped uitest-build, uitest-run, smoke, build-device, analyze, test-ios (CHECK_ALL=1 runs them)"; fi
+    @if [ "$(scripts/simulator-relevant.sh --check uitest)" != false ]; then just uitest-build && just uitest-run; else echo "Skipped uitest-build, uitest-run (CHECK_ALL=1 runs them)"; fi
+    @if [ "$(scripts/simulator-relevant.sh --check test-ios)" != false ]; then just test-ios; else echo "Skipped test-ios (CHECK_ALL=1 runs it)"; fi
+
+# Run everything, on the commit a release is cut from: `just check` with every simulator
+# check forced, then the checks no pull request runs — the Release launch, the Release
+# device-SDK build, and the analyzer rules. Long by design (several clean builds); what
+# it finds was merged earlier, so run it on main before tagging a release, and after a
+# batch of merges.
+[doc("Run every check, the release-only ones included: check (all simulator checks), smoke, build-device, analyze")]
+check-release:
+    CHECK_ALL=1 just check
+    just smoke
+    just build-device
+    just analyze
 
 # Remove build artifacts and the generated project
 clean:
