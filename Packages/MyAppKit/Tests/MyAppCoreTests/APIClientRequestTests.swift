@@ -118,7 +118,7 @@ struct APIClientRequestTests {
             try await client.send(Endpoint<RemoteItem>(
                 method: .post,
                 path: "items",
-                body: UnencodableBody(),
+                body: UnencodableBody(ratio: .nan),
             ))
         }
         #expect(await fake.requests.isEmpty)

@@ -45,7 +45,7 @@ screen looks like — the design lock, a token's value, custom glass — is the
   owns a portless model holds it in `@State`, set from an initializer parameter so a
   preview can inject a state.
 - A binding to state the view may not set is built from an action, as
-  `failureAlert(_:dismiss:)` (`FailureAlert.swift`) does. Never widen a `private(set)`
+  `RootView`'s sheet binding (`presentedSheet`) does. Never widen a `private(set)`
   so `@Bindable` can reach it.
 - Not used: `ObservableObject`, `@StateObject`, `@ObservedObject`, `@EnvironmentObject`.
 
@@ -114,7 +114,9 @@ design-lock decision, never a per-screen one.
 - `NavigationSplitView` only for a regular-width iPad layout the lock asks for.
 - Whether something is presented is view-model state (a `Bool`, or an optional whose
   presence presents it), bound through an action-built `Binding` so every dismissal
-  goes through the action.
+  goes through the action. A failure alert is the exception that proves it: only its
+  button is the person's dismissal, so its binding ignores SwiftUI's write-back, which
+  also comes when the presentation is torn down by code (`FailureAlert.swift`).
 - A sheet is an `AppSheet` case, presented by `NavigationModel.present(_:)` and
   dismissed by `dismissSheet(_:)`, which names the sheet that closed. `RootView` holds
   the app's only `.sheet(item:)`, outside the stack, bound through a `Binding` whose
@@ -124,10 +126,13 @@ design-lock decision, never a per-screen one.
   `@State`. A sheet's own title bar and close button come from a plain
   `NavigationStack { … }` inside it (`AboutView`), which pushes nothing; its close
   button is the system's `Button(role: .close)`.
-- A failure is presented once, from `RootView`, outside the stack, with
-  `.failureAlert(_:dismiss:)`: an alert on a screen inside the stack does not present
-  while another screen is pushed over it (#78). A feature's failure type adopts Core's
-  `PresentableFailure`; a second feature adds one more `.failureAlert` in `RootView`.
+- A failure is presented from `RootView` only, by `failureAlerts(on:isTopmost:)`, which
+  `RootView` applies to each presentation layer — outside the stack, since an alert on a
+  screen inside the stack does not present while another screen is pushed over it
+  (#78), and on the `sheet(for:)` content, since nothing presents from a view that is
+  already presenting a sheet (#124) — and which hands the failure only to the topmost
+  layer. A feature's failure type adopts Core's `PresentableFailure`, and the feature
+  adds its `.failureAlert` once, inside `failureAlerts(on:isTopmost:)`.
 - Sheet sizing (`.presentationDetents`) only as the lock says.
 
 ## Size classes, Dynamic Type, safe areas, keyboard

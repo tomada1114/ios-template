@@ -15,9 +15,10 @@ struct NewRemoteItem: Encodable, Sendable {
     var dueAt: Date
 }
 
-/// A body `JSONEncoder` refuses: its default non-conforming-float strategy throws on NaN.
+/// A body `JSONEncoder` refuses: its default non-conforming-float strategy throws on NaN,
+/// so a test builds it with `ratio: .nan`.
 struct UnencodableBody: Encodable, Sendable {
-    var ratio = Double.nan
+    let ratio: Double
 }
 
 /// Shared values and builders for the `APIClient` suites.

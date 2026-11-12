@@ -82,6 +82,16 @@ case_staged_relevant() {
     answer_is true
 }
 
+case_swiftlint_config_relevant() {
+    local repo
+    unset CHECK_ALL
+    repo=$(repo_on_branch)
+    commit_file "${repo}" .swiftlint.yml
+    cd "${repo}"
+    capture "${BASH}" "${SCRIPT}"
+    answer_is true
+}
+
 case_check_all() {
     local repo
     repo=$(repo_on_branch)
@@ -153,6 +163,7 @@ run_case "a committed relevant change prints true" case_relevant_commit
 run_case "only irrelevant changes print false, with a notice" case_irrelevant_only
 run_case "an untracked relevant file prints true" case_untracked_relevant
 run_case "a staged relevant file prints true" case_staged_relevant
+run_case "a .swiftlint.yml change prints true (analyze reads its analyzer_rules)" case_swiftlint_config_relevant
 run_case "CHECK_ALL=1 prints true" case_check_all
 run_case "an empty change set prints true" case_empty_change_set
 run_case "a bad base ref prints true" case_bad_base

@@ -5,9 +5,14 @@ strict: true
 opt_in_rules:
   - all
 
-# No analyzer_rules: they only run under `swiftlint analyze` with a compiler
-# log, which no gate here invokes — listing them would advertise checks that
-# never fire. Revisit if a build-log-producing CI step is ever added.
+# Analyzer rules run only under `swiftlint analyze`, never `swiftlint lint` (so not in
+# `just lint`, the hook, or CI's lint job): `just analyze` (scripts/analyze.sh, in
+# `just check` and CI's test job) feeds them the compiler log of a clean iOS Simulator
+# build-for-testing of the app and of the package, tests included. `public`
+# declarations are skipped (unused_declaration's default): they are the package's API.
+analyzer_rules:
+  - unused_declaration  # dead internal/private code no file references
+  - unused_import       # an import no symbol in the file needs
 
 disabled_rules:
   - todo                        # TODOs are allowed during development

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A failure that arrives while a sheet is up now presents over the sheet: `RootView`
+  attaches the same failure alert to the sheet's content, since SwiftUI presents no
+  alert from a view that is already presenting a sheet. Dismissing it leaves the sheet
+  up. The failure launch test opens the About sheet over a failing toggle still in
+  flight (a new Debug-only `-delayFailedUpdates <seconds>` argument holds its failure
+  back) and asserts the alert presents over the sheet, that OK leaves the sheet up, and
+  that a deep link closing the sheet under the alert brings the alert back over the
+  screen it pushed. Only an alert's button clears its failure now, so a sheet closed by
+  code no longer discards a failure the person never saw dismissed.
 - The app now ships `App/PrivacyInfo.xcprivacy`, which declares the `UserDefaults`
   required-reason API (`NSPrivacyAccessedAPICategoryUserDefaults`, reason `CA92.1`)
   that `UserDefaultsPreferences` calls, with no tracking and no collected data, so an
@@ -30,6 +39,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`{"routes":[{"id":"<uuid>","screen":"todoDetail"}],"version":1}`) is contract from
   here on, pinned by a literal in `NavigationModelRestorationTests`. UI test launches
   (`-uiTesting`) neither store nor restore a path.
+- `just analyze`: `swiftlint analyze --strict` with `.swiftlint.yml`'s new
+  `analyzer_rules` (`unused_declaration`, `unused_import`), over the compiler log of a
+  clean Debug iOS Simulator `build-for-testing` of the app and of every local package
+  that `scripts/analyze.sh` makes itself. It fails when any Swift file is in no
+  `swiftc … -module-name` compile command, rather than letting SwiftLint skip it
+  silently, and refuses a checkout path with a space. It runs in `just check`'s
+  simulator-relevant tail (now also triggered by a `.swiftlint.yml` change) and as a step
+  of CI's `Test & Coverage Gate`, which no longer runs `just build`: analyze's app build
+  is the same Debug simulator compile. The unused imports and two dead declarations it
+  found are removed; `App/` now builds its `APIClient` in `init()` instead of keeping a
+  stored property nothing reads.
 - The list refreshes quietly when a window comes back from the background, so changes
   made while the app was away show up. Each window keeps a `SceneLifecycleModel`
   (`AppModel.makeSceneLifecycleModel()`) and forwards its `scenePhase` to it as a

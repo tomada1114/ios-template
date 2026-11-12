@@ -1,4 +1,3 @@
-import Foundation
 import MyAppCore
 import MyAppTestSupport
 import Testing
@@ -124,7 +123,11 @@ struct RetryPolicyAttemptTests {
 
     @Test
     func `a body that cannot be encoded is thrown at once and nothing is sent`() async {
-        let endpoint = Endpoint<RemoteItem>(method: .put, path: "items/1", body: UnencodableBody())
+        let endpoint = Endpoint<RemoteItem>(
+            method: .put,
+            path: "items/1",
+            body: UnencodableBody(ratio: .nan),
+        )
         let run = await RetryPolicyFixture.run(
             endpoint,
             answering: [.respond(RetryPolicyFixture.itemResponse)],

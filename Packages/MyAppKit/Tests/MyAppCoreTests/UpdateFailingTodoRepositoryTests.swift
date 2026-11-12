@@ -37,6 +37,74 @@
             #expect(await inner.snapshot == [stored])
         }
 
+        @Test(.timeLimit(.minutes(1)))
+        func `a delayed failure waits its delay before it throws`() async throws {
+            let stored = try Self.item("Buy milk")
+            let inner = InMemoryTodoRepository(items: [stored])
+            let clock = ManualClock()
+            let repository = UpdateFailingTodoRepository(
+                wrapping: inner,
+                failureDelay: .seconds(3),
+                clock: clock,
+            )
+            var toggled = stored
+            toggled.isDone = true
+            let save = Task {
+                try await repository.save(toggled)
+            }
+
+            #expect(await clock.nextSleep() == .seconds(3))
+            clock.advance(by: .seconds(3))
+
+            await #expect(throws: TodoRepositoryError.storageFailure) {
+                try await save.value
+            }
+            #expect(clock.sleeps == [.seconds(3)])
+            #expect(await inner.snapshot == [stored])
+        }
+
+        @Test(.timeLimit(.minutes(1)))
+        func `a delayed failure throws at once when its task is cancelled`() async throws {
+            let stored = try Self.item("Buy milk")
+            let inner = InMemoryTodoRepository(items: [stored])
+            let clock = ManualClock()
+            let repository = UpdateFailingTodoRepository(
+                wrapping: inner,
+                failureDelay: .seconds(3),
+                clock: clock,
+            )
+            var toggled = stored
+            toggled.isDone = true
+            let save = Task {
+                try await repository.save(toggled)
+            }
+
+            _ = await clock.nextSleep()
+            save.cancel()
+
+            await #expect(throws: TodoRepositoryError.storageFailure) {
+                try await save.value
+            }
+            #expect(await inner.snapshot == [stored])
+        }
+
+        @Test
+        func `a delay never holds back a save of a new item`() async throws {
+            let inner = InMemoryTodoRepository()
+            let clock = ManualClock()
+            let repository = UpdateFailingTodoRepository(
+                wrapping: inner,
+                failureDelay: .seconds(3),
+                clock: clock,
+            )
+            let item = try Self.item("Buy milk")
+
+            try await repository.save(item)
+
+            #expect(clock.sleeps.isEmpty)
+            #expect(await inner.snapshot == [item])
+        }
+
         @Test
         func `a failing read fails the save before anything is stored`() async throws {
             let inner = InMemoryTodoRepository()

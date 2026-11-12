@@ -1,4 +1,3 @@
-import Foundation
 import MyAppCore
 import MyAppTestSupport
 

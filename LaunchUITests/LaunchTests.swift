@@ -14,14 +14,6 @@ import XCTest
 /// XCTest by necessity — Apple has not ported UI automation to Swift Testing.
 /// All other tests use Swift Testing in Packages/MyAppKit.
 final class LaunchTests: XCTestCase {
-    /// The app's URL scheme, `DeepLink.scheme` in Core, which this target cannot import.
-    /// One unsplit literal, so `scripts/bootstrap.sh` renames it with that constant and
-    /// with the scheme `project.yml` registers.
-    private static let scheme = "my-app"
-
-    /// The prefix of a row toggle's identifier; the rest is the item's `UUID`.
-    private static let rowTogglePrefix = "toggle-"
-
     /// One launch walks every scenario in turn, because each relaunch costs tens of
     /// seconds on CI (#57). The steps are ordered so none undoes what a later one needs:
     /// audit the empty list, add, audit the list, open the About sheet, audit it and close
@@ -83,18 +75,24 @@ final class LaunchTests: XCTestCase {
             }
     }
 
-    /// A failure presents over whichever screen is on top (#78): a toggle that fails on
-    /// the pushed detail screen shows its alert there, and dismissing it leaves the
-    /// detail screen showing the item unchanged.
+    /// A failure presents over whichever screen is on top (#78), and over a sheet that is
+    /// up (#124): a toggle that fails on the pushed detail screen shows its alert there,
+    /// and dismissing it leaves the detail screen showing the item unchanged; a toggle on
+    /// the list whose failure arrives once the About sheet is up shows its alert over the
+    /// sheet, and dismissing it leaves the sheet up; and a deep link that closes the sheet
+    /// under that alert brings the failure back over the screen it pushed.
     ///
     /// A launch of its own, because `-failUpdates` (Debug-only, `App/MyAppApp.swift`)
     /// fails every toggle for the whole launch, and the walk above needs one to succeed.
+    /// `-delayFailedUpdates` makes each failure arrive `Timeout.failedUpdateDelay` after
+    /// the tap, the time the sheet steps need to open the sheet over a save in flight.
     @MainActor
-    func testAFailedToggleOnTheDetailScreenPresentsTheFailureThere() {
+    func testAFailedTogglePresentsTheFailureOverTheDetailScreenAndOverASheet() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = [
             "-uiTesting", "-failUpdates",
+            "-delayFailedUpdates", String(Int(Timeout.failedUpdateDelay)),
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
@@ -103,6 +101,13 @@ final class LaunchTests: XCTestCase {
         XCTContext.runActivity(named: "Fail a toggle on the item's detail") { _ in
             failATogglePresentsTheFailureOnTheDetail(in: app)
         }
+        XCTContext.runActivity(named: "Fail a toggle that lands while the About sheet is up") { _ in
+            failATogglePresentsTheFailureOverTheAboutSheet(in: app)
+        }
+        try XCTContext
+            .runActivity(named: "Close the sheet under its alert by deep link") { _ in
+                try closeTheSheetUnderItsAlertByDeepLink(in: app)
+            }
     }
 
     @MainActor
@@ -119,7 +124,7 @@ final class LaunchTests: XCTestCase {
 
         let alert = app.alerts["Something Went Wrong"]
         XCTAssertTrue(
-            alert.waitForExistence(timeout: Timeout.elementAppears),
+            alert.waitForExistence(timeout: Timeout.delayedFailure),
             "a toggle that fails on the detail screen should present the failure there",
         )
         XCTAssertTrue(
@@ -134,22 +139,10 @@ final class LaunchTests: XCTestCase {
             "Mark as Done",
             "the item should stay open after its save failed",
         )
-    }
-
-    @MainActor
-    private func addAnItem(in app: XCUIApplication) {
-        let item = app.staticTexts["Buy milk"]
-        let field = app.textFields["newItemField"]
+        app.navigationBars.buttons["BackButton"].tap()
         XCTAssertTrue(
-            field.waitForExistence(timeout: Timeout.launch),
-            "the list should show its new-item field",
-        )
-        focus(field)
-        field.typeText("Buy milk")
-        app.buttons["addButton"].tap()
-        XCTAssertTrue(
-            item.waitForExistence(timeout: Timeout.elementAppears),
-            "the added item should appear in the list",
+            app.textFields["newItemField"].waitForExistence(timeout: Timeout.elementAppears),
+            "the back button should return to the list",
         )
     }
 
@@ -169,7 +162,7 @@ final class LaunchTests: XCTestCase {
         )
         waitForThePushToSettle(in: app)
         try auditAccessibility(of: app)
-        app.navigationBars.buttons.firstMatch.tap()
+        app.navigationBars.buttons["BackButton"].tap()
         XCTAssertTrue(
             app.textFields["newItemField"].waitForExistence(timeout: Timeout.elementAppears),
             "the back button should return to the list",
@@ -221,51 +214,11 @@ final class LaunchTests: XCTestCase {
         waitForThePushToSettle(in: app)
         try auditAccessibility(of: app)
 
-        app.navigationBars.buttons.firstMatch.tap()
+        app.navigationBars.buttons["BackButton"].tap()
         XCTAssertTrue(
             app.textFields["newItemField"].waitForExistence(timeout: Timeout.elementAppears),
             "the back button should return from a linked screen to the list",
         )
-    }
-
-    /// Opens `url` as a tap on a link elsewhere would: the system resolves the scheme to
-    /// the app the build registered it for and hands the link to the running app.
-    /// `XCUIApplication.open(_:)` would relaunch the app instead, emptying its in-memory
-    /// store. The first link of the scheme on a simulator asks "Open in …?" over the app;
-    /// later ones open directly. So it waits for whichever comes first, `target` or the
-    /// prompt, and answers the prompt only when it shows — with its last button, the
-    /// confirming one after Cancel, because its labels follow the simulator's language.
-    ///
-    /// - Returns: whether `target` appeared within `Timeout.elementAppears` of the link
-    ///   opening (or of the prompt being answered).
-    @MainActor
-    private func openFromTheSystem(_ url: URL, expecting target: XCUIElement) -> Bool {
-        XCUIDevice.shared.system.open(url)
-        let prompt = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
-        var deadline = Date.now.addingTimeInterval(Timeout.elementAppears)
-        while Date.now < deadline {
-            if target.waitForExistence(timeout: Timeout.poll) {
-                return true
-            }
-            if prompt.exists {
-                let buttons = prompt.buttons
-                buttons.element(boundBy: buttons.count - 1).tap()
-                deadline = Date.now.addingTimeInterval(Timeout.elementAppears)
-            }
-        }
-        return target.exists
-    }
-
-    /// The link that opens the item with `id`: the one shape `DeepLink` accepts.
-    private func link(toItemWithID id: UUID) -> URL {
-        var components = URLComponents()
-        components.scheme = Self.scheme
-        components.host = "todo"
-        components.path = "/\(id.uuidString)"
-        guard let url = components.url else {
-            preconditionFailure("could not form a link to item \(id)")
-        }
-        return url
     }
 
     @MainActor
@@ -356,5 +309,74 @@ extension LaunchTests {
             "Return on the empty field should dismiss the keyboard",
         )
         try auditAccessibility(of: app)
+    }
+}
+
+/// What both launches and the sheet steps (`LaunchTests+AboutSheet.swift`) share, outside
+/// the class body so they can be internal.
+extension LaunchTests {
+    /// The app's URL scheme, `DeepLink.scheme` in Core, which this target cannot import.
+    /// One unsplit literal, so `scripts/bootstrap.sh` renames it with that constant and
+    /// with the scheme `project.yml` registers.
+    static let scheme = "my-app"
+
+    /// The prefix of a row toggle's identifier; the rest is the item's `UUID`.
+    static let rowTogglePrefix = "toggle-"
+
+    @MainActor
+    func addAnItem(in app: XCUIApplication) {
+        let item = app.staticTexts["Buy milk"]
+        let field = app.textFields["newItemField"]
+        XCTAssertTrue(
+            field.waitForExistence(timeout: Timeout.launch),
+            "the list should show its new-item field",
+        )
+        focus(field)
+        field.typeText("Buy milk")
+        app.buttons["addButton"].tap()
+        XCTAssertTrue(
+            item.waitForExistence(timeout: Timeout.elementAppears),
+            "the added item should appear in the list",
+        )
+    }
+
+    /// Opens `url` as a tap on a link elsewhere would: the system resolves the scheme to
+    /// the app the build registered it for and hands the link to the running app.
+    /// `XCUIApplication.open(_:)` would relaunch the app instead, emptying its in-memory
+    /// store. The first link of the scheme on a simulator asks "Open in …?" over the app;
+    /// later ones open directly. So it waits for whichever comes first, `target` or the
+    /// prompt, and answers the prompt only when it shows — with its last button, the
+    /// confirming one after Cancel, because its labels follow the simulator's language.
+    ///
+    /// - Returns: whether `target` appeared within `Timeout.elementAppears` of the link
+    ///   opening (or of the prompt being answered).
+    @MainActor
+    func openFromTheSystem(_ url: URL, expecting target: XCUIElement) -> Bool {
+        XCUIDevice.shared.system.open(url)
+        let prompt = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        var deadline = Date.now.addingTimeInterval(Timeout.elementAppears)
+        while Date.now < deadline {
+            if target.waitForExistence(timeout: Timeout.poll) {
+                return true
+            }
+            if prompt.exists {
+                let buttons = prompt.buttons
+                buttons.element(boundBy: buttons.count - 1).tap()
+                deadline = Date.now.addingTimeInterval(Timeout.elementAppears)
+            }
+        }
+        return target.exists
+    }
+
+    /// The link that opens the item with `id`: the one shape `DeepLink` accepts.
+    func link(toItemWithID id: UUID) -> URL {
+        var components = URLComponents()
+        components.scheme = Self.scheme
+        components.host = "todo"
+        components.path = "/\(id.uuidString)"
+        guard let url = components.url else {
+            preconditionFailure("could not form a link to item \(id)")
+        }
+        return url
     }
 }
