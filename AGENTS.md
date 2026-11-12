@@ -50,7 +50,7 @@ just test-fast TodoItemTests  # Run only the matching tests, no coverage floor (
 just test-scripts  # Run the plain-bash tests for scripts/ and the skills' Python suites (scripts/tests/run.sh)
 just check-harness # Re-assert the harness's claims about itself (scripts/checks/run-all.sh)
 just build         # Build the app (Debug) for the iOS Simulator
-just build-device  # Build Release for the iOS device SDK, unsigned, and assert the app bundle exists
+just build-device  # Build Release for the iOS device SDK, unsigned, and assert the app and its privacy manifest
 just analyze       # Run swiftlint analyze (unused declarations and imports) over a clean iOS Simulator build of the app and the package (scripts/analyze.sh)
 just run           # Build, then install and launch it on an iOS Simulator (SIMULATOR_DEVICE picks one)
 just run-device    # Build (Debug), then install and launch it on a connected iPhone (Config/Local.xcconfig; IOS_DEVICE picks one)
@@ -155,7 +155,8 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   iPad, no capability or entitlement, no permission prompt or usage-description key, and
   one required-reason declaration in `App/PrivacyInfo.xcprivacy`: `UserDefaults`, reason
   `CA92.1`, which `UserDefaultsPreferences` needs to keep settings such as Hide Completed
-  (no tracking, no collected data; `PrivacyManifestTests`). An app rewrites
+  (no tracking, no collected data; `PrivacyManifestTests`, with `RequiredReasonAPITests`
+  holding every required-reason API the code calls to a declared entry). An app rewrites
   this line when it decides its device family, capabilities, and permissions
   (`starting-an-app`, `integrating-system-apis`), naming the feature that forces each.
 
@@ -172,6 +173,7 @@ layout, test helpers, log messages.
 | **The bundle identifier** (`PRODUCT_BUNDLE_IDENTIFIER` in `project.yml`) | The app's data container and Keychain items on every device, App Store Connect, push and other capabilities, `AppLog.subsystem`, `just run`/`just logs` | Fixed once a build has left your machine: a new identifier is a new app, and the user's data stays behind. `project.yml` and `AppLog.subsystem` change together (`AppLogTests`) |
 | **The stored schema** (`AppSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus an `AppMigrationPlan` stage, with a test that opens a store written by the previous version (`StoreFiles`). Never edit a shipped schema version: `SchemaMigrationTests` pins each one's entities and attributes, and the plan's order (`persisting-data`) |
 | **The URL scheme** (`DeepLink.scheme`, registered in `project.yml`) | Links to the app in messages, notes, and other apps | Fixed once a build has left your machine: a renamed scheme breaks every link in the wild. `project.yml` and `DeepLink.scheme` change together (`DeepLinkTests`); a new link shape is a new `DeepLink` case with its tests, and an old shape keeps parsing |
+| **The stored navigation path** (`NavigationModel.encodedPath`: `AppRoute`'s stored names inside `StoredNavigationPath`'s versioned envelope, kept per scene in `@SceneStorage`) | Every window the system ended in the background, which the next build to launch restores from what an earlier build stored | Fixed once a build has left your machine: a stored name or key that changes silently drops every stored path to the root. A route's Swift case may be renamed, its stored name may not; a new screen is a new stored name, and a shape old payloads cannot survive is a new `version` beside the old, which keeps restoring. `NavigationModelRestorationTests` pins a literal payload: never edit it to pass (`designing-ui`'s `references/navigation.md`) |
 | **Keychain items** (`SecureKeys` names, under the bundle identifier as the service) | Secrets on a user's device — which survive the app's deletion, so a reinstall finds what an earlier install wrote | Read the old key, write the new one, and delete the old, in Core, with a test that starts from the old key; a renamed key otherwise signs every user out and strands the old secret. Every key is a `SecureKeys` constant, pinned by `SecureKeysTests`. The accessibility (`AfterFirstUnlockThisDeviceOnly`) and the default access group are the design in `persisting-data`; a shared access group is an entitlement |
 | **`UserDefaults` keys and file formats** | Saved preferences and files on a user's device | Read the old key or format and migrate it in Core, with a test that starts from the old value. Every key is a `PreferenceKeys` constant, pinned by `PreferenceKeysTests` |
 

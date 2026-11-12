@@ -6,7 +6,9 @@ import Testing
 /// simulator run, or `just check` notices a missing entry. `UserDefaultsPreferences`
 /// reads and writes the app's own defaults, so the manifest declares the `UserDefaults`
 /// category with reason `CA92.1`; this suite makes deleting that entry a failing test
-/// instead of a rejected upload.
+/// instead of a rejected upload. `RequiredReasonAPITests` holds the other direction —
+/// every required-reason API the code calls has an entry — and `scripts/build-device.sh`
+/// that the file reaches the built bundle.
 @Suite("PrivacyManifest")
 struct PrivacyManifestTests {
     /// Why data cannot be read as a privacy manifest.

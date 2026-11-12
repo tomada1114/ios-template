@@ -58,8 +58,10 @@ to the null object when the container will not open (`persisting-data`), and bui
 `AppModel` in `@State`, handing it the adapters as ports through its initializer. Each
 scene's root (`SceneRoot`) owns that scene's `NavigationModel` and
 `SceneLifecycleModel`, forwards opened URLs to the first (`.onOpenURL`) and its scene
-phase to the second ("Lifecycle", below), and renders `MyAppUI`'s `RootView` over the
-app model and both of the scene's models. It also parses `Bundle.main.infoDictionary` once into Core's
+phase to the second ("Lifecycle", below), keeps the first's encoded path in
+`@SceneStorage` and hands it back when the scene is rebuilt (the `designing-ui` skill's
+`references/navigation.md`), and renders `MyAppUI`'s `RootView` over the app model and
+both of the scene's models. It also parses `Bundle.main.infoDictionary` once into Core's
 `AppConfiguration` and builds the `APIClient` at its base URL (the
 `integrating-system-apis` skill's `references/http-client.md`): the parsing is Core's,
 so `App/` hands over a dictionary and decides nothing about it. `App/` chooses adapters

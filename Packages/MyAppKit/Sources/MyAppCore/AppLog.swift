@@ -47,9 +47,10 @@ public enum AppLog {
     /// never logged, at any privacy level.
     public static let secureStorage = Logger(subsystem: subsystem, category: "secureStorage")
 
-    /// The navigation concern: ``NavigationModel`` rejecting a deep link. A link's scheme
-    /// and host are `.public`; its path and query are never logged, since a URL can carry
-    /// user data.
+    /// The navigation concern: ``NavigationModel`` rejecting a deep link, or a stored path
+    /// it could not read. A link's scheme and host are `.public`; its path and query are
+    /// never logged, since a URL can carry user data. A stored path is logged by its size
+    /// or its version number only.
     public static let navigation = Logger(subsystem: subsystem, category: "navigation")
 
     /// The lifecycle concern: ``SceneLifecycleModel`` deciding that a scene's phase change

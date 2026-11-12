@@ -36,6 +36,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A window reopens on the screen it was showing: each scene keeps its navigation path
+  in `@SceneStorage` and restores it when the system rebuilds the scene, so an app
+  ended in the background no longer relaunches at the root. `AppRoute` is `Codable`
+  with hand-written, explicit stored names, and `NavigationModel` gains `encodedPath`
+  and `restore(from:)`, which applies once and only while nothing has moved the path (a
+  deep link that opened the window wins), restores up to the first route it cannot
+  read, and opens at the root, without crashing, for anything that is not a stored
+  path or is of a version it does not know. Only the path is
+  restored: a presented sheet is not, nor drafts or scroll position, and a route to an
+  item deleted since shows the detail screen's not-found state. The stored format
+  (`{"routes":[{"id":"<uuid>","screen":"todoDetail"}],"version":1}`) is contract from
+  here on, pinned by a literal in `NavigationModelRestorationTests`. UI test launches
+  (`-uiTesting`) neither store nor restore a path.
+- `RequiredReasonAPITests` ties `App/PrivacyInfo.xcprivacy` to the code: it scans the
+  Swift, C, and Objective-C files under `Packages/MyAppKit/Sources/` and `App/`, outside
+  comments and string literals, for the required-reason APIs Apple lists
+  (file timestamps, system boot time, disk space, active keyboards, `UserDefaults`) and
+  fails `just test`, naming the file and line, when a category the code calls has no
+  declared reason. `just build-device` (`scripts/build-device.sh`) now also fails with
+  `ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST` when the Release device bundle holds no
+  `PrivacyInfo.xcprivacy`, and with `ERR_BUILD_DEVICE_PRIVACY_MANIFEST_INVALID` or
+  `ERR_BUILD_DEVICE_PRIVACY_MANIFEST_MISMATCH` when the bundled copy fails `plutil -lint`
+  or differs from `App/PrivacyInfo.xcprivacy`, so a `project.yml` edit that drops or
+  replaces the manifest no longer ships unseen.
 - `just analyze`: `swiftlint analyze --strict` with `.swiftlint.yml`'s new
   `analyzer_rules` (`unused_declaration`, `unused_import`), over the compiler log of a
   clean Debug iOS Simulator `build-for-testing` of the app and of every local package

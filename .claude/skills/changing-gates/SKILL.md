@@ -244,10 +244,13 @@ analyzer rules (`just analyze`): a pull
 request whose author skipped `just check` reaches review with no simulator evidence.
 Nothing re-verifies `main` on macOS after a merge, so two pull requests that pass
 separately can break `main` together. Nothing runs the app or the package tests on a
-physical device (`just build-device` only compiles and links Release for one, unsigned;
-nothing installs it), or on any iOS release but the one the pinned Xcode ships: the
+physical device (`just build-device` only compiles and links Release for one, unsigned,
+and checks the bundle holds `PrivacyInfo.xcprivacy`; nothing installs it), or on any iOS release but the one the pinned Xcode ships: the
 local simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,
-entitlements, and signing settings are unchecked. Each is a place a change can be wrong
+entitlements, and signing settings are unchecked, and the privacy manifest is held to the
+code only by a textual scan of the shipped sources (`RequiredReasonAPITests`): a
+required-reason call inside a binary dependency, and whether a declared reason is the
+right one, are unchecked. Each is a place a change can be wrong
 while every gate passes; a gate proposed to close one is a real gate change and belongs
 in the PR as one. What every local layer misses — a skipped hook, an edit on GitHub, a
 tool other than Claude Code — is listed in
