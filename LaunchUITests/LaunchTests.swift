@@ -331,9 +331,11 @@ extension LaunchTests {
             field.waitForExistence(timeout: Timeout.launch),
             "the list should show its new-item field",
         )
+        let addButton = app.buttons["addButton"]
         focus(field)
+        waitForTheKeyboardToPresent(below: addButton, in: app)
         field.typeText("Buy milk")
-        app.buttons["addButton"].tap()
+        addButton.tap()
         XCTAssertTrue(
             item.waitForExistence(timeout: Timeout.elementAppears),
             "the added item should appear in the list",
