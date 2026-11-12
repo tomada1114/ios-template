@@ -103,7 +103,8 @@ jobs:
 
       - name: Build app (Release, iOS device, unsigned)
         # The one build for the iphoneos SDK: a device-only compile break or a Release
-        # device failure (asset catalog, linker) shows here and in no simulator build.
+        # device failure (asset catalog, linker) shows here and in no simulator build,
+        # and so does a bundle that ships without PrivacyInfo.xcprivacy.
         # CODE_SIGNING_ALLOWED=NO, so it needs no team or secret; nothing is signed.
         if: needs.changes.outputs.simulator != 'false'
         run: just build-device

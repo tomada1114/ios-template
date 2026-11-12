@@ -50,7 +50,7 @@ just test-fast TodoItemTests  # Run only the matching tests, no coverage floor (
 just test-scripts  # Run the plain-bash tests for scripts/ and the skills' Python suites (scripts/tests/run.sh)
 just check-harness # Re-assert the harness's claims about itself (scripts/checks/run-all.sh)
 just build         # Build the app (Debug) for the iOS Simulator
-just build-device  # Build Release for the iOS device SDK, unsigned, and assert the app bundle exists
+just build-device  # Build Release for the iOS device SDK, unsigned, and assert the app and its privacy manifest
 just analyze       # Run swiftlint analyze (unused declarations and imports) over a clean iOS Simulator build of the app and the package (scripts/analyze.sh)
 just run           # Build, then install and launch it on an iOS Simulator (SIMULATOR_DEVICE picks one)
 just run-device    # Build (Debug), then install and launch it on a connected iPhone (Config/Local.xcconfig; IOS_DEVICE picks one)
@@ -155,7 +155,8 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   iPad, no capability or entitlement, no permission prompt or usage-description key, and
   one required-reason declaration in `App/PrivacyInfo.xcprivacy`: `UserDefaults`, reason
   `CA92.1`, which `UserDefaultsPreferences` needs to keep settings such as Hide Completed
-  (no tracking, no collected data; `PrivacyManifestTests`). An app rewrites
+  (no tracking, no collected data; `PrivacyManifestTests`, with `RequiredReasonAPITests`
+  holding every required-reason API the code calls to a declared entry). An app rewrites
   this line when it decides its device family, capabilities, and permissions
   (`starting-an-app`, `integrating-system-apis`), naming the feature that forces each.
 

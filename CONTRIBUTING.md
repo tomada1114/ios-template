@@ -89,7 +89,7 @@ just test-ios
 # Build Release and assert the app launches and stays alive on a simulator
 just smoke
 
-# Build Release for the iOS device SDK, unsigned, and assert the app bundle exists
+# Build Release for the iOS device SDK, unsigned, and assert the app and its privacy manifest
 just build-device
 
 # Run swiftlint analyze (unused declarations and imports) over a clean iOS Simulator build

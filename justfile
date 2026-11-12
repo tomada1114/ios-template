@@ -72,10 +72,11 @@ build:
     mise exec -- xcodegen generate
     set -o pipefail && scripts/run-throttled.sh --lock -- xcodebuild -jobs "$(scripts/run-throttled.sh --print-jobs)" -project MyApp.xcodeproj -scheme MyApp -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/dev-derived-data build | mise exec -- xcbeautify --quiet
 
-# Build Release for the iOS device SDK (`iphoneos`), unsigned, and assert the linked
-# app exists (scripts/build-device.sh): the one device-SDK compile any gate runs. No
-# team is needed; nothing is archived, exported, signed, or installed.
-[doc("Build Release for the iOS device SDK, unsigned, and assert the app exists")]
+# Build Release for the iOS device SDK (`iphoneos`), unsigned, and assert the linked app
+# exists and bundles a valid copy of App/PrivacyInfo.xcprivacy (scripts/build-device.sh):
+# the one device-SDK compile any gate runs. No team is needed; nothing is archived,
+# exported, signed, or installed.
+[doc("Build Release for the iOS device SDK, unsigned, and assert the app and its privacy manifest")]
 build-device:
     mise exec -- xcodegen generate
     mise exec -- scripts/run-throttled.sh --lock -- scripts/build-device.sh
