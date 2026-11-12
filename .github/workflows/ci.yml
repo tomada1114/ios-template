@@ -308,6 +308,15 @@ jobs:
           # breaks a line width or the import order fails here.
           scripts/lint.sh
 
+      - name: Check the renamed skill descriptions
+        if: needs.changes.outputs.simulator != 'false'
+        run: |
+          cd "$RUNNER_TEMP/bootstrap-smoke"
+          # skills-descriptions.sh already runs on every pull request and refuses a
+          # description that names a placeholder, so the rename cannot lengthen one; this
+          # re-runs it on the renamed tree in case a placeholder slips past that rule.
+          bash scripts/checks/skills-descriptions.sh
+
       - name: Test the renamed package
         if: needs.changes.outputs.simulator != 'false'
         run: |

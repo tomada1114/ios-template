@@ -2,7 +2,7 @@
 name: integrating-system-apis
 description: >
   Covers reaching an iOS system API or a remote API through a Core port under Swift 6
-  strict concurrency - the port, MyAppPlatform adapter, fake, contract, and App/
+  strict concurrency - the port, Platform adapter, fake, contract, and App/
   wiring; the HTTPClient port, URLSessionHTTPClient, and the APIClient Endpoint
   service; a permission status as a Core enum; Info.plist usage descriptions
   (INFOPLIST_KEY_NSCameraUsageDescription and friends), UIBackgroundModes,

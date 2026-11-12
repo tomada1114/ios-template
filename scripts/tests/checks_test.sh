@@ -730,6 +730,22 @@ case_descriptions_non_ascii() {
     assert_stderr_contains ".claude/skills/alpha: \`description\` contains a non-ASCII"
 }
 
+case_descriptions_placeholder() {
+    local root slug
+    root=$(make_fixture)
+    # The repo-slug placeholder, quote-split so the rename never rewrites this fixture.
+    slug='my''-app'
+    write_frontmatter "${root}" alpha " >
+  Covers the ${PH_NAME}Core layer and the ${slug} scheme."
+    capture "${BASH}" "${CHECKS}/skills-descriptions.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_SKILL_PLACEHOLDER
+    assert_stderr_contains ".claude/skills/alpha: \`description\` names the placeholder \`${PH_NAME}\`"
+    assert_stderr_contains ".claude/skills/alpha: \`description\` names the placeholder \`${slug}\`"
+    assert_stderr_not_contains ".claude/skills/beta:" "a well-formed skill reported"
+    assert_stderr_not_contains "ERR_CHECK_SKILL_DESCRIPTION" "a description within the limits reported"
+}
+
 case_descriptions_nested_skill_file() {
     local root
     root=$(make_fixture)
@@ -1831,6 +1847,7 @@ run_case "descriptions: passes, including quoted and block-scalar near misses" c
 run_case "descriptions: a description over 1024 characters fails" case_descriptions_too_long
 run_case "descriptions: a description of exactly 1024 characters passes" case_descriptions_at_limit_passes
 run_case "descriptions: a non-ASCII description fails" case_descriptions_non_ascii
+run_case "descriptions: a description naming a bootstrap placeholder fails" case_descriptions_placeholder
 run_case "descriptions: a nested SKILL.md fails" case_descriptions_nested_skill_file
 run_case "product: passes on the template's TODO skeleton" case_product_pass_in_template
 run_case "product: passes on a renamed app with the section written" case_product_pass_in_renamed_app

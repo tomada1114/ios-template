@@ -1,7 +1,7 @@
 ---
 name: designing-core-logic
 description: >
-  Design judgment for MyAppCore - why the code is split into Core, UI, and Platform,
+  Design judgment for Core - why the code is split into Core, UI, and Platform,
   how view models are owned and survive reentrancy, AppModel as the composition root,
   and how the String Catalog behaves in each build. Use when changing a view model's
   shape or ownership, adding a layer, a port, or an AppModel factory, finding catalog
