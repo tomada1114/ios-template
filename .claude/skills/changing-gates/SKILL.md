@@ -35,7 +35,9 @@ own. `scripts/lint.sh` is the single lint script: `just lint`
 job all call it. A new check is therefore added to `scripts/lint.sh`, never inlined as a
 command into `justfile`, `.githooks/pre-commit`, or a workflow `run:` step. The same
 shape holds elsewhere: CI's `test` job calls `scripts/coverage.sh` (what `just test`
-runs) and then `just build`, `just build-device`, and `just analyze`, and its `lint` job calls `scripts/tests/run.sh` and
+runs) and then `just build-device` and `just analyze` — whose clean Debug app build for the
+generic iOS Simulator is the compile `just build` makes, so CI does not run `just build`
+too — and its `lint` job calls `scripts/tests/run.sh` and
 `scripts/checks/run-all.sh` (what `just test-scripts` and `just check-harness` run).
 The simulator recipes (`uitest-build`, `uitest-run`, `smoke`, `test-ios`) run only in
 local `just check`, when `scripts/simulator-relevant.sh` (also what CI's `changes` job
@@ -98,7 +100,14 @@ Swift file under `App/`, `LaunchUITests/`, or a package's `Sources/` or `Tests/`
 no compile command. `public` declarations are skipped (the rule's default): they are
 the package's API. A flagged declaration or import is removed in the code, by hand —
 an import can be needed on macOS, which the iOS analysis does not compile, so `just
-test` follows — never excluded or disabled; that would be weakening the gate.
+test` follows — never excluded or disabled; that would be weakening the gate. The
+analysis sees only one Debug iOS Simulator compile, so a declaration or import used
+only under `#if os(macOS)`, `#if !DEBUG`, or `#if !targetEnvironment(simulator)` is
+inactive there and can be flagged falsely: do not delete that one — restructure it so
+the analyzed build references it, or report it in the pull request. Every local package
+under `Packages/` with a `Package.swift` is built and analyzed, and a checkout path
+holding a space is refused (`ERR_ANALYZE_PATH_HAS_SPACE`): SwiftLint splits a compile
+command on spaces.
 `.swiftlint.yml` is on `scripts/simulator-relevant.sh`'s path list so an
 `analyzer_rules` edit reaches the one check that reads it. `trailing_comma` is set to agree with
 SwiftFormat; the two tools must never disagree about one file.

@@ -83,6 +83,9 @@ lint:
 build:
     mise exec -- scripts/build-app.sh
 
+analyze:
+    mise exec -- scripts/analyze-app.sh
+
 uitest: uitest-build uitest-run
 
 uitest-build:
@@ -98,7 +101,7 @@ smoke:
     mise exec -- scripts/smoke_launch.sh
 
 check: verify-hooks fmt lint
-    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just test-ios; else echo "Skipped (CHECK_ALL=1 runs them)"; fi
+    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just analyze && just test-ios; else echo "Skipped (CHECK_ALL=1 runs them)"; fi
 EOF
     cat >"${root}/AGENTS.md" <<'EOF'
 # Project Guide
@@ -183,10 +186,10 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Build app
+      - name: Analyze app
         run: |
-          # CI compiles the app; just check compiles it through uitest-build
-          just build
+          # CI analyzes the app, and just check does too: a gate on both sides
+          just analyze
   bootstrap-smoke:
     runs-on: macos-26
     steps:
@@ -1036,7 +1039,7 @@ case_ci_recipe_missing_from_check() {
     assert_exit 1
     assert_contract ERR_CHECK_JUST_CI_DIVERGED
     assert_stderr_contains ".github/workflows/ci.yml:$(grep -n 'run: just generate' "${root}/.github/workflows/ci.yml" | cut -d: -f1): job \`lint\` runs \`just generate\`"
-    assert_stderr_not_contains "\`just build\`" "a CI_ONLY recipe reported"
+    assert_stderr_not_contains "\`just analyze\`" "a gate both sides run reported"
 }
 
 case_ci_script_no_recipe_calls() {
@@ -1075,23 +1078,24 @@ drop_check_call() {
     replace_in "$1" justfile "just $2 \&\& " ""
 }
 
-case_ci_stale_ci_only() {
+# CI_ONLY is empty: `just build`, once its one entry, is redundant with `just analyze`
+# (#84), so a CI step running it is a divergence like any other.
+case_ci_build_is_no_exception() {
     local root
     root=$(make_fixture)
-    sed '/^      - name: Build app$/,/^          just build$/d' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
-    mv "${CASE_DIR}/ci.yml" "${root}/.github/workflows/ci.yml"
+    append_ci_step "${root}" "just build"
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 1
-    assert_contract ERR_CHECK_JUST_CI_STALE
-    assert_stderr_contains "CI_ONLY names \`build\`, which no .github/workflows/ci.yml step runs any more"
+    assert_contract ERR_CHECK_JUST_CI_DIVERGED
+    assert_stderr_contains "runs \`just build\` (or its script), which \`just check\` does not run"
 }
 
-# A step that calls only the script the build recipe calls still counts as running
-# build.
-case_ci_only_reached_through_its_script() {
+# A step that calls only the script the analyze recipe calls still counts as running
+# analyze.
+case_ci_gate_reached_through_its_script() {
     local root
     root=$(make_fixture)
-    sed 's#^          just build$#          scripts/build-app.sh#' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
+    sed 's#^          just analyze$#          scripts/analyze-app.sh#' "${root}/.github/workflows/ci.yml" >"${CASE_DIR}/ci.yml"
     mv "${CASE_DIR}/ci.yml" "${root}/.github/workflows/ci.yml"
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 0
@@ -1875,8 +1879,8 @@ run_case "ci: a CI recipe just check does not run fails" case_ci_recipe_missing_
 run_case "ci: a CI script no recipe calls fails" case_ci_script_no_recipe_calls
 run_case "ci: a CI step running no recipe or script fails" case_ci_step_runs_nothing_shared
 run_case "ci: a stale LOCAL_ONLY exception fails" case_ci_stale_local_only
-run_case "ci: a stale CI_ONLY exception fails" case_ci_stale_ci_only
-run_case "ci: a CI_ONLY recipe reached only through its script is not stale" case_ci_only_reached_through_its_script
+run_case "ci: a CI step running just build, no longer an exception, fails" case_ci_build_is_no_exception
+run_case "ci: a gate reached only through its script counts as run" case_ci_gate_reached_through_its_script
 run_case "ci: a simulator recipe dropped from check's body fails" case_ci_simulator_recipe_dropped_from_check
 run_case "ci: CI running a recipe check dropped fails" case_ci_runs_a_recipe_check_dropped
 run_case "ci: no check recipe fails" case_ci_no_check_recipe

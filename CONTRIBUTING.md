@@ -24,7 +24,7 @@ just install
 If your Xcode lacks the iOS platform, `just test` and `just lint` still run, but
 `just check`'s simulator steps (`uitest-build`, `uitest-run`, `smoke`, `build-device`,
 `analyze`, `test-ios`) need it; no CI job runs the first three or `test-ios`. CI's one macOS job,
-`Test & Coverage Gate`, runs the coverage floor, `just build`, `just build-device`, and `just analyze`; a draft pull request skips its macOS work, so mark the
+`Test & Coverage Gate`, runs the coverage floor, `just build-device`, and `just analyze` (whose clean Debug simulator build is the compile `just build` makes); a draft pull request skips its macOS work, so mark the
 pull request ready for review to run it.
 
 ## Development Workflow
