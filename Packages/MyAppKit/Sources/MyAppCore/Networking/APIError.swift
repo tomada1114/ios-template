@@ -36,15 +36,15 @@ public enum APIError: Error, Equatable, Sendable {
     /// The server answered 429. `retryAfter` is how long its `Retry-After` header asked
     /// the client to wait — read as delta-seconds or an HTTP-date, never negative — or
     /// `nil` when the header was missing or unreadable, in which case the caller picks
-    /// its own backoff.
+    /// its own backoff (``RetryPolicy/delay(afterAttempt:using:)``).
     case rateLimited(retryAfter: Duration?)
 
     /// The server answered with a 5xx: its own failure. `status` says which, for a log
     /// or a decision (a 503 is often worth a retry; a 501 never is).
     case server(status: Int)
 
-    /// The server went silent for longer than the request's idle timeout. Retry, ideally
-    /// with a backoff, or show a "try again" state.
+    /// The server went silent for longer than the request's idle timeout. Retry with a
+    /// backoff (``RetryingAPIClient``), or show a "try again" state.
     case timedOut
 
     /// The request failed without an HTTP response for a reason other than

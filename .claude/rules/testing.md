@@ -146,8 +146,9 @@ protocol, not over either implementation, and every clause it checks is one the 
 - No `sleep` or timing-based assertion in a unit test; that flakiness belongs to no one.
   When time must pass, the type under test takes its time as a parameter (`now:`, a
   `Clock`, a delay — `core.md` › Inject what Core would read from the world), and the
-  test hands it a pinned value, a zero `Duration`, or a manually advanced test clock —
-  never `Task.sleep` to wait for something to happen
+  test hands it a pinned value, a zero `Duration`, or a manually advanced test clock
+  (`ManualClock` in `Tests/MyAppTestSupport`) — never `Task.sleep` to wait for something
+  to happen
 - A test that touches the file system gets its own directory:
   `FileManager.default.temporaryDirectory.appending(path: "MyAppTests-\(UUID().uuidString)")`,
   created in the test and removed in a `defer`. Never a fixed shared path, the checkout,

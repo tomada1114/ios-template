@@ -15,8 +15,8 @@ import Testing
 /// the test process (signal 11) on a CI runner, and concurrent container creation is
 /// the prime suspect — the one thing only this suite does. One container at a time
 /// costs milliseconds; a flaky crash costs every pull request a rerun. Every other test
-/// that opens a container is a suite nested in this one (`PersistenceStoreTests`), so
-/// the trait covers it too.
+/// that opens a container is a suite nested in this one (`PersistenceStoreTests`,
+/// `SchemaMigrationTests`), so the trait covers it too.
 @Suite("SwiftDataTodoRepository", .serialized)
 struct SwiftDataTodoRepositoryTests {
     @Test
