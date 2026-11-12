@@ -9,9 +9,22 @@ import SwiftUI
 /// (two windows on iPad), and a path shared between them would move every window in
 /// lockstep, and a deep link would move them all instead of the window it arrived in.
 /// So does its `SceneLifecycleModel`, whose state lives exactly as long as the window.
+///
+/// The path outlives the window's process: `@SceneStorage` keeps the model's encoded
+/// path per scene, and the model takes it back when the scene is rebuilt, so a window
+/// the system ended in the background reopens on the screen it showed. What a stored
+/// path restores to is Core's (`NavigationModel.restore(from:)`).
 private struct SceneRoot: View {
     let app: AppModel
+    /// Whether this window stores and restores its path: off under UI testing, where
+    /// each launch must start at the root whatever the last one left pushed.
+    let restoresPath: Bool
     @State private var navigation = NavigationModel()
+    /// The window's path as `NavigationModel.encodedPath` wrote it; empty until the
+    /// window first moves. The key names a value the system stores per scene: under a
+    /// new key, each window opens at the root once.
+    @SceneStorage("navigation.path")
+    private var storedPath = Data()
     @State private var lifecycle: SceneLifecycleModel
     @Environment(\.scenePhase)
     private var scenePhase
@@ -22,7 +35,23 @@ private struct SceneRoot: View {
         // recorded synchronously, so phases apply in order, and only the refresh it may
         // ask for runs in a `Task` — not `.task(id:)`, which the next phase change would
         // cancel mid-refresh.
+        //
+        // The stored path goes to Core on appear, and Core applies it once, and only
+        // while nothing has moved the path, so a link that opened the window wins
+        // whichever arrives first. The path is stored on change only, never initially:
+        // the first value is the empty path, which would overwrite the stored one before
+        // it is restored.
         RootView(app: app, navigation: navigation)
+            .onAppear {
+                if restoresPath {
+                    navigation.restore(from: storedPath)
+                }
+            }
+            .onChange(of: navigation.encodedPath) { _, encodedPath in
+                if restoresPath {
+                    storedPath = encodedPath
+                }
+            }
             .onOpenURL { navigation.open($0) }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 lifecycle.sceneDidEnter(Self.lifecyclePhase(phase))
@@ -30,8 +59,9 @@ private struct SceneRoot: View {
             }
     }
 
-    init(app: AppModel) {
+    init(app: AppModel, restoresPath: Bool) {
         self.app = app
+        self.restoresPath = restoresPath
         // A re-render builds a spare model, which `@State` discards: building one has no
         // side effects.
         _lifecycle = State(initialValue: app.makeSceneLifecycleModel())
@@ -63,15 +93,17 @@ private struct SceneRoot: View {
 /// `MyAppPlatform` adapters and hands them, as ports, to Core's `AppModel`, which builds
 /// every view model over them — so nothing below `App/` depends on which store answers,
 /// and `App/` decides nothing but which adapter each port gets; each scene forwards its
-/// opened URLs and its scene phase to Core and decides nothing about either
+/// opened URLs, its scene phase, and its stored navigation path to Core and decides
+/// nothing about any of them
 /// (the `designing-core-logic` skill's `references/view-models.md`). It also reads this
 /// build's `AppConfiguration` from `Info.plist`, once, and builds the `APIClient` over
 /// `URLSessionHTTPClient` at the base URL that configuration names.
 @main
 struct MyAppApp: App {
-    /// The launch argument `LaunchUITests` passes: an in-memory store and a scratch
-    /// preferences suite, so every UI test run starts empty and at every setting's
-    /// default, and leaves nothing behind that the app's own data would see.
+    /// The launch argument `LaunchUITests` passes: an in-memory store, a scratch
+    /// preferences suite, and no stored navigation path, so every UI test run starts
+    /// empty, at the root, and at every setting's default, and leaves nothing behind that
+    /// the app's own data would see.
     private static let uiTestingArgument = "-uiTesting"
 
     private static var isUITesting: Bool {
@@ -100,7 +132,7 @@ struct MyAppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            SceneRoot(app: app)
+            SceneRoot(app: app, restoresPath: !Self.isUITesting)
         }
     }
 

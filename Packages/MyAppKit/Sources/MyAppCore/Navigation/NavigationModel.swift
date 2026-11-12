@@ -10,6 +10,11 @@ import Observation
 /// drives navigation without a view. One model per navigation stack: a tab-based app
 /// keeps one per tab.
 ///
+/// The path outlives the process: the scene root stores ``encodedPath`` in the scene's
+/// own storage and hands it back to ``restore(from:)`` when the scene is rebuilt, so a
+/// window the system ended in the background comes back on the screen it was showing.
+/// The sheet is not stored, so a restored window has none up.
+///
 /// The sheet sits over the stack, so anything that moves the stack dismisses it: a write
 /// to ``path`` that changes it, and the actions ``show(_:)``, ``popToRoot()``, and a link
 /// ``open(_:)`` accepts. The screen asked for would otherwise change out of sight, under
@@ -32,6 +37,7 @@ public final class NavigationModel {
         didSet {
             if path != oldValue {
                 sheet = nil
+                awaitsRestoration = false
             }
         }
     }
@@ -41,6 +47,21 @@ public final class NavigationModel {
     /// sheet's system close button (`Button(role: .close)`) both go through the action,
     /// and ``path`` stays the one property a view writes.
     public private(set) var sheet: AppSheet?
+
+    /// Whether ``restore(from:)`` may still set the path: only until the path first
+    /// changes, whoever changes it.
+    @ObservationIgnored private var awaitsRestoration = true
+
+    /// ``path`` in its stored form, for the scene root to keep in the scene's storage and
+    /// hand back to ``restore(from:)`` at the next launch. The same path is always the
+    /// same bytes, so observing this sees a change only when the path changed.
+    ///
+    /// The format is contract (`AGENTS.md` › What is contract and what is private): a
+    /// later build reads what this one stored. It holds the routes and nothing else — no
+    /// sheet, no draft, no scroll position.
+    public var encodedPath: Data {
+        StoredNavigationPath.data(for: path)
+    }
 
     /// Creates a model at the root, with nothing pushed.
     public init() {
@@ -103,5 +124,37 @@ public final class NavigationModel {
         sheet = nil
         path = [route]
         return true
+    }
+
+    /// Puts back the path a previous process stored (``encodedPath``), once, and only if
+    /// nothing has moved the path yet: a link that opened the window, or a push, is newer
+    /// than what was stored and wins, whichever reaches the model first. Every later call
+    /// does nothing, so the scene root may call it each time it appears.
+    ///
+    /// A route this build cannot read — a screen a later build stored, a damaged
+    /// identifier — is skipped and the routes around it restore. Data that is not a
+    /// stored path at all, or is of a version this build does not know, restores nothing:
+    /// the window opens at the root, never a crash. Empty data is a scene that has stored
+    /// nothing yet, and is not logged.
+    ///
+    /// A route is restored whether or not its item still exists — this model holds
+    /// routes, not items, and the items have not loaded when a scene is rebuilt — so a
+    /// route to an item deleted since shows the detail screen's not-found state, as a
+    /// stale deep link does.
+    public func restore(from data: Data) {
+        guard awaitsRestoration else {
+            return
+        }
+        awaitsRestoration = false
+        guard !data.isEmpty else {
+            return
+        }
+        do {
+            path = try StoredNavigationPath.routes(from: data)
+        } catch {
+            // The size only: the bytes are whatever was stored, and name nothing useful.
+            let size = data.count
+            AppLog.navigation.error("restore: unreadable payload bytes=\(size, privacy: .public)")
+        }
     }
 }

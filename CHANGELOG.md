@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A window reopens on the screen it was showing: each scene keeps its navigation path
+  in `@SceneStorage` and restores it when the system rebuilds the scene, so an app
+  ended in the background no longer relaunches at the root. `AppRoute` is `Codable`
+  with hand-written, explicit stored names, and `NavigationModel` gains `encodedPath`
+  and `restore(from:)`, which applies once and only while nothing has moved the path (a
+  deep link that opened the window wins), skips a route it cannot read, and opens at
+  the root, without crashing, for anything that is not a stored path. Only the path is
+  restored: a presented sheet is not, nor drafts or scroll position, and a route to an
+  item deleted since shows the detail screen's not-found state. The stored format
+  (`{"routes":[{"id":"<uuid>","screen":"todoDetail"}],"version":1}`) is contract from
+  here on, pinned by a literal in `NavigationModelRestorationTests`. UI test launches
+  (`-uiTesting`) neither store nor restore a path.
 - The list refreshes quietly when a window comes back from the background, so changes
   made while the app was away show up. Each window keeps a `SceneLifecycleModel`
   (`AppModel.makeSceneLifecycleModel()`) and forwards its `scenePhase` to it as a
