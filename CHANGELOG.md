@@ -211,6 +211,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The app now ships `App/PrivacyInfo.xcprivacy`, which declares the `UserDefaults`
+  required-reason API (`NSPrivacyAccessedAPICategoryUserDefaults`, reason `CA92.1`)
+  that `UserDefaultsPreferences` calls, with no tracking and no collected data, so an
+  App Store Connect upload no longer flags a missing declaration. `PrivacyManifestTests`
+  parses the file and fails when the entry or its reason is removed.
 - Skill descriptions name the Core and Platform layers without the app prefix, so
   renaming the app no longer lengthens them: after a rename to a 19-character name
   `persisting-data`'s was 1,046 characters, past the 1,024-character limit

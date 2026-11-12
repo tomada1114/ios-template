@@ -148,7 +148,10 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   a new stored model is a new schema version, never an edit to a shipped one.
 - `MyApp.xcodeproj` is generated — edit `project.yml` instead.
 - **App shape:** iPhone and iPad (`TARGETED_DEVICE_FAMILY: "1,2"`), multiple windows on
-  iPad, no capability or entitlement, and no privacy-gated permission. An app rewrites
+  iPad, no capability or entitlement, and no privacy-gated permission. One required-reason
+  API is declared in `App/PrivacyInfo.xcprivacy`: `UserDefaults`, reason `CA92.1`, which
+  `UserDefaultsPreferences` needs to keep settings such as Hide Completed (no tracking,
+  no collected data; `PrivacyManifestTests`). An app rewrites
   this line when it decides its device family, capabilities, and permissions
   (`starting-an-app`, `integrating-system-apis`), naming the feature that forces each.
 

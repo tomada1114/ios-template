@@ -36,6 +36,9 @@ public protocol PreferencesStoring: Sendable {
   a scratch suite named after `AppLog.subsystem`, because `just uitest` reuses the
   simulator and one run's setting would otherwise leak into the next. Unit tests of the
   adapter each use a scratch suite named with a fresh UUID.
-- **`UserDefaults` is a required-reason API.** What an App Store upload then needs in
-  `PrivacyInfo.xcprivacy` is `integrating-system-apis`' `references/permissions.md`
-  › "The privacy manifest".
+- **`UserDefaults` is a required-reason API.** `App/PrivacyInfo.xcprivacy` declares
+  its category, `NSPrivacyAccessedAPICategoryUserDefaults`, with reason `CA92.1`, and
+  `PrivacyManifestTests` fails if that entry goes missing. A new required-reason API —
+  file timestamps, disk space, system boot time, active keyboards — adds its own entry
+  there; the format and the reasons are `integrating-system-apis`'
+  `references/permissions.md` › "The privacy manifest".

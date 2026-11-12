@@ -76,11 +76,19 @@ the category values are listed under
 [`NSPrivacyAccessedAPIType`](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitype);
 the file format is
 [Privacy manifest files](https://developer.apple.com/documentation/bundleresources/privacy-manifest-files)).
-Put it at `App/PrivacyInfo.xcprivacy`: `project.yml`'s `sources: [App]` picks it up, and
-a Debug build copies it into the bundle root (verified). The template ships none,
-because nothing in it calls a required-reason API; the first `UserDefaults` key an app
-adds brings the manifest with it. The Keychain is not one of those categories: storing
-a secret through `SecureStoring` adds no required-reason declaration.
+The app's manifest is `App/PrivacyInfo.xcprivacy`: `project.yml`'s `sources: [App]`
+picks it up, and a Debug build copies it into the bundle root (verified on 2026-11-11 with
+`plutil -p` on the built `MyApp.app/PrivacyInfo.xcprivacy`). It exists because
+`UserDefaultsPreferences` reads and writes the app's own defaults: it declares no
+tracking, no tracking domains, no collected data, and one accessed-API entry,
+`NSPrivacyAccessedAPICategoryUserDefaults` with reason `CA92.1` — "read and write
+information that is only accessible to the app itself" (checked on 2026-11-11 against
+the reasons listed under `NSPrivacyAccessedAPIType`). An App Group suite shared with an
+extension needs `1C8F.1` instead. `PrivacyManifestTests` parses the file and fails
+when that entry or its reason goes missing. A new required-reason API adds its own
+entry, with its own reason, in the same pull request as the code that calls it — and a
+test beside it. The Keychain is not one of those categories: storing a secret through
+`SecureStoring` adds no required-reason declaration.
 
 ## Adding a permission is a design change
 
