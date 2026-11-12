@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   close button). Any change to the path, a push, returning to the root, or opening an
   accepted deep link dismisses a sheet that is up; a rejected link leaves it.
   The launch walk opens, audits, and closes the About sheet.
+- `EmptyResponse`, the response type of an `Endpoint` whose 2xx answer has no body (a
+  `204 No Content`, a bodiless `200` from a `DELETE` or `PUT`). `APIClient` returns it
+  on any 2xx without decoding, whatever the body, so a server that later adds one does
+  not break the call; through `RetryingAPIClient` too. For any other response type, a
+  2xx body that does not decode, an empty one included, still throws
+  `APIError.decoding`.
 - A per-configuration API base URL: `API_BASE_URL` in `Config/Debug.xcconfig` and a new
   `Config/Release.xcconfig` (placeholder `.invalid` hosts, the `//` written `/$()/`),
   expanded into `Info.plist` under `APIBaseURL` and parsed by Core's `AppConfiguration`,
