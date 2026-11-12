@@ -1,5 +1,12 @@
 import XCTest
 
+/// One look at the keyboard and the control above it, kept to compare with the next.
+private struct KeyboardSample {
+    let takenAt: Date
+    let keyboard: CGRect
+    let control: CGRect
+}
+
 /// The waits every UI test file shares, so a second file does not copy them.
 extension XCTestCase {
     /// Taps `field` until it holds keyboard focus, then asserts that it does.
@@ -29,34 +36,47 @@ extension XCTestCase {
     /// and on a cold-booted simulator that presentation can come seconds later. The add bar
     /// is pinned above the keyboard, so its arrival moves `control`; a tap resolved before
     /// it lands on the keyboard instead (#137). So this waits for the keyboard itself: of
-    /// non-zero height, with `control` above it, and with the same frame on two checks in a
-    /// row, so a keyboard still sliding in does not pass. A keyboard of no height is the
-    /// minimized one a hardware keyboard brings, which `just uitest-run` turns off; it never
-    /// passes, rather than passing before the full keyboard comes.
+    /// non-zero height, with `control` above it, and with both frames unchanged across two
+    /// samples at least `Timeout.poll` apart, so neither a keyboard still sliding in nor a
+    /// bar still rising passes. The full software keyboard is required: a hardware
+    /// keyboard minimizes it to a bar of no height, which never passes, rather than
+    /// passing before the full keyboard comes. `just uitest-run` turns minimization off.
     @MainActor
     func waitForTheKeyboardToPresent(below control: XCUIElement, in app: XCUIApplication) {
         let keyboard = app.keyboards.firstMatch
-        var lastFrame: CGRect?
-        // XCTNSPredicateExpectation re-evaluates on the main run loop at its own bounded
-        // interval, so this neither spins nor sleeps.
+        var last: KeyboardSample?
+        // XCTNSPredicateExpectation re-evaluates on the main run loop at its own interval;
+        // the sample gap below bounds the stability window whatever that interval is.
         let presented = NSPredicate { _, _ in
             MainActor.assumeIsolated {
                 guard keyboard.exists else {
-                    lastFrame = nil
+                    last = nil
                     return false
                 }
-                let frame = keyboard.frame
-                defer { lastFrame = frame }
-                return frame.height > 0
-                    && control.frame.maxY <= frame.minY
-                    && frame == lastFrame
+                let now = Date.now
+                if let last, now.timeIntervalSince(last.takenAt) < Timeout.poll {
+                    return false
+                }
+                let sample = KeyboardSample(
+                    takenAt: now,
+                    keyboard: keyboard.frame,
+                    control: control.frame,
+                )
+                defer { last = sample }
+                return sample.keyboard.height > 0
+                    && sample.control.maxY <= sample.keyboard.minY
+                    && sample.keyboard == last?.keyboard
+                    && sample.control == last?.control
             }
         }
         let expectation = XCTNSPredicateExpectation(predicate: presented, object: nil)
         XCTAssertEqual(
             XCTWaiter().wait(for: [expectation], timeout: Timeout.keyboardPresents),
             .completed,
-            "the software keyboard should present below \(control.identifier)",
+            """
+            the full software keyboard should present below \(control.identifier); a \
+            hardware keyboard minimizes it, and `just uitest-run` turns that off
+            """,
         )
     }
 
