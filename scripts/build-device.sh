@@ -31,13 +31,17 @@
 # symbols it imports (`xcrun nm -u`: C functions, Foundation's key constants, Objective-C
 # class references, and Swift symbols whose mangled name carries an Objective-C type)
 # and the Objective-C selectors it sends (`xcrun otool -v -s __TEXT __objc_methname`),
-# matched against REQUIRED_REASON_APIS below, one line per symbol. This is the
+# matched against REQUIRED_REASON_APIS below, one line per symbol. Each app extension
+# (PlugIns/*.appex, its executable named by CFBundleExecutable) is held the same way to
+# the PrivacyInfo.xcprivacy in its own bundle. This is the
 # authoritative check, the one that sees code reached through a package, an alias, or
 # generated code; RequiredReasonAPITests' source scan stays as `just test`'s fast signal
 # (changing-gates › references/enforcement-layers.md says why both run). It reads only
-# the main executable, so a framework under MyApp.app/Frameworks/, a symbol looked up
-# with dlsym, or a selector built at run time is not seen, and it cannot judge whether
-# a declared reason is the right one.
+# the app's and its extensions' executables, so a framework under MyApp.app/Frameworks/,
+# a symbol looked up with dlsym, or a selector built at run time is not seen; a
+# `selector` row also matches the app's own @objc member of that name; and it cannot
+# judge whether a declared reason is the right one. Keep the table's categories in step
+# with RequiredReasonAPIScan's (scripts/checks/required-reason-tables-agree.sh).
 #
 # Tools: xcbeautify comes from the caller's PATH (`just build-device` runs this under
 # `mise exec --`); xcodebuild, and `nm` and `otool` through xcrun, come with Xcode;
@@ -55,10 +59,12 @@
 #   ERR_BUILD_DEVICE_PRIVACY_MANIFEST_MISMATCH the bundled manifest differs from
 #                                              App/PrivacyInfo.xcprivacy
 #   ERR_BUILD_DEVICE_SYMBOLS_UNREADABLE        `xcrun nm` or `xcrun otool` could not read
-#                                              the executable, or it imports nothing
-#   ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API  the executable uses a required-reason
-#                                              API category the bundled manifest gives
-#                                              no reason for
+#                                              an executable (no imports, no selector
+#                                              section), or an .appex names none
+#   ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API  the app's or an extension's
+#                                              executable uses a required-reason API
+#                                              category its bundled manifest gives no
+#                                              reason for
 set -euo pipefail
 
 APP_NAME="MyApp"
@@ -190,81 +196,116 @@ if ! cmp -s "${SOURCE_MANIFEST}" "${BUNDLED_MANIFEST}"; then
             "check that project.yml copies ${SOURCE_MANIFEST} and no other PrivacyInfo.xcprivacy into the app target, then rerun \`just build-device\`"
 fi
 
-EXECUTABLE="${APP_BUNDLE}/${APP_NAME}"
-SYMBOLS_NEXT="check that ${EXECUTABLE} is a Mach-O executable (\`file ${EXECUTABLE}\`) and that \`xcrun --find nm\` and \`xcrun --find otool\` resolve in the selected Xcode, then rerun \`just build-device\`"
-# Read once with stderr dropped, so a tool's warning cannot land in the list; a failure
-# is read again for the message.
-if ! IMPORTS=$(xcrun nm -u "${EXECUTABLE}" 2>/dev/null) || [ -z "${IMPORTS}" ]; then
-    NM_ERROR=$(xcrun nm -u "${EXECUTABLE}" 2>&1 >/dev/null) || true
-    fail ERR_BUILD_DEVICE_SYMBOLS_UNREADABLE "could not read the symbols ${EXECUTABLE} imports" \
-        "\`xcrun nm -u ${EXECUTABLE}\` to list them" "${NM_ERROR:-it listed none}" "${SYMBOLS_NEXT}"
-fi
-if ! METHNAMES=$(xcrun otool -v -s __TEXT __objc_methname "${EXECUTABLE}" 2>/dev/null); then
-    OTOOL_ERROR=$(xcrun otool -v -s __TEXT __objc_methname "${EXECUTABLE}" 2>&1 >/dev/null) || true
-    fail ERR_BUILD_DEVICE_SYMBOLS_UNREADABLE "could not read the Objective-C selectors in ${EXECUTABLE}" \
-        "\`xcrun otool -v -s __TEXT __objc_methname ${EXECUTABLE}\` to list them" \
-        "${OTOOL_ERROR:-it failed and printed nothing}" "${SYMBOLS_NEXT}"
-fi
-# otool prints a path line and a "Contents of" line, then "ADDRESS  SELECTOR" per string.
-SELECTORS=$(awk 'NF == 2 && $1 ~ /^[0-9a-fA-F]+$/ { print $2 }' <<<"${METHNAMES}")
+# fail_unreadable <executable> <what could not be read> <command> <actual>
+fail_unreadable() {
+    fail ERR_BUILD_DEVICE_SYMBOLS_UNREADABLE "could not read $2 in $1" "\`$3\` to list them" "$4" \
+        "check that $1 is a Mach-O executable (\`file $1\`) and that \`xcrun --find nm\` and \`xcrun --find otool\` resolve in the selected Xcode, then rerun \`just build-device\`"
+}
 
-# USES: one "CATEGORY|KIND VALUE" line per table row the executable matches.
-USES=""
-while IFS='|' read -r CATEGORY KIND VALUE; do
-    [ -n "${CATEGORY}" ] || continue
-    MATCHED=false
-    case "${KIND}" in
-        import) grep -qxF -- "${VALUE}" <<<"${IMPORTS}" && MATCHED=true ;;
-        import-part) grep -qF -- "${VALUE}" <<<"${IMPORTS}" && MATCHED=true ;;
-        selector) grep -qxF -- "${VALUE}" <<<"${SELECTORS}" && MATCHED=true ;;
-    esac
-    if [ "${MATCHED}" = true ]; then
-        USES="${USES}${CATEGORY_PREFIX}${CATEGORY}|${KIND} ${VALUE}"$'\n'
-    fi
-done <<<"${REQUIRED_REASON_APIS}"
+# declared_categories <manifest> — each category with an entry holding at least one
+# reason, one per line, as RequiredReasonAPITests counts it. `plutil -extract … raw`
+# prints an array's count and exits 1 for a missing key or file, which counts as nothing
+# declared.
+declared_categories() {
+    local manifest="$1" count index entry type reasons
+    count=$(plutil -extract NSPrivacyAccessedAPITypes raw -o - "${manifest}" 2>/dev/null) || count=0
+    case "${count}" in '' | *[!0-9]*) count=0 ;; esac
+    index=0
+    while [ "${index}" -lt "${count}" ]; do
+        entry="NSPrivacyAccessedAPITypes.${index}"
+        type=$(plutil -extract "${entry}.NSPrivacyAccessedAPIType" raw -o - "${manifest}" 2>/dev/null) || type=""
+        reasons=$(plutil -extract "${entry}.NSPrivacyAccessedAPITypeReasons" raw -o - "${manifest}" 2>/dev/null) || reasons=0
+        case "${reasons}" in '' | *[!0-9]*) reasons=0 ;; esac
+        if [ -n "${type}" ] && [ "${reasons}" -gt 0 ]; then echo "${type}"; fi
+        index=$((index + 1))
+    done
+}
 
-# DECLARED: each category with an entry holding at least one reason, as
-# RequiredReasonAPITests counts it. `plutil -extract … raw` prints an array's count and
-# exits 1 for a missing key, which counts as nothing declared.
-DECLARED=""
-ENTRY_COUNT=$(plutil -extract NSPrivacyAccessedAPITypes raw -o - "${BUNDLED_MANIFEST}" 2>/dev/null) || ENTRY_COUNT=0
-case "${ENTRY_COUNT}" in '' | *[!0-9]*) ENTRY_COUNT=0 ;; esac
-INDEX=0
-while [ "${INDEX}" -lt "${ENTRY_COUNT}" ]; do
-    ENTRY="NSPrivacyAccessedAPITypes.${INDEX}"
-    DECLARED_TYPE=$(plutil -extract "${ENTRY}.NSPrivacyAccessedAPIType" raw -o - "${BUNDLED_MANIFEST}" 2>/dev/null) || DECLARED_TYPE=""
-    REASON_COUNT=$(plutil -extract "${ENTRY}.NSPrivacyAccessedAPITypeReasons" raw -o - "${BUNDLED_MANIFEST}" 2>/dev/null) || REASON_COUNT=0
-    case "${REASON_COUNT}" in '' | *[!0-9]*) REASON_COUNT=0 ;; esac
-    if [ -n "${DECLARED_TYPE}" ] && [ "${REASON_COUNT}" -gt 0 ]; then
-        DECLARED="${DECLARED}${DECLARED_TYPE}"$'\n'
+# check_required_reason_apis <executable> <manifest> — prints each category the
+# executable uses that <manifest> declares, and appends each one it does not declare,
+# with the symbols behind it, to UNDECLARED. Not run in a subshell, so a read failure
+# ends the script.
+UNDECLARED=""
+check_required_reason_apis() {
+    local executable="$1" manifest="$2" imports methnames selectors uses declared
+    local used category kind value matched evidence use_category use_symbol missing
+    # Read with stderr dropped, so a tool's warning cannot land in the list; a failure is
+    # read again for the message.
+    if ! imports=$(xcrun nm -u "${executable}" 2>/dev/null) || [ -z "${imports}" ]; then
+        local nm_error
+        nm_error=$(xcrun nm -u "${executable}" 2>&1 >/dev/null) || true
+        fail_unreadable "${executable}" "the imported symbols" "xcrun nm -u ${executable}" \
+            "${nm_error:-it listed none}"
     fi
-    INDEX=$((INDEX + 1))
+    # otool reports an unreadable file on stdout and exits 0, so the read counts only when
+    # it printed the section header and at least one "ADDRESS  SELECTOR" line: an app or
+    # extension executable always sends some selectors.
+    methnames=$(xcrun otool -v -s __TEXT __objc_methname "${executable}" 2>&1) || true
+    selectors=$(awk 'NF == 2 && $1 ~ /^[0-9a-fA-F]+$/ { print $2 }' <<<"${methnames}")
+    if ! grep -qxF -- "Contents of (__TEXT,__objc_methname) section" <<<"${methnames}" || [ -z "${selectors}" ]; then
+        fail_unreadable "${executable}" "the Objective-C selectors" \
+            "xcrun otool -v -s __TEXT __objc_methname ${executable}" \
+            "$(head -n 3 <<<"${methnames}" | tr '\n' ' ')(no section header, or no ADDRESS SELECTOR line)"
+    fi
+
+    # uses: one "CATEGORY|KIND VALUE" line per table row the executable matches.
+    uses=""
+    while IFS='|' read -r category kind value; do
+        [ -n "${category}" ] || continue
+        matched=false
+        case "${kind}" in
+            import) grep -qxF -- "${value}" <<<"${imports}" && matched=true ;;
+            import-part) grep -qF -- "${value}" <<<"${imports}" && matched=true ;;
+            selector) grep -qxF -- "${value}" <<<"${selectors}" && matched=true ;;
+        esac
+        if [ "${matched}" = true ]; then
+            uses="${uses}${CATEGORY_PREFIX}${category}|${kind} ${value}"$'\n'
+        fi
+    done <<<"${REQUIRED_REASON_APIS}"
+    declared=$(declared_categories "${manifest}")
+
+    # Each category used, in table order, with every symbol that put the executable in it.
+    used=""
+    while IFS='|' read -r category _; do
+        [ -n "${category}" ] || continue
+        grep -qxF -- "${category}" <<<"${used}" || used="${used}${category}"$'\n'
+    done <<<"${uses}"
+    missing=""
+    while read -r category; do
+        [ -n "${category}" ] || continue
+        evidence=""
+        while IFS='|' read -r use_category use_symbol; do
+            [ "${use_category}" = "${category}" ] || continue
+            evidence="${evidence:+${evidence}, }${use_symbol}"
+        done <<<"${uses}"
+        if grep -qxF -- "${category}" <<<"${declared}"; then
+            echo "==> ${executable}: ${category} declared (${evidence})"
+        else
+            missing="${missing:+${missing}; }${category} (${evidence})"
+        fi
+    done <<<"${used}"
+    if [ -n "${missing}" ]; then
+        UNDECLARED="${UNDECLARED:+${UNDECLARED} | }${executable} against ${manifest}: ${missing}"
+    fi
+}
+
+check_required_reason_apis "${APP_BUNDLE}/${APP_NAME}" "${BUNDLED_MANIFEST}"
+
+# Each app extension is held to its own bundled manifest, which Apple requires it to
+# carry; one without a PrivacyInfo.xcprivacy declares nothing.
+for APPEX in "${APP_BUNDLE}"/PlugIns/*.appex; do
+    [ -d "${APPEX}" ] || continue
+    APPEX_EXECUTABLE=$(plutil -extract CFBundleExecutable raw -o - "${APPEX}/Info.plist" 2>/dev/null) || APPEX_EXECUTABLE=""
+    [ -n "${APPEX_EXECUTABLE}" ] && [ -f "${APPEX}/${APPEX_EXECUTABLE}" ] ||
+        fail_unreadable "${APPEX}" "the executable" "plutil -extract CFBundleExecutable raw -o - ${APPEX}/Info.plist" \
+            "no CFBundleExecutable naming a file in ${APPEX}"
+    check_required_reason_apis "${APPEX}/${APPEX_EXECUTABLE}" "${APPEX}/PrivacyInfo.xcprivacy"
 done
 
-# Each category used, in table order, with every symbol that put the executable in it.
-USED_CATEGORIES=""
-while IFS='|' read -r CATEGORY _; do
-    [ -n "${CATEGORY}" ] || continue
-    grep -qxF -- "${CATEGORY}" <<<"${USED_CATEGORIES}" || USED_CATEGORIES="${USED_CATEGORIES}${CATEGORY}"$'\n'
-done <<<"${USES}"
-UNDECLARED=""
-while read -r CATEGORY; do
-    [ -n "${CATEGORY}" ] || continue
-    EVIDENCE=""
-    while IFS='|' read -r USE_CATEGORY USE_SYMBOL; do
-        [ "${USE_CATEGORY}" = "${CATEGORY}" ] || continue
-        EVIDENCE="${EVIDENCE:+${EVIDENCE}, }${USE_SYMBOL}"
-    done <<<"${USES}"
-    if grep -qxF -- "${CATEGORY}" <<<"${DECLARED}"; then
-        echo "==> ${CATEGORY}: declared (${EVIDENCE})"
-    else
-        UNDECLARED="${UNDECLARED:+${UNDECLARED}; }${CATEGORY} (${EVIDENCE})"
-    fi
-done <<<"${USED_CATEGORIES}"
 [ -z "${UNDECLARED}" ] ||
-    fail ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API "${EXECUTABLE} uses a required-reason API the bundled privacy manifest declares no reason for" \
-        "an NSPrivacyAccessedAPITypes entry with at least one reason in ${BUNDLED_MANIFEST} for every required-reason API category the executable uses" \
+    fail ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API "an executable in ${APP_NAME}.app uses a required-reason API its bundled privacy manifest declares no reason for" \
+        "an NSPrivacyAccessedAPITypes entry with at least one reason, in the PrivacyInfo.xcprivacy bundled beside each executable, for every required-reason API category that executable uses" \
         "undeclared: ${UNDECLARED}" \
-        "add an entry with Apple's reason for each category to ${SOURCE_MANIFEST} (integrating-system-apis › references/permissions.md), or remove the call; if a listed symbol is not that API, report it rather than editing REQUIRED_REASON_APIS to pass; then rerun \`just build-device\`"
+        "add an entry with Apple's reason for each category to that bundle's manifest (${SOURCE_MANIFEST} for the app, the extension target's own PrivacyInfo.xcprivacy for an .appex; integrating-system-apis › references/permissions.md), or remove the call. A \`selector\` match can be the app's own @objc member of the same name rather than Apple's API: rename that member. Never delete a REQUIRED_REASON_APIS row to pass; then rerun \`just build-device\`"
 
 echo "BUILD-DEVICE OK: ${APP_BUNDLE}"

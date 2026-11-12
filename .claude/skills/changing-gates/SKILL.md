@@ -257,7 +257,9 @@ local simulators run the Xcode-pinned runtime only. Info.plist usage-description
 entitlements, and signing settings are unchecked. The privacy manifest is held to the
 code twice: by a textual scan of the shipped sources on every pull request
 (`RequiredReasonAPITests`, the fast signal) and by the linked binary's imports and
-selectors at `just build-device` (the authority, run only by `just check-release`) —
+selectors at `just build-device` (the authority: no pull-request gate runs it,
+`just check-release` does, and an author who adds a required-reason call or edits
+`App/PrivacyInfo.xcprivacy` runs `just build-device` directly) —
 why both, and what each misses, is
 [references/enforcement-layers.md](references/enforcement-layers.md) › Gaps. A
 required-reason call inside an embedded framework or reached through `dlsym`, and

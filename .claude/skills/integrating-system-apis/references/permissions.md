@@ -109,8 +109,11 @@ binary dependency or behind a renamed alias; it reports a listed name inside a
 multi-line `"""` string, or a domain identifier that shares one (rename it, or
 declare the category); and it cannot tell whether the declared reason is the right one
 — choosing the reason stays the author's and the reviewer's. When Apple adds a symbol
-or a category, the table in `RequiredReasonAPIScan` gains it, and so does
-`scripts/build-device.sh`'s `REQUIRED_REASON_APIS` in its linked spelling.
+or a category, it goes in both tables in the same pull request: `RequiredReasonAPIScan`
+in its source spelling, and `scripts/build-device.sh`'s `REQUIRED_REASON_APIS` in its
+linked spelling (read it from `xcrun nm -u` or `xcrun otool` on a build that calls it).
+`just check-harness` fails while the two name different categories
+(`scripts/checks/required-reason-tables-agree.sh`).
 
 The manifest only counts once it is in the bundle, and both suites read the source
 file. `scripts/build-device.sh` (`just build-device`, in `just check-release`) therefore
@@ -127,9 +130,12 @@ symbols carrying `NSUserDefaults`, as `AppStorage`'s do) and the Objective-C sel
 it sends (`xcrun otool`: `systemUptime`, `activeInputModes`, `fileModificationDate`),
 mapped by its `REQUIRED_REASON_APIS` table, and fails with
 `ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API`, naming each category and the symbols
-that put the binary in it, when one has no entry with a reason. That sees a call made
+that put the binary in it, when one has no entry with a reason. Each app extension's
+executable (`PlugIns/*.appex`) is held the same way to the `PrivacyInfo.xcprivacy` in
+its own bundle, which an extension target ships itself. That sees a call made
 through a package or an alias, which the source scan does not; it still misses an
-embedded framework, `dlsym`, and a selector built at run time. The
+embedded framework, `dlsym`, and a selector built at run time, and a selector match can
+be the app's own `@objc` member of that name — rename the member. The
 Keychain is not one of the required-reason categories: storing a secret through
 `SecureStoring` adds no required-reason declaration.
 
