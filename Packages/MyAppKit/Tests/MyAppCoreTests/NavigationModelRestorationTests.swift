@@ -207,8 +207,26 @@ struct NavigationModelRestorationTests {
     @Test
     func `decoding a route with an unknown stored name throws`() {
         let stored = Data(#"{"id":"\#(Self.firstID)","screen":"settings"}"#.utf8)
-        #expect(throws: DecodingError.self) {
+        let error = #expect(throws: DecodingError.self) {
             try JSONDecoder().decode(AppRoute.self, from: stored)
         }
+        guard case let .dataCorrupted(context) = error else {
+            Issue.record("expected dataCorrupted, got \(String(describing: error))")
+            return
+        }
+        #expect(context.codingPath.map(\.stringValue) == ["screen"])
+    }
+
+    @Test
+    func `decoding a route whose identifier is not a UUID throws`() {
+        let stored = Data(#"{"id":"not-a-uuid","screen":"todoDetail"}"#.utf8)
+        let error = #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(AppRoute.self, from: stored)
+        }
+        guard case let .dataCorrupted(context) = error else {
+            Issue.record("expected dataCorrupted, got \(String(describing: error))")
+            return
+        }
+        #expect(context.codingPath.map(\.stringValue) == ["id"])
     }
 }
