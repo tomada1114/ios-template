@@ -90,11 +90,14 @@ for the area you touched names its own check; the rest are here.
 ## Architecture
 
 ```
-Config/                     # Debug.xcconfig; optionally includes the gitignored
-                            #   Local.xcconfig holding DEVELOPMENT_TEAM (`just run-device`)
+Config/                     # Debug.xcconfig and Release.xcconfig: per-configuration
+                            #   build settings (API_BASE_URL). Debug alone optionally
+                            #   includes the gitignored Local.xcconfig holding
+                            #   DEVELOPMENT_TEAM (`just run-device`)
 App/                        # Thin shell: @main entry point + resources, NO logic.
                             #   The composition root: opens the SwiftData adapter and
-                            #   hands it, as a port, to Core's AppModel
+                            #   hands it, as a port, to Core's AppModel; reads
+                            #   Info.plist once into Core's AppConfiguration
 Packages/MyAppKit/
 ├── Sources/MyAppCore/      # Domain values, view models, ports (protocols), wording,
 │                           #   logging — no UI, persistence, or OS-integration import
@@ -120,6 +123,13 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   `PreferencesStoring`/`UserDefaultsPreferences`, and `SecureStoring`/`KeychainSecureStore`
   are the worked examples. A secret (a token, a key) goes through `SecureStoring`, never
   a preference: `UserDefaults` is unencrypted and backed up in plain text.
+- A value that differs per build configuration (the API base URL: staging in Debug,
+  production in Release) is a build setting in `Config/<Configuration>.xcconfig`,
+  expanded by `project.yml`'s `info.properties` into `Info.plist` under one key, which
+  `App/` reads once and Core's `AppConfiguration` parses; the steps are
+  `.claude/rules/project.md` › Per-configuration values. Never a secret: both files are
+  committed, and `Info.plist` ships readable in every copy of the app — a secret goes
+  through `SecureStoring`.
 - `MyAppCore` never imports SwiftUI, UIKit, AppKit, Cocoa, SwiftData, CoreData, CloudKit,
   UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, WidgetKit, or Security —
   in any spelling. Enforced twice: `.swiftlint.yml`'s `no_ui_import_in_core` and
@@ -153,7 +163,7 @@ layout, test helpers, log messages.
 |---|---|---|
 | **Core's public API** | `MyAppUI`, `MyAppPlatform`, `App/`, the tests | Update every caller in the same pull request; a new public declaration carries a `///` saying why; a new port is a design change ("Before changing the architecture") |
 | **The bundle identifier** (`PRODUCT_BUNDLE_IDENTIFIER` in `project.yml`) | The app's data container and Keychain items on every device, App Store Connect, push and other capabilities, `AppLog.subsystem`, `just run`/`just logs` | Fixed once a build has left your machine: a new identifier is a new app, and the user's data stays behind. `project.yml` and `AppLog.subsystem` change together (`AppLogTests`) |
-| **The stored schema** (`AppSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus an `AppMigrationPlan` stage, with a test that opens a store written by the previous version. Never edit a shipped schema version (`persisting-data`) |
+| **The stored schema** (`AppSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus an `AppMigrationPlan` stage, with a test that opens a store written by the previous version (`StoreFiles`). Never edit a shipped schema version: `SchemaMigrationTests` pins each one's entities and attributes, and the plan's order (`persisting-data`) |
 | **The URL scheme** (`DeepLink.scheme`, registered in `project.yml`) | Links to the app in messages, notes, and other apps | Fixed once a build has left your machine: a renamed scheme breaks every link in the wild. `project.yml` and `DeepLink.scheme` change together (`DeepLinkTests`); a new link shape is a new `DeepLink` case with its tests, and an old shape keeps parsing |
 | **Keychain items** (`SecureKeys` names, under the bundle identifier as the service) | Secrets on a user's device — which survive the app's deletion, so a reinstall finds what an earlier install wrote | Read the old key, write the new one, and delete the old, in Core, with a test that starts from the old key; a renamed key otherwise signs every user out and strands the old secret. Every key is a `SecureKeys` constant, pinned by `SecureKeysTests`. The accessibility (`AfterFirstUnlockThisDeviceOnly`) and the default access group are the design in `persisting-data`; a shared access group is an entitlement |
 | **`UserDefaults` keys and file formats** | Saved preferences and files on a user's device | Read the old key or format and migrate it in Core, with a test that starts from the old value. Every key is a `PreferenceKeys` constant, pinned by `PreferenceKeysTests` |

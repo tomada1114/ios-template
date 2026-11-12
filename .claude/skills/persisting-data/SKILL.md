@@ -136,8 +136,8 @@ changing the port or the adapter.
 ## Before you call it done
 
 - [ ] The change follows `.claude/rules/platform.md` › Persistence (a changed stored
-      shape is a new schema version with its migration test); `just lint` and
-      `just test` pass.
+      shape is a new schema version with its pinned fingerprint and its migration test,
+      `references/swiftdata.md`); `just lint` and `just test` pass.
 - [ ] A changed preference key or default reads the old one and migrates it in Core, with
       a test that starts from the old value.
 - [ ] A changed secure key reads the old one, writes the new one, and deletes the old, in

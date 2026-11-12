@@ -31,8 +31,10 @@ public protocol HTTPClient: Sendable {
   against `URLSessionHTTPClient` over a `URLProtocol` stub that answers on a `.invalid`
   host unique to each test. Both run under `just test` and in CI, and no test touches
   the real network.
-- **Not wired yet.** No feature calls an API, so `App/` does not create a client. The
-  first feature that needs one follows "A worked API service", below.
+- **Wired, not yet called.** `App/` builds one `APIClient` over `URLSessionHTTPClient`
+  at launch, at the base URL this build's `AppConfiguration` names (below). No feature
+  calls an API yet, so nothing reads it; the first feature that needs one follows "A
+  worked API service", below.
 
 ## A worked API service
 
@@ -87,9 +89,17 @@ func loadItem(using client: APIClient) async {
   measured from the `now` the client is handed so a test pins it.
 - **Cancellation is a no-op.** A cancelled task ends the call with `cancelled`, which the
   caller drops quietly, as it would the port's own `cancelled`.
-- **Wiring.** The composition root makes the client —
-  `APIClient(httpClient: URLSessionHTTPClient(), baseURL: …)` — and hands it to the Core
-  services it builds; a test makes one over `FakeHTTPClient` (`APIClientTests`).
+- **Wiring.** The composition root makes the client once —
+  `APIClient(httpClient: URLSessionHTTPClient(), baseURL: configuration.apiBaseURL)`,
+  `MyAppApp.makeAPIClient()` — and the first networked feature hands it to `AppModel` as
+  a new initializer parameter, which builds the feature's Core service over it; a test
+  makes one over `FakeHTTPClient` (`APIClientTests`).
+- **The base URL is per build.** `API_BASE_URL` in `Config/Debug.xcconfig` (staging) and
+  `Config/Release.xcconfig` (production) reaches `Info.plist` under
+  `AppConfiguration.apiBaseURLKey`; `AppConfiguration(infoDictionary:)` parses it and
+  throws `missing` or `malformed`, and `App/` stops the launch on either, since only a
+  broken build produces one. How to write the value — the `//` escape, `.invalid`
+  placeholders, no secrets — is `.claude/rules/project.md` › Per-configuration values.
   Retries are `RetryingAPIClient`, below; auth, caching, and pagination are services or
   decisions over this one, not options inside it.
 

@@ -11,7 +11,7 @@ import Testing
 @Suite("AppLog")
 struct AppLogTests {
     /// The `project.yml` key that declares the app target's bundle identifier.
-    static let settingKey = "PRODUCT_BUNDLE_IDENTIFIER:"
+    static let settingKey = "PRODUCT_BUNDLE_IDENTIFIER"
 
     /// The checkout root, resolved from this file's path:
     /// `Packages/MyAppKit/Tests/MyAppCoreTests/<this file>`, five levels up.
@@ -24,52 +24,12 @@ struct AppLogTests {
 
     // MARK: - Helpers
 
-    /// The bundle identifier a `project.yml` declares, read with `scripts/bundle-id.sh`'s
-    /// rules so this test and that script can never disagree about one manifest.
-    ///
-    /// Only the *first* declaration counts — the app target's, which `project.yml`
-    /// declares first — so a target added later (a widget extension, a helper) never shadows it.
-    /// A YAML trailing comment (whitespace, then `#`) and one surrounding pair of single
-    /// or double quotes are stripped; the value is otherwise taken literally, and
-    /// compared for equality rather than containment, so `com.example.MyApp.Helper` is
-    /// not `com.example.MyApp`.
-    ///
-    /// Answers `nil` when the manifest declares no identifier, or declares an empty one.
+    /// The bundle identifier a `project.yml` declares, read by ``ProjectManifest`` with
+    /// `scripts/bundle-id.sh`'s rules so this test and that script can never disagree
+    /// about one manifest. The value is compared for equality rather than containment,
+    /// so `com.example.MyApp.Helper` is not `com.example.MyApp`.
     static func declaredBundleIdentifier(inManifest manifest: String) -> String? {
-        // components(separatedBy: .newlines) splits on CR as well as LF, so a CRLF
-        // manifest leaves no stray carriage return behind — bundle-id.sh's `tr -d '\r'`.
-        let declaration = manifest
-            .components(separatedBy: .newlines)
-            .lazy
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .first { $0.hasPrefix(settingKey) }
-        guard let declaration else {
-            return nil
-        }
-        var value = String(declaration.dropFirst(settingKey.count))
-        // A `#` only starts a YAML comment when whitespace precedes it, and a bundle
-        // identifier can hold no `#` of its own — so everything from there on is not
-        // the value. A line whose value is only a comment declares nothing at all.
-        if let comment = value.range(of: #"\s#"#, options: .regularExpression) {
-            value = String(value[value.startIndex ..< comment.lowerBound])
-        }
-        value = value.trimmingCharacters(in: .whitespaces)
-        if value.hasPrefix("#") {
-            return nil
-        }
-        value = unquoted(value)
-        return value.isEmpty ? nil : value
-    }
-
-    /// Strips one surrounding pair of matching single or double quotes, as
-    /// `scripts/bundle-id.sh` does; any other value is returned untouched.
-    static func unquoted(_ value: String) -> String {
-        for quote in ["\"", "'"] {
-            if value.count >= 2, value.hasPrefix(quote), value.hasSuffix(quote) {
-                return String(value.dropFirst().dropLast())
-            }
-        }
-        return value
+        ProjectManifest.value(of: settingKey, inManifest: manifest)
     }
 
     // MARK: - The real manifest

@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A per-configuration API base URL: `API_BASE_URL` in `Config/Debug.xcconfig` and a new
+  `Config/Release.xcconfig` (placeholder `.invalid` hosts, the `//` written `/$()/`),
+  expanded into `Info.plist` under `APIBaseURL` and parsed by Core's `AppConfiguration`,
+  which throws `missing` or `malformed`. `App/` reads it once at launch, stops on a
+  broken value, and builds the `APIClient` over `URLSessionHTTPClient` at that URL; no
+  feature calls it yet. Release no longer builds without an xcconfig, and never
+  includes `Config/Local.xcconfig`.
+- `SchemaMigrationTests` pins every shipped schema version's stored shape — entities,
+  uniqueness constraints, and each attribute's and relationship's stored properties as
+  `Schema(versionedSchema:)` exposes them — against a hand-written literal, so editing
+  `AppSchemaV1` in place, or removing it or changing its version identifier, fails
+  `just test` with the instruction to add a new version and a migration stage instead. It also asserts that `AppMigrationPlan` lists its versions oldest first,
+  that each stage joins one version to the next, and that `PersistenceStore` opens the
+  plan's last schema. `StoreFiles` in `MyAppPlatformTests` writes a store with a given
+  schema version to a temporary file and reopens it through the production container:
+  the harness the first `AppSchemaV2`'s migration test is written in.
 - `RetryingAPIClient`, a Core service over `APIClient` that sends a failed call again:
   only a timeout, no connection, a 500, 502, 503, or 504, or a 429; after a jittered
   exponential backoff, or exactly the 429's `Retry-After` (a wait longer than the cap is
@@ -130,6 +146,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `LaunchTests` now runs Xcode's accessibility audit (`performAccessibilityAudit`) on the
+  empty list, the list with an item, the detail screen, its not-found state, and the All
+  Done state, through `auditAccessibility(of:)` in `LaunchUITests/Support/`, with light
+  appearance and the default text size pinned. Its issue handler accepts only three
+  named exceptions, each matched on the audit type and one element: contrast on the
+  disabled `addButton`, contrast on the detail screen's created date (`LabeledContent`'s
+  secondary value, given the `createdDate` identifier), and Dynamic Type clipping on the
+  single-line `newItemField`. `.claude/rules/ui.md` says what the audit covers and what
+  still needs a manual check.
 - `LaunchTests` now opens a `my-app://todo/<uuid>` link to the item its walk created
   and asserts the detail screen shows it, then a link to an unknown item and asserts
   the not-found state, so removing `App/`'s `.onOpenURL` fails `just uitest`. The
