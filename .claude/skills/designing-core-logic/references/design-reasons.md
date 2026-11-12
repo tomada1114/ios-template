@@ -38,7 +38,8 @@ view model is shaped: `.claude/rules/core.md` › View models; how it is owned a
 `Packages/MyAppKit/Package.swift` declares no package dependency. Every third-party
 package is a supply-chain and upgrade cost, and an app template should not impose an
 opinion about networking, persistence, or analytics frameworks: SwiftData, `URLSession`,
-and `UserDefaults` are first-party and sit behind ports, and an app adds what it needs.
+`UserDefaults`, and the Keychain are first-party and sit behind ports, and an app adds
+what it needs.
 A new dependency needs a human's sign-off (`AGENTS.md`'s "Security and human approval")
 and passes the Dependency Policy in `.claude/rules/project.md`.
 

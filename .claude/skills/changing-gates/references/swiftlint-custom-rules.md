@@ -5,10 +5,11 @@ The detail behind `changing-gates`' `.swiftlint.yml` section: what each of the t
 
 `no_ui_import_in_core` keeps `MyAppCore` from importing a UI, persistence, or
 OS-integration framework, attributed and kind-qualified spellings included. The list
-is the module alternation in the rule's `regex:`, thirteen modules today: the UI
+is the module alternation in the rule's `regex:`, fourteen modules today: the UI
 frameworks (SwiftUI, UIKit, and the two Mac UI modules the host build could otherwise
 reach, Cocoa and the one beneath it), persistence (SwiftData, CoreData, CloudKit), and
-OS services (UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, WidgetKit).
+OS services (UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, WidgetKit,
+Security).
 Read the regex itself for the exact spelling. `ArchitectureBoundaryTests` in
 `MyAppCoreTests` enforces the same boundary a second way, and its `forbiddenModules`
 and the regex change together, in one commit — adding a framework to one and not the

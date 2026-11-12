@@ -161,6 +161,14 @@ once it has run).
       the `init(hideCompleted:)` that reads it in
       `Packages/MyAppKit/Sources/MyAppUI/PreviewPreferences.swift`
 
+**Secure storage:**
+
+- [ ] `SecureKeys.authToken` in
+      `Packages/MyAppKit/Sources/MyAppCore/SecureStorage/SecureKeys.swift` and its
+      lines in `Packages/MyAppKit/Tests/MyAppCoreTests/SecureKeysTests.swift` — nothing
+      reads it; rename it to the secret your app stores, or delete it with the port
+      below if your app stores none
+
 **Keep, as the pattern your own code copies:**
 
 - The port/fake/contract shape: a `Sendable` protocol in Core, its adapter in
@@ -170,6 +178,9 @@ once it has run).
   and `Packages/MyAppKit/Sources/MyAppPlatform/Networking/URLSessionHTTPClient.swift`
 - `PreferencesStoring` — `Packages/MyAppKit/Sources/MyAppCore/Preferences/PreferencesStoring.swift`
   and `Packages/MyAppKit/Sources/MyAppPlatform/Preferences/UserDefaultsPreferences.swift`
+- `SecureStoring` — `Packages/MyAppKit/Sources/MyAppCore/SecureStorage/SecureStoring.swift`
+  and `Packages/MyAppKit/Sources/MyAppPlatform/SecureStorage/KeychainSecureStore.swift`:
+  where a token or any other secret goes, never a preference
 - `NavigationModel` — `Packages/MyAppKit/Sources/MyAppCore/Navigation/NavigationModel.swift`
 - `AppModel` — `Packages/MyAppKit/Sources/MyAppCore/AppModel.swift` — and `RootView` —
   `Packages/MyAppKit/Sources/MyAppUI/RootView.swift`: the shared view models, the route

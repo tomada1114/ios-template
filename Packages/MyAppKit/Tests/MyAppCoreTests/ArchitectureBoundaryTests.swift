@@ -8,9 +8,12 @@ import Testing
 /// second; the lint rule runs in the `lint` job and the pre-commit hook, this suite in the
 /// `test` job, so removing either one still leaves the other catching a regression.
 ///
-/// Core also never names a Foundation type an adapter owns (`URLSession`, `UserDefaults`):
-/// Core imports Foundation, so no import ban can see one, and this suite is the only
-/// enforcement.
+/// Core also never names a Foundation type an adapter owns (`URLSession`, `UserDefaults`)
+/// or one of the four `SecItem` functions (`SecItemAdd`, `SecItemCopyMatching`,
+/// `SecItemUpdate`, `SecItemDelete`): Core imports Foundation, which brings those names
+/// with it, so no import ban can see one, and this suite is the only enforcement. It
+/// scans for those four calls only: no check looks for any other Security function,
+/// type, or constant in Core.
 ///
 /// `MyAppUI` and `MyAppPlatform` are siblings over Core and never import each other.
 /// SwiftPM's target graph already withholds the modules, but only until someone adds a
@@ -24,7 +27,8 @@ struct ArchitectureBoundaryTests {
     /// Frameworks `MyAppCore` must not import: the UI frameworks (`Cocoa` re-exports
     /// AppKit), the persistence frameworks a repository adapter wraps, and the iOS
     /// services an adapter reaches for first (notifications, location, photos, purchases,
-    /// widgets). Each belongs in `MyAppPlatform`, behind a Core-declared port.
+    /// widgets, `Security` for the Keychain). Each belongs in `MyAppPlatform`, behind a
+    /// Core-declared port.
     ///
     /// `os` and `OSLog` are deliberately absent: logging is not a UI or OS-integration
     /// framework, so Core logs directly through ``MyAppCore/AppLog``
@@ -36,6 +40,7 @@ struct ArchitectureBoundaryTests {
         "SwiftUI", "UIKit", "AppKit", "Cocoa",
         "SwiftData", "CoreData", "CloudKit",
         "UserNotifications", "CoreLocation", "Photos", "PhotosUI", "StoreKit", "WidgetKit",
+        "Security",
     ]
 
     /// Foundation types `MyAppCore` must not name: Core imports Foundation, so no import
@@ -45,6 +50,16 @@ struct ArchitectureBoundaryTests {
     /// `.swiftlint.yml` has no twin rule, so this list and the test that reads it are the
     /// only enforcement.
     static let forbiddenFoundationTypes = ["URLSession", "UserDefaults"]
+
+    /// The four `SecItem` calls `MyAppCore` must not make. Banning `import Security` is not
+    /// enough: Foundation re-exports these functions, so Core could call them without it.
+    /// They belong to `KeychainSecureStore`, behind the ``MyAppCore/SecureStoring`` port.
+    /// The scan covers exactly these four names; no check looks for any other Security
+    /// function, type, or constant. Like ``forbiddenFoundationTypes``, this list has no
+    /// `.swiftlint.yml` twin.
+    static let forbiddenKeychainCalls = [
+        "SecItemAdd", "SecItemCopyMatching", "SecItemUpdate", "SecItemDelete",
+    ]
 
     /// `Sources/MyAppCore`, the directory the Core ban list applies to.
     static let coreSourcesDirectory = sourcesDirectory(of: "MyAppCore")
@@ -132,6 +147,27 @@ struct ArchitectureBoundaryTests {
         }
     }
 
+    /// Records an issue for every line in Core's sources that names one of `names`
+    /// outside a comment. Requires Core to have sources, like ``expectNoImports(of:in:)``.
+    static func expectNoCoreSourceNames(_ names: [String]) throws {
+        let files = swiftFiles(in: coreSourcesDirectory)
+        try #require(
+            !files.isEmpty,
+            "no .swift files found under \(coreSourcesDirectory.path)",
+        )
+
+        let regex = try typeRegex(forAnyOf: names)
+        for file in files {
+            let lines = try String(contentsOf: file, encoding: .utf8)
+                .components(separatedBy: .newlines)
+            for (index, line) in lines.enumerated() where namesType(line, matching: regex) {
+                Issue.record(
+                    "\(file.path):\(index + 1): MyAppCore names what its adapter owns: \(line)",
+                )
+            }
+        }
+    }
+
     // MARK: - The real sources
 
     @Test
@@ -143,22 +179,13 @@ struct ArchitectureBoundaryTests {
     /// (``forbiddenFoundationTypes``).
     @Test
     func `no MyAppCore source file names a Foundation type an adapter owns`() throws {
-        let files = Self.swiftFiles(in: Self.coreSourcesDirectory)
-        try #require(
-            !files.isEmpty,
-            "no .swift files found under \(Self.coreSourcesDirectory.path)",
-        )
+        try Self.expectNoCoreSourceNames(Self.forbiddenFoundationTypes)
+    }
 
-        let regex = try Self.typeRegex(forAnyOf: Self.forbiddenFoundationTypes)
-        for file in files {
-            let lines = try String(contentsOf: file, encoding: .utf8)
-                .components(separatedBy: .newlines)
-            for (index, line) in lines.enumerated() where Self.namesType(line, matching: regex) {
-                Issue.record(
-                    "\(file.path):\(index + 1): MyAppCore names a type its adapter owns: \(line)",
-                )
-            }
-        }
+    /// None of the four `SecItem` functions is called from Core (``forbiddenKeychainCalls``).
+    @Test
+    func `no MyAppCore source file calls one of the four SecItem functions`() throws {
+        try Self.expectNoCoreSourceNames(Self.forbiddenKeychainCalls)
     }
 
     @Test
@@ -192,6 +219,7 @@ struct ArchitectureBoundaryTests {
         "import PhotosUI",
         "import StoreKit",
         "import WidgetKit",
+        "import Security",
         "  import SwiftUI",
         "@preconcurrency import AppKit",
         "@_exported import SwiftUI",
@@ -201,6 +229,7 @@ struct ArchitectureBoundaryTests {
         "import func Cocoa.NSApplicationMain",
         "import class SwiftData.ModelContext",
         "@preconcurrency import UserNotifications",
+        "import func Security.SecItemAdd",
     ])
     func `pattern matches every spelling of a forbidden import`(line: String) throws {
         let regex = try Self.importRegex()
@@ -220,6 +249,7 @@ struct ArchitectureBoundaryTests {
         "import SwiftUIExtras",
         "import SwiftDataExtras",
         "import PhotosKit",
+        "import SecurityInterface",
         "@preconcurrency import Combine",
         "let text = \"import SwiftUI\"",
     ])
@@ -243,6 +273,23 @@ struct ArchitectureBoundaryTests {
         caught: Bool,
     ) throws {
         let regex = try Self.typeRegex(forAnyOf: Self.forbiddenFoundationTypes)
+        #expect(Self.namesType(line, matching: regex) == caught)
+    }
+
+    @Test(arguments: [
+        ("let status = SecItemAdd(item as CFDictionary, nil)", true),
+        ("    SecItemCopyMatching(query as CFDictionary, &result)", true),
+        ("guard SecItemUpdate(query, attributes) == 0 else { return }", true),
+        ("_ = SecItemDelete(query)", true),
+        ("/// `SecItemAdd` is the adapter's.", false),
+        ("let store: SecItemAddingStore", false),
+        ("let key = SecureKeys.authToken", false),
+    ])
+    func `the Keychain call scan catches code and skips comments`(
+        line: String,
+        caught: Bool,
+    ) throws {
+        let regex = try Self.typeRegex(forAnyOf: Self.forbiddenKeychainCalls)
         #expect(Self.namesType(line, matching: regex) == caught)
     }
 

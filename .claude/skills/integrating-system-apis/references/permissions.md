@@ -79,7 +79,8 @@ the file format is
 Put it at `App/PrivacyInfo.xcprivacy`: `project.yml`'s `sources: [App]` picks it up, and
 a Debug build copies it into the bundle root (verified). The template ships none,
 because nothing in it calls a required-reason API; the first `UserDefaults` key an app
-adds brings the manifest with it.
+adds brings the manifest with it. The Keychain is not one of those categories: storing
+a secret through `SecureStoring` adds no required-reason declaration.
 
 ## Adding a permission is a design change
 

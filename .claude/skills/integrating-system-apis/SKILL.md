@@ -22,7 +22,8 @@ description: >
 permission as Core state, where a usage description and an `Info.plist` key live, and
 what can be tested where. **Does not own:** which capabilities and entitlements the app
 takes (`starting-an-app`, written as present state in `AGENTS.md` › Architecture);
-storage — a repository, SwiftData, or a preference (`persisting-data`); the test-first
+storage — a repository, SwiftData, a preference, or a secret in the Keychain
+(`persisting-data`); the test-first
 loop for the Core decision the port serves and the Core error enum an adapter maps into
 (`.claude/rules/core.md`); the mapping itself (`.claude/rules/platform.md`);
 running the app and the evidence a pull request carries (`running-the-app`); a picker or
@@ -127,7 +128,11 @@ For a system API that means `BGTaskScheduler`, a UIKit type, or
 A framework that compiles on macOS may still refuse to run in a test process.
 `UNUserNotificationCenter.current()` raises `bundleProxyForCurrentProcess is nil` in a
 process with no app bundle (checked 2026-09-30 with a Swift script on the host), so a
-notification adapter's test also belongs behind `#if os(iOS)`. Unverified: whether the
+notification adapter's test also belongs behind `#if os(iOS)`. Moving a test there
+does not always rescue it: the Keychain answers `errSecMissingEntitlement` to the
+`just test-ios` runner as it does to the host's, because neither has an app around it,
+so `KeychainSecureStore` has no contract run in any gate
+(`persisting-data`'s `references/secure-storage.md`). Unverified: whether the
 `just test-ios` runner gives it the bundle it needs — if not, the adapter's evidence is
 the running app's, in the pull request.
 
@@ -137,8 +142,8 @@ proves what.
 ## A framework Core never imports
 
 `.swiftlint.yml`'s `no_ui_import_in_core` and `ArchitectureBoundaryTests.forbiddenModules`
-already ban UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, and WidgetKit
-from `MyAppCore`. An app that adopts a framework neither list names yet — BackgroundTasks,
+already ban UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, WidgetKit, and
+Security from `MyAppCore`. An app that adopts a framework neither list names yet — BackgroundTasks,
 AVFoundation, HealthKit — adds it to both in the same pull request as the adapter;
 `scripts/checks/core-ban-lists-agree.sh` (`just check-harness`) fails while they differ.
 
