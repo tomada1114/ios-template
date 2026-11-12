@@ -35,11 +35,14 @@ own. `scripts/lint.sh` is the single lint script: `just lint`
 job all call it. A new check is therefore added to `scripts/lint.sh`, never inlined as a
 command into `justfile`, `.githooks/pre-commit`, or a workflow `run:` step. The same
 shape holds elsewhere: CI's `test` job calls `scripts/coverage.sh` (what `just test`
-runs) and then `just build` and `just build-device`, and its `lint` job calls `scripts/tests/run.sh` and
+runs) and then `just build-device` and `just analyze` — whose clean Debug app build for the
+generic iOS Simulator is the compile `just build` makes, so CI does not run `just build`
+too — and its `lint` job calls `scripts/tests/run.sh` and
 `scripts/checks/run-all.sh` (what `just test-scripts` and `just check-harness` run).
 The simulator recipes (`uitest-build`, `uitest-run`, `smoke`, `test-ios`) run only in
 local `just check`, when `scripts/simulator-relevant.sh` (also what CI's `changes` job
-calls to decide whether `test` has macOS work) says the change touches their paths. `scripts/checks/just-check-matches-ci.sh` holds the two
+calls to decide whether `test` has macOS work) says the change touches their paths;
+`build-device` and `analyze` sit in the same tail and also run in CI's `test` job. `scripts/checks/just-check-matches-ci.sh` holds the two
 sides to the same set of gates, in both directions, apart from its reasoned exception
 list.
 
@@ -82,8 +85,31 @@ OS-integration framework, and its module list changes together with
 module list and why `os`/`OSLog` stay off it, the boundaries held by the test alone, and
 the four load-bearing parts of `no_print_in_sources` a widening edit usually breaks.
 
-`analyzer_rules` is deliberately absent: those run only under `swiftlint analyze` with a
-compiler log, which no gate here invokes. `trailing_comma` is set to agree with
+`analyzer_rules` holds `unused_declaration` and `unused_import`. They run only under
+`swiftlint analyze`, never `swiftlint lint`, so `just lint`, the hook, and CI's `lint`
+job never see them: `just analyze` (`scripts/analyze.sh`, in `just check`'s
+simulator-relevant tail and CI's `test` job) does. It makes its own compiler log — a
+clean `build-for-testing` of the app scheme and of the package's `…-Package` scheme for
+the iOS Simulator — because the analyzer needs every file's compile command, an
+incremental build leaves up-to-date files out, and `unused_declaration` counts a
+reference only from a file it analyzes: without the test targets an `internal` reached
+only through `@testable import` reads as unused, and without the iOS compile so does
+code reached only behind `#if os(iOS)`. SwiftLint skips a file it has no compiler
+arguments for silently, so the script fails (`ERR_ANALYZE_FILE_NOT_COMPILED`) when any
+Swift file under `App/`, `LaunchUITests/`, or a package's `Sources/` or `Tests/` is in
+no compile command. `public` declarations are skipped (the rule's default): they are
+the package's API. A flagged declaration or import is removed in the code, by hand —
+an import can be needed on macOS, which the iOS analysis does not compile, so `just
+test` follows — never excluded or disabled; that would be weakening the gate. The
+analysis sees only one Debug iOS Simulator compile, so a declaration or import used
+only under `#if os(macOS)`, `#if !DEBUG`, or `#if !targetEnvironment(simulator)` is
+inactive there and can be flagged falsely: do not delete that one — restructure it so
+the analyzed build references it, or report it in the pull request. Every local package
+under `Packages/` with a `Package.swift` is built and analyzed, and a checkout path
+holding a space is refused (`ERR_ANALYZE_PATH_HAS_SPACE`): SwiftLint splits a compile
+command on spaces.
+`.swiftlint.yml` is on `scripts/simulator-relevant.sh`'s path list so an
+`analyzer_rules` edit reaches the one check that reads it. `trailing_comma` is set to agree with
 SwiftFormat; the two tools must never disagree about one file.
 
 ## `.swiftformat`
@@ -213,7 +239,8 @@ behavior, and every `MyAppUI` code path, is outside the coverage floor and asser
 no gate. Code under `#if os(iOS)` in the Swift package is tested only by local `just
 test-ios` (inside `just check`) — `swift test` builds the package for the host Mac — and
 the coverage floor never sees it. CI records only coverage, the Debug simulator compile,
-and the unsigned Release compile for the device SDK (`just build-device`): a pull
+the unsigned Release compile for the device SDK (`just build-device`), and the
+analyzer rules (`just analyze`): a pull
 request whose author skipped `just check` reaches review with no simulator evidence.
 Nothing re-verifies `main` on macOS after a merge, so two pull requests that pass
 separately can break `main` together. Nothing runs the app or the package tests on a

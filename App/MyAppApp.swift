@@ -97,16 +97,19 @@ struct MyAppApp: App {
         preferences: Self.makePreferences(),
     )
 
-    /// The client every networked feature's Core service is built over. No feature calls
-    /// an API yet, so nothing reads it: the first one passes it to `AppModel` as a new
-    /// initializer parameter. It is a stored property, not a lazy `static`, so the
-    /// configuration is parsed at every launch and a misconfigured build fails there.
-    private let api = Self.makeAPIClient()
-
     var body: some Scene {
         WindowGroup {
             SceneRoot(app: app)
         }
+    }
+
+    /// Builds the client every networked feature's Core service is built over, at every
+    /// launch, so a misconfigured build fails there rather than at its first request. No
+    /// feature calls an API yet, so nothing keeps it: the first one stores it here and
+    /// passes it to `AppModel` as a new initializer parameter. Until then a stored
+    /// property nothing reads is dead code `just analyze` (`unused_declaration`) rejects.
+    init() {
+        _ = Self.makeAPIClient()
     }
 
     /// The store the app runs on, opened once: every SwiftData repository is built over

@@ -26,6 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `just analyze`: `swiftlint analyze --strict` with `.swiftlint.yml`'s new
+  `analyzer_rules` (`unused_declaration`, `unused_import`), over the compiler log of a
+  clean Debug iOS Simulator `build-for-testing` of the app and of every local package
+  that `scripts/analyze.sh` makes itself. It fails when any Swift file is in no
+  `swiftc … -module-name` compile command, rather than letting SwiftLint skip it
+  silently, and refuses a checkout path with a space. It runs in `just check`'s
+  simulator-relevant tail (now also triggered by a `.swiftlint.yml` change) and as a step
+  of CI's `Test & Coverage Gate`, which no longer runs `just build`: analyze's app build
+  is the same Debug simulator compile. The unused imports and two dead declarations it
+  found are removed; `App/` now builds its `APIClient` in `init()` instead of keeping a
+  stored property nothing reads.
 - The list refreshes quietly when a window comes back from the background, so changes
   made while the app was away show up. Each window keeps a `SceneLifecycleModel`
   (`AppModel.makeSceneLifecycleModel()`) and forwards its `scenePhase` to it as a
