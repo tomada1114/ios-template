@@ -57,7 +57,11 @@ to the null object when the container will not open (`persisting-data`), and bui
 `AppModel` in `@State`, handing it the adapters as ports through its initializer. Each
 scene's root (`SceneRoot`) owns that scene's `NavigationModel`, forwards opened URLs to
 it (`.onOpenURL`), and renders `MyAppUI`'s `RootView` over the app model and the
-navigation model. `App/` chooses adapters and nothing else.
+navigation model. It also parses `Bundle.main.infoDictionary` once into Core's
+`AppConfiguration` and builds the `APIClient` at its base URL (the
+`integrating-system-apis` skill's `references/http-client.md`): the parsing is Core's,
+so `App/` hands over a dictionary and decides nothing about it. `App/` chooses adapters
+and nothing else.
 
 `AppModel` (`Sources/MyAppCore/AppModel.swift`) does the rest of the wiring — the shared
 models as stored properties, one factory per route that needs a model of its own. Why it

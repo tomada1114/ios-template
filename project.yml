@@ -19,11 +19,13 @@ targets:
     type: application
     platform: iOS
     sources: [App]
-    # Debug reads Config/Debug.xcconfig, which optionally includes the gitignored
-    # Config/Local.xcconfig holding DEVELOPMENT_TEAM for `just run-device`. Never set
-    # DEVELOPMENT_TEAM below, even empty: a target's own setting overrides its xcconfig.
+    # Each configuration reads its own xcconfig, which sets API_BASE_URL. Only
+    # Config/Debug.xcconfig optionally includes the gitignored Config/Local.xcconfig
+    # holding DEVELOPMENT_TEAM for `just run-device`. Never set DEVELOPMENT_TEAM or
+    # API_BASE_URL below, even empty: a target's own setting overrides its xcconfig.
     configFiles:
       Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
     dependencies:
       - package: MyAppKit
         product: MyAppUI
@@ -33,10 +35,13 @@ targets:
         product: MyAppPlatform
     # XcodeGen writes App/Info.plist from these properties on every `just generate`, and
     # the build merges it with the INFOPLIST_KEY_* settings below. The URL scheme is
-    # DeepLink.scheme in MyAppCore; DeepLinkTests fails when the two differ.
+    # DeepLink.scheme in MyAppCore; DeepLinkTests fails when the two differ. APIBaseURL
+    # is AppConfiguration.apiBaseURLKey, expanded from the xcconfig's API_BASE_URL;
+    # AppConfigurationTests fails when the key or the setting name drifts.
     info:
       path: App/Info.plist
       properties:
+        APIBaseURL: $(API_BASE_URL)
         CFBundleURLTypes:
           - CFBundleURLName: com.example.MyApp
             CFBundleURLSchemes: [my-app]
