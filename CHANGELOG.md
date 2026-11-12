@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `SchemaMigrationTests` pins every shipped schema version's stored shape — entities,
+  attribute names, types, optionality, uniqueness, and relationships, read through
+  `Schema(versionedSchema:)` — against a hand-written literal, so editing `AppSchemaV1`
+  in place fails `just test` with the instruction to add a new version and a migration
+  stage instead. It also asserts that `AppMigrationPlan` lists its versions oldest first,
+  that each stage joins one version to the next, and that `PersistenceStore` opens the
+  plan's last schema. `StoreFiles` in `MyAppPlatformTests` writes a store with a given
+  schema version to a temporary file and reopens it through the production container:
+  the harness the first `AppSchemaV2`'s migration test is written in.
 - A `SecureStoring` port for secrets, with a Keychain adapter (`KeychainSecureStore`: a
   generic-password item per `SecureKeys` constant, the bundle identifier as its service,
   `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, no entitlement), the
