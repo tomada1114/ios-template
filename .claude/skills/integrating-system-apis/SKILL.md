@@ -6,7 +6,7 @@ description: >
   wiring; the HTTPClient port, URLSessionHTTPClient, and the APIClient Endpoint
   service; a permission status as a Core enum; Info.plist usage descriptions
   (INFOPLIST_KEY_NSCameraUsageDescription and friends), UIBackgroundModes,
-  BGTaskSchedulerPermittedIdentifiers and PrivacyInfo.xcprivacy in project.yml;
+  BGTaskSchedulerPermittedIdentifiers in project.yml, and App/PrivacyInfo.xcprivacy;
   UserNotifications, PhotosPicker and loadTransferable, BGTaskScheduler, simctl
   privacy; #if os(iOS) and what just test, just test-ios, and a device each prove. Use
   when adding a notification, photo, camera, location, background-task, network call,

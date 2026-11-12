@@ -13,15 +13,6 @@ struct AppLogTests {
     /// The `project.yml` key that declares the app target's bundle identifier.
     static let settingKey = "PRODUCT_BUNDLE_IDENTIFIER"
 
-    /// The checkout root, resolved from this file's path:
-    /// `Packages/MyAppKit/Tests/MyAppCoreTests/<this file>`, five levels up.
-    static let repositoryRoot = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-
     // MARK: - Helpers
 
     /// The bundle identifier a `project.yml` declares, read by ``ProjectManifest`` with
@@ -36,7 +27,7 @@ struct AppLogTests {
 
     @Test
     func `the log subsystem is the bundle identifier project yml declares`() throws {
-        let manifest = Self.repositoryRoot.appendingPathComponent("project.yml")
+        let manifest = RepositoryRoot.file("project.yml")
         let declared = try Self.declaredBundleIdentifier(
             inManifest: String(contentsOf: manifest, encoding: .utf8),
         )

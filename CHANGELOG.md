@@ -7,8 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The app now ships `App/PrivacyInfo.xcprivacy`, which declares the `UserDefaults`
+  required-reason API (`NSPrivacyAccessedAPICategoryUserDefaults`, reason `CA92.1`)
+  that `UserDefaultsPreferences` calls, with no tracking and no collected data, so an
+  App Store Connect upload no longer flags a missing declaration. `PrivacyManifestTests`
+  parses the file and fails when the entry or its reason is removed.
+
 ### Added
 
+- The list refreshes quietly when a window comes back from the background, so changes
+  made while the app was away show up. Each window keeps a `SceneLifecycleModel`
+  (`AppModel.makeSceneLifecycleModel()`) and forwards its `scenePhase` to it as a
+  `LifecyclePhase`, recorded synchronously so phases apply in order. A window's first
+  active and every active after a trip through the background ask for
+  `TodoListViewModel.refresh()`; dismissing Control Center or a system alert
+  (inactive → active) does not. A refresh fetches only when the list has already loaded
+  and no other refresh is in flight, so a launch loads once and several windows
+  returning together fetch once; it shows no progress, and a failed refresh keeps the
+  items and shows no alert. Lifecycle decisions log under the new `lifecycle` category.
 - `just build-device`: an unsigned Release build for the iOS device SDK
   (`generic/platform=iOS`, `CODE_SIGNING_ALLOWED=NO`) that asserts the `.app` exists,
   so a device-only compile break or a Release device failure (asset catalog, linker)
