@@ -10,10 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `SchemaMigrationTests` pins every shipped schema version's stored shape — entities,
-  attribute names, types, optionality, uniqueness, and relationships, read through
-  `Schema(versionedSchema:)` — against a hand-written literal, so editing `AppSchemaV1`
-  in place fails `just test` with the instruction to add a new version and a migration
-  stage instead. It also asserts that `AppMigrationPlan` lists its versions oldest first,
+  uniqueness constraints, and each attribute's and relationship's stored properties as
+  `Schema(versionedSchema:)` exposes them — against a hand-written literal, so editing
+  `AppSchemaV1` in place, or removing it or changing its version identifier, fails
+  `just test` with the instruction to add a new version and a migration stage instead. It also asserts that `AppMigrationPlan` lists its versions oldest first,
   that each stage joins one version to the next, and that `PersistenceStore` opens the
   plan's last schema. `StoreFiles` in `MyAppPlatformTests` writes a store with a given
   schema version to a temporary file and reopens it through the production container:
