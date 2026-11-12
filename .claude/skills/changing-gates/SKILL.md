@@ -199,8 +199,9 @@ and stays alive for ten seconds on a simulator, and nothing more. The one XCUITe
 `LaunchUITests/LaunchTests.swift`'s `testAddingAnItemShowsItInTheList` (`just uitest`),
 asserts only that the app launches and that one added item appears in the list, on the
 one simulator runtime the pinned Xcode ships — and, like `just smoke`, it runs only in
-local `just check`, never in CI. Any other UI behavior, and every `MyAppUI` code
-path, is outside the coverage floor and asserted by no gate. Code under `#if os(iOS)` in
+local `just check`, never in CI. Its accessibility audit sees only the empty list, the
+list with an item, and the detail screen, in light appearance at the default text size.
+Any other UI behavior, and every `MyAppUI` code path, is outside the coverage floor and asserted by no gate. Code under `#if os(iOS)` in
 the Swift package is tested only by local `just test-ios` (inside `just check`) — `swift test`
 builds the package for the host Mac — and the coverage floor never sees it. CI records
 only coverage and the Debug compile: a pull request whose author skipped `just check`

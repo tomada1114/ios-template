@@ -142,7 +142,8 @@ design-lock decision, never a per-screen one.
 - A glyph-only control gets `.accessibilityLabel` from a Core resource (`TodoRow`'s
   `toggleLabel`); a decorative image is `Image(decorative:)` or
   `.accessibilityHidden(true)`. SwiftLint's accessibility rules miss a glyph-only text
-  button; review catches it. Group a value and its caption with
+  button; the launch test's accessibility audit catches it on a screen it visits, and
+  review on any other. Group a value and its caption with
   `.accessibilityElement(children: .combine)`.
 
 ## Previews
@@ -175,16 +176,28 @@ never `sleep`, and keeps its timeouts in `Support/Timeout.swift`'s `Timeout`. A 
 helper more than one test file needs (`focus`, `waitForDisappearance`) goes in
 `LaunchUITests/Support/`, never copied into a second file.
 
+The launch walk runs Xcode's accessibility audit (`auditAccessibility(of:)`,
+`Support/XCTestCase+AccessibilityAudit.swift`) on the empty list, the list with an item,
+and the detail screen; a screen the walk reaches later gets the same call. Its issue
+handler accepts only a named exception matched on the audit type *and* the element, each
+with a comment saying why the issue is the system's rather than the app's. A new
+exception is a gate change reviewed like a lint disable; accepting a whole audit type is
+weakening a gate (`AGENTS.md` › Security and human approval). Fix what the audit reports
+in the view instead.
+
 ## Verifying a screen
 
 1. `just test` — the view model's behavior, and the view compiled for macOS.
 2. `just build` — the view and its previews compile for iOS; `just lint` for the view
    rules.
-3. `just uitest` — when an identifier the launch test reads, the first screen, or
-   `App/`'s wiring changed.
+3. `just uitest` — when an identifier the launch test reads, a screen the launch walk
+   visits, or `App/`'s wiring changed. Its accessibility audit (missing labels, hit
+   regions, clipped text, contrast, traits) covers those screens only, in light
+   appearance at the default text size, and only in the states the walk leaves them in.
 4. `just run`, then screenshots per the `running-the-app` skill on the smallest iPhone
    the Simulator offers (`SIMULATOR_DEVICE="<name>" just run`): light, dark, the largest
    accessibility text size (`accessibility-extra-extra-extra-large`), and Increase
    Contrast — plus a regular-width iPad while iPad ships. Check VoiceOver and
    Accessibility Inspector by hand, and say in the pull request what was checked; no
-   gate sees any of this.
+   gate sees dark, a large text size, Increase Contrast, iPad, or a screen or state the
+   launch walk does not audit.

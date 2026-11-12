@@ -5,7 +5,9 @@ import XCTest
 /// proves the preferences wiring in `App/` reaches the view model, and opening an item
 /// proves the navigation model reaches the stack; opening it by a deep link proves the
 /// registered scheme and `App/`'s URL handling reach that model. Deleting in Edit mode
-/// proves a swipe is not the only way to delete.
+/// proves a swipe is not the only way to delete. Xcode's accessibility audit runs on the
+/// empty list, the list with an item, and the detail screen
+/// (`Support/XCTestCase+AccessibilityAudit.swift`).
 ///
 /// XCTest by necessity — Apple has not ported UI automation to Swift Testing.
 /// All other tests use Swift Testing in Packages/MyAppKit.
@@ -20,8 +22,9 @@ final class LaunchTests: XCTestCase {
 
     /// One launch walks every scenario in turn, because each relaunch costs tens of
     /// seconds on CI (#57). The steps are ordered so none undoes what a later one needs:
-    /// add, open the detail and come back, open it and an unknown item by deep link and
-    /// come back, complete and hide the item, show it again, then delete it in Edit mode.
+    /// audit the empty list, add, audit the list, open the detail, audit it and come back,
+    /// open it and an unknown item by deep link and come back, complete and hide the item,
+    /// show it again, then delete it in Edit mode.
     /// Each step runs as a named activity with its own assertion message, so a failure
     /// still names the broken behavior — but a failure stops the walk, so the steps after
     /// it go unreported until it is fixed.
@@ -37,10 +40,16 @@ final class LaunchTests: XCTestCase {
         app.launchArguments = ["-uiTesting", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
 
+        try XCTContext.runActivity(named: "Audit the empty list's accessibility") { _ in
+            try auditTheEmptyList(in: app)
+        }
         XCTContext.runActivity(named: "Add an item") { _ in addAnItem(in: app) }
-        XCTContext
-            .runActivity(named: "Open the item's detail, then go back") { _ in
-                openTheDetailAndGoBack(in: app)
+        try XCTContext.runActivity(named: "Audit the list's accessibility with an item") { _ in
+            try auditAccessibility(of: app)
+        }
+        try XCTContext
+            .runActivity(named: "Open the item's detail, audit it, then go back") { _ in
+                try openTheDetailAuditItAndGoBack(in: app)
             }
         try XCTContext
             .runActivity(named: "Open the item, then an unknown item, by deep link") { _ in
@@ -131,7 +140,16 @@ final class LaunchTests: XCTestCase {
     }
 
     @MainActor
-    private func openTheDetailAndGoBack(in app: XCUIApplication) {
+    private func auditTheEmptyList(in app: XCUIApplication) throws {
+        XCTAssertTrue(
+            app.staticTexts["No Items"].waitForExistence(timeout: Timeout.launch),
+            "the list should start empty",
+        )
+        try auditAccessibility(of: app)
+    }
+
+    @MainActor
+    private func openTheDetailAuditItAndGoBack(in app: XCUIApplication) throws {
         let item = app.staticTexts["Buy milk"]
         item.tap()
         // The identifier lands on the detail screen's Form, which XCUITest sees as a
@@ -144,6 +162,7 @@ final class LaunchTests: XCTestCase {
             app.buttons["detailToggle"].exists,
             "the detail screen should show the item it was opened for",
         )
+        try auditAccessibility(of: app)
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(
             app.textFields["newItemField"].waitForExistence(timeout: Timeout.elementAppears),

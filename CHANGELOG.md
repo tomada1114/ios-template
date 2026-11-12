@@ -109,6 +109,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `LaunchTests` now runs Xcode's accessibility audit (`performAccessibilityAudit`) on the
+  empty list, the list with an item, and the detail screen, through
+  `auditAccessibility(of:)` in `LaunchUITests/Support/`. Its issue handler accepts only
+  three named exceptions, each matched on the audit type and the element: contrast on a
+  disabled button, contrast on the detail screen's created date (`LabeledContent`'s
+  secondary value, given the `createdDate` identifier), and Dynamic Type clipping on a
+  single-line text field. `.claude/rules/ui.md` › Verifying a screen says what the audit
+  covers and what still needs a manual check.
 - `LaunchTests` now opens a `my-app://todo/<uuid>` link to the item its walk created
   and asserts the detail screen shows it, then a link to an unknown item and asserts
   the not-found state, so removing `App/`'s `.onOpenURL` fails `just uitest`. The
