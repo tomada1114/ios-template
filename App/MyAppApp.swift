@@ -8,15 +8,51 @@ import SwiftUI
 /// A scene, not the app, owns the `NavigationModel`: the app supports multiple scenes
 /// (two windows on iPad), and a path shared between them would move every window in
 /// lockstep, and a deep link would move them all instead of the window it arrived in.
+/// So does its `SceneLifecycleModel`, whose state lives exactly as long as the window.
 private struct SceneRoot: View {
     let app: AppModel
     @State private var navigation = NavigationModel()
+    @State private var lifecycle: SceneLifecycleModel
+    @Environment(\.scenePhase)
+    private var scenePhase
 
     var body: some View {
         // A `my-app://` link (project.yml registers the scheme) goes to Core, which
-        // decides what it opens.
+        // decides what it opens. So does this window's phase, initial value included:
+        // recorded synchronously, so phases apply in order, and only the refresh it may
+        // ask for runs in a `Task` — not `.task(id:)`, which the next phase change would
+        // cancel mid-refresh.
         RootView(app: app, navigation: navigation)
             .onOpenURL { navigation.open($0) }
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                lifecycle.sceneDidEnter(Self.lifecyclePhase(phase))
+                Task { await lifecycle.refreshIfNeeded() }
+            }
+    }
+
+    init(app: AppModel) {
+        self.app = app
+        // A re-render builds a spare model, which `@State` discards: building one has no
+        // side effects.
+        _lifecycle = State(initialValue: app.makeSceneLifecycleModel())
+    }
+
+    /// SwiftUI's phase as Core's. A phase a later SDK adds is `inactive`, the one value
+    /// that neither arms nor asks for a refresh.
+    private static func lifecyclePhase(_ phase: ScenePhase) -> LifecyclePhase {
+        switch phase {
+        case .active:
+            .active
+
+        case .background:
+            .background
+
+        case .inactive:
+            .inactive
+
+        @unknown default:
+            .inactive
+        }
     }
 }
 
@@ -26,7 +62,8 @@ private struct SceneRoot: View {
 /// It opens the SwiftData store and the `UserDefaults` preferences through their
 /// `MyAppPlatform` adapters and hands them, as ports, to Core's `AppModel`, which builds
 /// every view model over them — so nothing below `App/` depends on which store answers,
-/// and `App/` decides nothing but which adapter each port gets
+/// and `App/` decides nothing but which adapter each port gets; each scene forwards its
+/// opened URLs and its scene phase to Core and decides nothing about either
 /// (the `designing-core-logic` skill's `references/view-models.md`). It also reads this
 /// build's `AppConfiguration` from `Info.plist`, once, and builds the `APIClient` over
 /// `URLSessionHTTPClient` at the base URL that configuration names.

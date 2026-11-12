@@ -17,7 +17,8 @@ import Observation
 /// is built by a named `make…ViewModel(…)` method.
 ///
 /// It is app-level, never per scene: what it holds is what every window shows. Which
-/// screens a window has pushed is that window's own ``NavigationModel``.
+/// screens a window has pushed is that window's own ``NavigationModel``, and where it
+/// stands in its lifecycle is its own ``SceneLifecycleModel``, which it builds here.
 @MainActor
 @Observable
 public final class AppModel {
@@ -43,6 +44,12 @@ public final class AppModel {
             now: now,
             makeID: makeID,
         )
+    }
+
+    /// A new lifecycle model for one scene, over the shared ``todoList``: the scene root
+    /// keeps it in `@State`, so it lives exactly as long as the scene.
+    public func makeSceneLifecycleModel() -> SceneLifecycleModel {
+        SceneLifecycleModel(list: todoList)
     }
 
     /// The view model of the screen ``AppRoute/todoDetail(_:)`` pushes for `id`.
