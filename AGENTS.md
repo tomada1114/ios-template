@@ -61,7 +61,8 @@ just uitest-build  # Build the app and the launch UI test for an iOS Simulator, 
 just uitest-run    # Run the launch UI test uitest-build compiled, without rebuilding
 just test-ios      # Run the package tests on an iOS Simulator (no coverage floor)
 just smoke         # Build Release and assert the app launches and stays alive on a simulator
-just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → analyze → test-ios, when simulator-relevant)
+just check         # Run the pull-request checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run, when the change touches the UI or app paths) → (test-ios, when it touches the platform-adapter paths)
+just check-release # Run every check, on main before a release tag: CHECK_ALL=1 just check → smoke → build-device → analyze
 just clean         # Remove build artifacts and the generated project
 just labels        # Create/update GitHub labels from .github/labels.yml (never deletes)
 just ruleset       # Create/update the "main" branch ruleset from .github/rulesets/main.json (admin-only)
@@ -74,7 +75,11 @@ Building the app needs Xcode (`.xcode-version`) **with its iOS platform installe
 ## Validating a change
 
 Run the narrowest check that can fail, then `just check` before you open a PR. The rule
-for the area you touched names its own check; the rest are here.
+for the area you touched names its own check; the rest are here. `just smoke`,
+`just build-device`, and `just analyze` run in neither `just check` nor CI: run the one
+the table names when your change is in its area, and `just check-release` on `main`
+before a release tag is created and after a batch of merges, which finds what the
+pull requests left for it.
 
 | What you changed | The narrowest check that can fail |
 |---|---|
@@ -253,7 +258,8 @@ Get a human's sign-off before acting on any of these:
 
 - Touching an entitlements file, a signing identity or team, a provisioning profile, or
   any App Store Connect, signing, or release secret.
-- Creating or pushing a release tag, or uploading a build to TestFlight or the App Store.
+- Creating or pushing a release tag (once `just check-release` passes on that commit),
+  or uploading a build to TestFlight or the App Store.
 - Adding a new package dependency.
 - Weakening any gate: lowering the coverage floor, disabling or relaxing a SwiftLint
   rule, widening a workflow's `permissions:`. That includes, when used to make a failing
@@ -286,8 +292,9 @@ stops and asks.
 
 Before submitting a PR:
 
-1. `just check` passes (it runs `just uitest`, `just smoke`, `just build-device`, `just analyze`, and `just test-ios` when the change
-   touches a simulator path; `CHECK_ALL=1 just check` forces them)
+1. `just check` passes (it runs `just uitest` when the change touches the UI or app
+   paths and `just test-ios` when it touches the platform-adapter paths;
+   `CHECK_ALL=1 just check` forces both)
 2. New public APIs have `///` doc comments explaining *why*
 3. Tests cover the new functionality (happy path and error path)
 4. No new dependencies without a human's sign-off

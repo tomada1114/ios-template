@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Run SwiftLint's analyzer rules (`.swiftlint.yml`'s `analyzer_rules`: unused
 # declarations and unused imports) over every Swift file the app and its local packages
-# compile. What `just analyze` runs after regenerating the project, and what CI's
-# `Test & Coverage Gate` runs through it.
+# compile. What `just analyze` runs after regenerating the project, and what `just
+# check-release` runs through it; no pull request's checks run it.
 #
 #   scripts/analyze.sh [--root DIR]
 #

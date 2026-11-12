@@ -70,12 +70,17 @@ Do:
 3. Implement the stated scope. Deliver what the task asks, at the scope it
    asks. If a better approach exists, say so in one sentence under
    SCOPE-NOTES and implement as asked.
-4. Add or update the tests that cover the change, and run the verification
-   command above. Report the exact command. For a performance task, re-run
+4. Add or update the tests that cover the change. While iterating, run only
+   the narrowest check that covers what you touched (the area's
+   .claude/rules/ file, else AGENTS.md's "Validating a change" table); run
+   the verification command above once, after your last change and before
+   your last push. Report the exact command. For a performance task, re-run
    step 2's baseline under the same conditions and report both numbers under
    MEASURE. A change a simulator must show (a view's wiring, App/, launch
-   behavior) also runs `just uitest` and reports its output under VERIFY -- `just test`
-   runs on the host Mac and never launches the app.
+   behavior) reports `just uitest`'s output under VERIFY: `just check` runs
+   it for the UI and app paths, and a change outside them (a Core view
+   model's navigation, say) runs `just uitest` itself -- `just test` runs on
+   the host Mac and never launches the app.
 5. If the change is user-facing, add an entry to CHANGELOG.md under
    [Unreleased], in the section (Added / Changed / Fixed / ...) that fits.
 6. Commit in coherent increments, and push as soon as the first coherent
@@ -96,7 +101,11 @@ Do:
 8. Run every verification in the **foreground**. Do not start a long command
    in the background and then poll it -- a run that returns while waiting on
    its own background job returns without its report, and its work has to be
-   recovered by hand.
+   recovered by hand. Use the simulator `scripts/simulator-destination.sh`
+   picks: never set `SIMULATOR_DEVICE`. Before you return, shut down each
+   simulator your runs booted (`xcrun simctl shutdown <udid>`), never
+   `shutdown all` -- other worktrees on this Mac share the simulators, and
+   several booted devices exhaust its memory.
 9. {Parallel mode only:} If you produce a gitignored artifact worth keeping --
    a fixture, a benchmark result, a generated file the change does not commit
    -- copy it into {repo_root} before you return and name it under

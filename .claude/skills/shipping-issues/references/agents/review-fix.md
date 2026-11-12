@@ -33,7 +33,10 @@ matters`. Findings I rejected are not listed here and must not be inferred.}
 
 Project conventions: read {workdir}/CLAUDE.md and {workdir}/AGENTS.md before
 changing anything.
-Verification command: {verify_command}
+Narrowest check: {the check that covers what the findings touch -- the
+                 touched area's .claude/rules/ file, else AGENTS.md's
+                 "Validating a change" table; never the full verify command,
+                 which already ran once on this branch}
 
 Do:
 1. Fix each finding at its cause, not at its symptom.
@@ -44,9 +47,11 @@ Do:
    one in front of the code.
 3. Do not fix anything that is not in the list. Real defects you notice go to
    FOLLOW-UPS, not into this diff.
-4. Run the verification command in the **foreground** -- never in the
+4. Run the narrowest check above in the **foreground** -- never in the
    background where you then have to poll it -- then commit and push. Push
-   before you return.
+   before you return. Use the simulator `scripts/simulator-destination.sh`
+   picks (never set `SIMULATOR_DEVICE`), and shut down each simulator your
+   run booted (`xcrun simctl shutdown <udid>`, never `shutdown all`).
 5. No GitHub write of any kind beyond the read above -- no `gh pr`, no
    `gh issue edit/comment/close`, no label change. Never `rm`: undo a probe
    inside the checkout with `git checkout --`, or move it aside with `mv`

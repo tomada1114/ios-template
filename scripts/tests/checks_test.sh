@@ -101,7 +101,7 @@ smoke:
     mise exec -- scripts/smoke_launch.sh
 
 check: verify-hooks fmt lint
-    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just analyze && just test-ios; else echo "Skipped (CHECK_ALL=1 runs them)"; fi
+    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just analyze && just test-ios; else echo "Skipped (CHECK_ALL=1 runs them)"; fi
 EOF
     cat >"${root}/AGENTS.md" <<'EOF'
 # Project Guide
@@ -1078,8 +1078,8 @@ drop_check_call() {
     replace_in "$1" justfile "just $2 \&\& " ""
 }
 
-# CI_ONLY is empty: `just build`, once its one entry, is redundant with `just analyze`
-# (#84), so a CI step running it is a divergence like any other.
+# CI_ONLY is empty, so a CI step running a recipe `just check` does not run is a
+# divergence like any other.
 case_ci_build_is_no_exception() {
     local root
     root=$(make_fixture)
@@ -1107,18 +1107,18 @@ case_ci_gate_reached_through_its_script() {
 case_ci_simulator_recipe_dropped_from_check() {
     local root
     root=$(make_fixture)
-    drop_check_call "${root}" smoke
+    drop_check_call "${root}" uitest-run
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_JUST_CI_STALE
-    assert_stderr_contains "LOCAL_ONLY names \`smoke\`, which \`just check\` no longer runs"
+    assert_stderr_contains "LOCAL_ONLY names \`uitest-run\`, which \`just check\` no longer runs"
 }
 
-# CI running a simulator recipe `just check` does not run is still a divergence.
+# CI running a recipe `just check` does not run — smoke is a release-only check — is a
+# divergence.
 case_ci_runs_a_recipe_check_dropped() {
     local root
     root=$(make_fixture)
-    drop_check_call "${root}" smoke
     append_ci_step "${root}" "just smoke"
     capture "${BASH}" "${CHECKS}/just-check-matches-ci.sh" --root "${root}"
     assert_exit 1

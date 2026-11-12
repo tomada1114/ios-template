@@ -112,8 +112,8 @@ declare the category); and it cannot tell whether the declared reason is the rig
 or a category, the table in `RequiredReasonAPIScan` gains it.
 
 The manifest only counts once it is in the bundle, and both suites read the source
-file. `scripts/build-device.sh` (`just build-device`, in `just check` and CI's `test`
-job) therefore fails when the Release device build's `MyApp.app` has no
+file. `scripts/build-device.sh` (`just build-device`, in `just check-release`) therefore
+fails when the Release device build's `MyApp.app` has no
 `PrivacyInfo.xcprivacy` at its root (`ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST`, what a
 `project.yml` that narrows `sources: [App]` or excludes the file would ship), when the
 bundled file fails `plutil -lint` (`ERR_BUILD_DEVICE_PRIVACY_MANIFEST_INVALID`), or when

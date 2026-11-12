@@ -35,16 +35,18 @@ own. `scripts/lint.sh` is the single lint script: `just lint`
 job all call it. A new check is therefore added to `scripts/lint.sh`, never inlined as a
 command into `justfile`, `.githooks/pre-commit`, or a workflow `run:` step. The same
 shape holds elsewhere: CI's `test` job calls `scripts/coverage.sh` (what `just test`
-runs) and then `just build-device` and `just analyze` — whose clean Debug app build for the
-generic iOS Simulator is the compile `just build` makes, so CI does not run `just build`
-too — and its `lint` job calls `scripts/tests/run.sh` and
+runs) and nothing else, and its `lint` job calls `scripts/tests/run.sh` and
 `scripts/checks/run-all.sh` (what `just test-scripts` and `just check-harness` run).
-The simulator recipes (`uitest-build`, `uitest-run`, `smoke`, `test-ios`) run only in
-local `just check`, when `scripts/simulator-relevant.sh` (also what CI's `changes` job
-calls to decide whether `test` has macOS work) says the change touches their paths;
-`build-device` and `analyze` sit in the same tail and also run in CI's `test` job. `scripts/checks/just-check-matches-ci.sh` holds the two
-sides to the same set of gates, in both directions, apart from its reasoned exception
-list.
+The simulator recipes run only locally. `just check` runs `uitest-build` and
+`uitest-run` when `scripts/simulator-relevant.sh --check uitest` says the change touches
+the UI or app paths, and `test-ios` when `--check test-ios` says it touches the
+platform-adapter paths; without `--check` the same script decides whether CI's `test`
+job has macOS work. `smoke`, `build-device`, and `analyze` run in neither `just check`
+nor CI: `just check-release` runs them, after `CHECK_ALL=1 just check`, on `main` before
+a release tag and after a batch of merges; why they wait for it, and what that leaves
+unseen, is [references/enforcement-layers.md](references/enforcement-layers.md) › Gaps.
+`scripts/checks/just-check-matches-ci.sh` holds `just check` and CI to the same set of
+gates, in both directions, apart from its reasoned exception list.
 
 A check in `scripts/lint.sh` is three edits, not one:
 
@@ -87,8 +89,8 @@ the four load-bearing parts of `no_print_in_sources` a widening edit usually bre
 
 `analyzer_rules` holds `unused_declaration` and `unused_import`. They run only under
 `swiftlint analyze`, never `swiftlint lint`, so `just lint`, the hook, and CI's `lint`
-job never see them: `just analyze` (`scripts/analyze.sh`, in `just check`'s
-simulator-relevant tail and CI's `test` job) does. It makes its own compiler log — a
+job never see them: `just analyze` (`scripts/analyze.sh`, in `just check-release`)
+does. It makes its own compiler log — a
 clean `build-for-testing` of the app scheme and of the package's `…-Package` scheme for
 the iOS Simulator — because the analyzer needs every file's compile command, an
 incremental build leaves up-to-date files out, and `unused_declaration` counts a
@@ -108,8 +110,8 @@ the analyzed build references it, or report it in the pull request. Every local 
 under `Packages/` with a `Package.swift` is built and analyzed, and a checkout path
 holding a space is refused (`ERR_ANALYZE_PATH_HAS_SPACE`): SwiftLint splits a compile
 command on spaces.
-`.swiftlint.yml` is on `scripts/simulator-relevant.sh`'s path list so an
-`analyzer_rules` edit reaches the one check that reads it. `trailing_comma` is set to agree with
+No pull request runs `just analyze`, so an `analyzer_rules` edit is checked by running
+it by hand before the pull request. `trailing_comma` is set to agree with
 SwiftFormat; the two tools must never disagree about one file.
 
 ## `.swiftformat`
@@ -233,17 +235,21 @@ and the All Done state, in light appearance at the default text size;
 failed save presents its alert over the detail screen, over the About sheet when the
 failure arrives while the sheet is up, and again over the stack when a deep link closes
 the sheet under the alert. They run on the one simulator
-runtime the pinned Xcode ships, and, like `just smoke`, only in local `just check`,
-never in CI. Dark mode, large text, and every other state go unaudited. Any other UI
+runtime the pinned Xcode ships, only locally — in `just check` when the change touches
+the UI or app paths, and in `just check-release` — never in CI. Dark mode, large text, and every other state go unaudited. Any other UI
 behavior, and every `MyAppUI` code path, is outside the coverage floor and asserted by
 no gate. Code under `#if os(iOS)` in the Swift package is tested only by local `just
-test-ios` (inside `just check`) — `swift test` builds the package for the host Mac — and
-the coverage floor never sees it. CI records only coverage, the Debug simulator compile,
-the unsigned Release compile for the device SDK (`just build-device`), and the
-analyzer rules (`just analyze`): a pull
-request whose author skipped `just check` reaches review with no simulator evidence.
-Nothing re-verifies `main` on macOS after a merge, so two pull requests that pass
-separately can break `main` together. Nothing runs the app or the package tests on a
+test-ios` (inside `just check` when the change touches the platform-adapter paths, and
+`just check-release`) — `swift test` builds the package for the host Mac — and the
+coverage floor never sees it. CI records only the package tests and coverage on the
+host: a pull request whose author skipped `just check` reaches review with no simulator
+evidence. Nothing on a pull request's path runs `just analyze`, `just build-device`, or
+`just smoke`, nor `just uitest` or `just test-ios` unless the diff touches their paths:
+an unused declaration, a device-only compile break, a Release launch crash, or an
+iOS-only test failure merges unseen and is found at the next `just check-release`.
+Nothing re-verifies `main` on macOS after a merge until someone runs `just
+check-release` there, so two pull requests that pass separately can break `main`
+together. Nothing runs the app or the package tests on a
 physical device (`just build-device` only compiles and links Release for one, unsigned,
 and checks the bundle holds `PrivacyInfo.xcprivacy`; nothing installs it), or on any iOS release but the one the pinned Xcode ships: the
 local simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,

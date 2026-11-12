@@ -7,7 +7,7 @@ opt_in_rules:
 
 # Analyzer rules run only under `swiftlint analyze`, never `swiftlint lint` (so not in
 # `just lint`, the hook, or CI's lint job): `just analyze` (scripts/analyze.sh, in
-# `just check` and CI's test job) feeds them the compiler log of a clean iOS Simulator
+# `just check-release`) feeds them the compiler log of a clean iOS Simulator
 # build-for-testing of the app and of the package, tests included. `public`
 # declarations are skipped (unused_declaration's default): they are the package's API.
 analyzer_rules:

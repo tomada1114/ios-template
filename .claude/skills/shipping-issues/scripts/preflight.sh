@@ -275,7 +275,7 @@ fi
 # package.json scripts, Makefile target, then a per-language default. The
 # justfile comes first because it is this template's own gate: `just check` runs
 # format, lint, the script and harness checks, the tests with the coverage
-# floor, and the build, and a repository cut from the template that later adds
+# floor, and the simulator builds the change touches, and a repository cut from the template that later adds
 # a package.json for some tooling must not have its baseline silently demoted to
 # that file's `test` script. The later entries stay so the script still gives a
 # useful answer in a repository with another toolchain. Independent of

@@ -2,7 +2,8 @@
 # The "app actually runs" guarantee: build Release for the iOS Simulator (or take a
 # pre-built simulator .app), verify the bundle's code signature, install and launch it
 # on a simulator, and assert the app process stays alive for ALIVE_SECONDS. What
-# `just smoke` runs. GUI assertions belong to the XCUITest (`just uitest`), not here.
+# `just smoke` runs, and `just check-release` through it; no pull request's checks run
+# it. GUI assertions belong to the XCUITest (`just uitest`), not here.
 #
 #   scripts/smoke_launch.sh                  generate + build Release, then smoke-test
 #   scripts/smoke_launch.sh path/to/An.app   smoke-test an existing simulator bundle (no build)
