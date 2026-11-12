@@ -22,7 +22,7 @@ private struct SceneRoot: View {
         // recorded synchronously, so phases apply in order, and only the refresh it may
         // ask for runs in a `Task` — not `.task(id:)`, which the next phase change would
         // cancel mid-refresh.
-        RootView(app: app, navigation: navigation)
+        RootView(app: app, navigation: navigation, lifecycle: lifecycle)
             .onOpenURL { navigation.open($0) }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 lifecycle.sceneDidEnter(Self.lifecyclePhase(phase))

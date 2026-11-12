@@ -18,13 +18,19 @@ import Observation
 ///
 /// It is app-level, never per scene: what it holds is what every window shows. Which
 /// screens a window has pushed is that window's own ``NavigationModel``, and where it
-/// stands in its lifecycle is its own ``SceneLifecycleModel``, which it builds here.
+/// stands in its lifecycle is its own ``SceneLifecycleModel``, which it builds here —
+/// each over the one list of open windows it keeps, from which a scene learns whether it
+/// is the window that presents a failure.
 @MainActor
 @Observable
 public final class AppModel {
     /// The to-do list every scene shows, built once over the ports, so two windows show
     /// the same items and a pushed detail screen shows what the list shows.
     public let todoList: TodoListViewModel
+
+    /// The open windows, shared by every scene model built here: what makes one failure
+    /// present in one window (``SceneLifecycleModel/todoListFailure``).
+    private let openScenes = OpenScenes()
 
     /// Builds the shared view models over `repository` and `preferences`. Nothing is read
     /// until a view model's own `load()`: construction stays free of side effects.
@@ -47,17 +53,21 @@ public final class AppModel {
     }
 
     /// A new lifecycle model for one scene, over the shared ``todoList``: the scene root
-    /// keeps it in `@State`, so it lives exactly as long as the scene.
+    /// keeps it in `@State`, so it lives exactly as long as the scene. It gets an identity
+    /// of its own, and becomes an open window only once it reports a phase.
     public func makeSceneLifecycleModel() -> SceneLifecycleModel {
-        SceneLifecycleModel(list: todoList)
+        SceneLifecycleModel(list: todoList, openScenes: openScenes)
     }
 
-    /// The view model of the screen ``AppRoute/todoDetail(_:)`` pushes for `id`.
+    /// The view model of the screen ``AppRoute/todoDetail(_:)`` pushes for `id`, in the
+    /// window `scene` names.
     ///
     /// A new model on every call — the pushed screen owns the one it is given — over the
     /// shared ``todoList``, so the detail screen shows the item as the list holds it now,
-    /// and a toggle there is the list's toggle.
-    public func makeTodoDetailViewModel(id: TodoItem.ID) -> TodoDetailViewModel {
-        TodoDetailViewModel(list: todoList, id: id)
+    /// and a toggle there is the list's toggle. `scene` has no default: a pushed screen
+    /// always has a window, and its failure presents there. `nil` is for a caller with
+    /// none.
+    public func makeTodoDetailViewModel(id: TodoItem.ID, scene: SceneID?) -> TodoDetailViewModel {
+        TodoDetailViewModel(list: todoList, id: id, scene: scene)
     }
 }

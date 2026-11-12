@@ -59,7 +59,7 @@ to the null object when the container will not open (`persisting-data`), and bui
 scene's root (`SceneRoot`) owns that scene's `NavigationModel` and
 `SceneLifecycleModel`, forwards opened URLs to the first (`.onOpenURL`) and its scene
 phase to the second ("Lifecycle", below), and renders `MyAppUI`'s `RootView` over the
-app model and the navigation model. It also parses `Bundle.main.infoDictionary` once into Core's
+app model and both of the scene's models. It also parses `Bundle.main.infoDictionary` once into Core's
 `AppConfiguration` and builds the `APIClient` at its base URL (the
 `integrating-system-apis` skill's `references/http-client.md`): the parsing is Core's,
 so `App/` hands over a dictionary and decides nothing about it. `App/` chooses adapters
@@ -81,7 +81,10 @@ is shaped that way:
   presented sheet — stays in the scene's own `NavigationModel` (the `designing-ui`
   skill's `references/navigation.md`), and so does where the window stands in its lifecycle:
   `AppModel` builds a scene's `SceneLifecycleModel` (`makeSceneLifecycleModel()`) over
-  the shared list, and the scene keeps it ("Lifecycle", below).
+  the shared list, and the scene keeps it ("Lifecycle", below). The one thing `AppModel`
+  keeps across scenes is the list of open windows each of those models joins, which
+  only the choice of the window that presents a failure reads (the `designing-ui`
+  skill's `references/navigation.md` › A failure presents in one window).
 
 ## Lifecycle
 
@@ -122,12 +125,20 @@ below is Core's, under `SceneLifecycleModelTests` and `TodoListViewModelRefreshT
   down; their next pull-to-refresh or Retry reports a failure that persists. It shares
   `load()`'s fetch and latest-wins guard ("Reentrancy", above), so a load that starts
   during a refresh supersedes it.
-- **Phases are per scene, not app-wide.** Each window keeps its own model, and the scene
-  that returns asks, whatever the others do; one window going to the background arms
-  nothing in another window that only went inactive. An app-wide phase — the most active
-  of all windows — was the alternative: it needs every window's last report to be
-  trusted, and a window that closed with a stale `active` would suppress every later
-  refresh. Lifecycle decisions log under `AppLog.lifecycle`.
+- **A refresh is decided per scene, not app-wide.** Each window keeps its own model, and
+  the scene that returns asks, whatever the others do; one window going to the
+  background arms nothing in another window that only went inactive. An app-wide phase —
+  the most active of all windows — was the alternative: it needs every window's last
+  report to be trusted, and a window that closed with a stale `active` would suppress
+  every later refresh. Lifecycle decisions log under `AppLog.lifecycle`.
+- **The phases also say which windows are open, for one decision only.** A scene's first
+  report adds it to the list of open windows `AppModel` keeps, and each later one records
+  whether it is in the foreground (every phase but `background`). Only the choice of the
+  window that presents a failure reads that list, and it survives what the app-wide phase
+  could not: a stale entry cannot suppress anything, because the list holds each scene
+  weakly and skips one that is gone, and the worst a wrong entry does is present the
+  failure in another open window. The rule is the `designing-ui` skill's
+  `references/navigation.md` › A failure presents in one window.
 - **Where the next lifecycle rule goes.** Work for leaving the foreground — flushing a
   pending write, pausing a timer — is a `.background` (or `.inactive`) branch of
   `SceneLifecycleModel.sceneDidEnter(_:)`, calling a view model's action; `SceneRoot`

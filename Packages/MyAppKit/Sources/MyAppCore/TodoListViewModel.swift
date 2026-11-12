@@ -10,29 +10,27 @@ import Observation
 /// when Add is enabled, what an empty list says, what a failed save does to the row — is
 /// made here, where the coverage floor sees it; `TodoListView` only renders it.
 ///
-/// Action-shaped: the view calls one method per user intent (``addDraft()``,
-/// ``toggle(_:)``, ``delete(atOffsets:)``, ``setHideCompleted(_:)``) and never mutates
+/// Action-shaped: the view calls one method per user intent (``addDraft(from:)``,
+/// ``toggle(_:from:)``, ``delete(atOffsets:from:)``, ``setHideCompleted(_:)``) and never mutates
 /// ``items`` itself.
 /// Time and identity are injected so a test can pin both.
 @MainActor
 @Observable
 public final class TodoListViewModel {
-    /// Where loading stands. An edit never moves it; only ``load()`` does.
+    /// Where loading stands. An edit never moves it; only ``load(from:)`` does.
     public enum Phase: Equatable, Sendable {
-        /// The last ``load()`` failed; ``items`` is whatever was shown before it.
+        /// The last ``load(from:)`` failed; ``items`` is whatever was shown before it.
         case failed
         /// No load has finished: nothing has asked the repository yet, or the only load
         /// was cancelled — so the screen's next appearance asks again.
         case idle
         /// ``items`` reflects the repository.
         case loaded
-        /// ``load()`` is waiting on the repository.
+        /// ``load(from:)`` is waiting on the repository.
         case loading
     }
 
-    /// A write the repository acknowledged while the newest ``load()`` was in flight. That
-    /// load's fetch may have read the store before the write landed, so the write is
-    /// replayed over its result rather than lost until the next load.
+    /// How a fetch ended, for ``load(from:)`` and ``refresh()`` to apply.
     private enum FetchOutcome {
         case cancelled
         case failed(TodoRepositoryError)
@@ -42,24 +40,23 @@ public final class TodoListViewModel {
         case superseded
     }
 
-    private enum AcknowledgedWrite {
-        case deleted(TodoItem.ID)
-        case saved(TodoItem)
-    }
-
     /// Every item the repository holds, in ``TodoItem/isOrderedBefore(_:_:)`` order —
     /// hidden ones included. The list renders ``visibleItems``.
     public private(set) var items: [TodoItem] = []
     /// Where loading stands.
     public private(set) var phase: Phase = .idle
-    /// The text in the new-item field. The view binds to it; only ``addDraft()`` clears it.
+    /// The text in the new-item field. The view binds to it; only ``addDraft(from:)`` clears it.
     public var draftTitle = ""
-    /// Whether a save started by ``addDraft()`` is still in flight.
+    /// Whether a save started by ``addDraft(from:)`` is still in flight.
     public private(set) var isAdding = false
     /// The failure to present, or `nil`. Cleared by ``dismissFailure()``.
     public private(set) var failure: TodoListFailure?
+    /// The scene whose action caused ``failure`` — what an action's `from:` named — or
+    /// `nil` when no scene did. Which window presents it is that window's
+    /// ``SceneLifecycleModel/todoListFailure``.
+    public private(set) var failureScene: SceneID?
     /// Whether done items are hidden: ``PreferenceKeys/hideCompleted``, read by
-    /// ``load()`` and written by ``setHideCompleted(_:)``. Off until the first load.
+    /// ``load(from:)`` and written by ``setHideCompleted(_:)``. Off until the first load.
     public private(set) var hideCompleted = false
 
     /// How many loads have started. A load that returns after a newer one started is
@@ -89,7 +86,7 @@ public final class TodoListViewModel {
     }
 
     /// The items the list shows: ``items`` without the done ones while ``hideCompleted``
-    /// is on. `List.onDelete` offsets index this array (``delete(atOffsets:)``).
+    /// is on. `List.onDelete` offsets index this array (``delete(atOffsets:from:)``).
     public var visibleItems: [TodoItem] {
         hideCompleted ? items.filter { !$0.isDone } : items
     }
@@ -125,7 +122,7 @@ public final class TodoListViewModel {
     }
 
     /// Creates the view model over `repository` and `preferences`. Nothing is read until
-    /// ``load()``: touching storage in an initializer would make construction a side
+    /// ``load(from:)``: touching storage in an initializer would make construction a side
     /// effect.
     ///
     /// `preferences` has no default: a composition root that forgot to wire it would
@@ -144,7 +141,8 @@ public final class TodoListViewModel {
 
     /// Reads ``hideCompleted`` from the preferences, then replaces ``items`` with what the
     /// repository holds. The preference is read first, so it is current even when the
-    /// repository fails.
+    /// repository fails. `scene` is the window that asked — here and in every action that
+    /// can fail — so the failure presents there (``failureScene``).
     ///
     /// Safe to call while another load is in flight — `.task`, pull-to-refresh, Retry, and
     /// the detail screen can all ask at once, and a lifecycle ``refresh()`` can be running
@@ -158,7 +156,7 @@ public final class TodoListViewModel {
     ///   after the fetch, not from the port, because ``TodoRepositoryError`` has no
     ///   cancellation case — a store that sees its caller cancel reports a failure, which
     ///   the cancelled caller no longer wants (`.claude/rules/core.md` › Cancellation).
-    public func load() async {
+    public func load(from scene: SceneID? = nil) async {
         hideCompleted = preferences.value(for: PreferenceKeys.hideCompleted)
         if phase != .loading {
             phaseBeforeLoading = phase
@@ -179,7 +177,7 @@ public final class TodoListViewModel {
 
         case let .failed(error):
             phase = .failed
-            report(.loadFailed, error)
+            report(.loadFailed, error, from: scene)
         }
     }
 
@@ -191,7 +189,7 @@ public final class TodoListViewModel {
     ///   several windows returning at once fetch once.
     /// - It never sets `.loading`, so no progress shows over the items already there.
     /// - A failure keeps ``items`` and ``phase``, presents no ``failure``, and is logged.
-    /// - It shares ``load()``'s fetch: the newest of the two wins, and writes acknowledged
+    /// - It shares ``load(from:)``'s fetch: the newest of the two wins, and writes acknowledged
     ///   while it was in flight are replayed over its result.
     public func refresh() async {
         guard phase == .loaded || phase == .failed, refreshGeneration != loadGeneration else {
@@ -224,7 +222,7 @@ public final class TodoListViewModel {
     /// The row appears only once the save succeeded, so the list never shows an item the
     /// store does not have. The draft is cleared only if it still holds what was
     /// submitted: whatever the user typed while the save was in flight is theirs.
-    public func addDraft() async {
+    public func addDraft(from scene: SceneID? = nil) async {
         guard canAdd else {
             return
         }
@@ -241,7 +239,7 @@ public final class TodoListViewModel {
         do {
             try await repository.save(item)
         } catch {
-            report(.saveFailed, error)
+            report(.saveFailed, error, from: scene)
             return
         }
         recordWrite(.saved(item))
@@ -255,7 +253,7 @@ public final class TodoListViewModel {
     }
 
     /// Flips the item's done state, keeping the row unchanged if the save fails.
-    public func toggle(_ id: TodoItem.ID) async {
+    public func toggle(_ id: TodoItem.ID, from scene: SceneID? = nil) async {
         guard var updated = items.first(where: { $0.id == id }) else {
             return
         }
@@ -263,7 +261,7 @@ public final class TodoListViewModel {
         do {
             try await repository.save(updated)
         } catch {
-            report(.saveFailed, error)
+            report(.saveFailed, error, from: scene)
             return
         }
         recordWrite(.saved(updated))
@@ -277,22 +275,22 @@ public final class TodoListViewModel {
     /// the shape `List.onDelete` hands over. Resolving them against ``items`` would delete
     /// a hidden row whenever ``hideCompleted`` is on. Offsets are resolved to identifiers
     /// before anything suspends.
-    public func delete(atOffsets offsets: IndexSet) async {
+    public func delete(atOffsets offsets: IndexSet, from scene: SceneID? = nil) async {
         let shown = visibleItems
         let ids = offsets.filter(shown.indices.contains).map { shown[$0].id }
-        await delete(ids)
+        await delete(ids, from: scene)
     }
 
     /// Deletes each item in turn, stopping at the first failure so the rows still shown
     /// are exactly the ones the store still has.
-    public func delete(_ ids: [TodoItem.ID]) async {
+    public func delete(_ ids: [TodoItem.ID], from scene: SceneID? = nil) async {
         for id in ids {
             do {
                 try await repository.delete(id: id)
             } catch .notFound {
                 // Already gone: what the user asked for is true, so the row goes too.
             } catch {
-                report(.deleteFailed, error)
+                report(.deleteFailed, error, from: scene)
                 return
             }
             recordWrite(.deleted(id))
@@ -313,38 +311,16 @@ public final class TodoListViewModel {
         items.first { $0.id == id }
     }
 
-    /// Clears ``failure`` once the view has shown it.
+    /// Clears ``failure``, whichever window presents it. A window's alert button calls
+    /// ``SceneLifecycleModel/dismissTodoListFailure()``, which acts only in that window.
     public func dismissFailure() {
         failure = nil
+        failureScene = nil
     }
 
     /// What VoiceOver reads for the done toggle of `item`, which is otherwise a glyph.
     public func toggleLabel(for item: TodoItem) -> LocalizedStringResource {
         item.isDone ? TodoListStrings.markNotDone : TodoListStrings.markDone
-    }
-
-    /// `loaded` with `writes` applied in order: a save replaces the item with its
-    /// identifier or adds it, a delete removes it. Replaying a write the fetch already saw
-    /// changes nothing, so it is safe whether the fetch read the store before or after it.
-    private func replaying(
-        _ writes: [AcknowledgedWrite],
-        over loaded: [TodoItem],
-    ) -> [TodoItem] {
-        var result = loaded
-        for write in writes {
-            switch write {
-            case let .deleted(id):
-                result.removeAll { $0.id == id }
-
-            case let .saved(item):
-                if let index = result.firstIndex(where: { $0.id == item.id }) {
-                    result[index] = item
-                } else {
-                    result.append(item)
-                }
-            }
-        }
-        return result.sorted(by: TodoItem.isOrderedBefore)
     }
 
     /// Starts a fetch, before anything suspends: a new generation and an empty write log.
@@ -355,7 +331,7 @@ public final class TodoListViewModel {
         return loadGeneration
     }
 
-    /// The fetch ``load()`` and ``refresh()`` share, and the latest-wins guard over it: a
+    /// The fetch ``load(from:)`` and ``refresh()`` share, and the latest-wins guard over it: a
     /// fetch that returns after a newer one began is `.superseded`, and drops its result.
     /// Cancellation is read from `Task.isCancelled` after the fetch, not from the port,
     /// because ``TodoRepositoryError`` has no cancellation case.
@@ -377,7 +353,10 @@ public final class TodoListViewModel {
         }
         switch outcome {
         case let .success(loaded):
-            return .loaded(replaying(writes, over: loaded), fetchedCount: loaded.count)
+            return .loaded(
+                AcknowledgedWrite.replaying(writes, over: loaded),
+                fetchedCount: loaded.count,
+            )
 
         case let .failure(error):
             return .failed(error)
@@ -390,8 +369,13 @@ public final class TodoListViewModel {
         }
     }
 
-    private func report(_ failure: TodoListFailure, _ error: TodoRepositoryError) {
+    private func report(
+        _ failure: TodoListFailure,
+        _ error: TodoRepositoryError,
+        from scene: SceneID?,
+    ) {
         self.failure = failure
+        failureScene = scene
         AppLog.todos.error(
             "\(String(describing: failure), privacy: .public): \(String(describing: error), privacy: .public)",
         )

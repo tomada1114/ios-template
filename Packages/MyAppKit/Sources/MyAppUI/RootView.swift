@@ -4,7 +4,8 @@ import SwiftUI
 /// One window's navigation root: the stack every screen is pushed onto, its root screen,
 /// the one place a route becomes a screen, the one place a sheet is presented, and the
 /// one place a failure is presented (``failureAlerts(on:isTopmost:)``) — over the top
-/// screen, or over the sheet while one is on screen.
+/// screen, or over the sheet while one is on screen, and only in the one window Core
+/// picks for it.
 ///
 /// The app's only `NavigationStack(path:)`, its only
 /// `navigationDestination(for: AppRoute.self)`, and its only `.sheet(item:)` live here, so
@@ -15,8 +16,11 @@ import SwiftUI
 /// is built over, so this view never needs an adapter (`designing-ui`'s
 /// `references/navigation.md`).
 ///
-/// It owns neither model: `App/` creates the app model once for the app and the
-/// navigation model once per scene (both in `@State`), and hands them down. `@Bindable`
+/// It owns none of its models: `App/` creates the app model once for the app, and the
+/// navigation model and the lifecycle model once per scene (all in `@State`), and hands
+/// them down. The lifecycle model is the window's identity here: its ``SceneLifecycleModel/id``
+/// goes with every action that can fail, and it says whether this window presents a
+/// failure. `@Bindable`
 /// is only what lets the stack bind to ``NavigationModel/path``, so a row's link, the
 /// back button, and a deep link all move the same Core state. The sheet binds through
 /// ``NavigationModel/dismissSheet(_:)`` instead, since ``NavigationModel/sheet`` is
@@ -24,6 +28,7 @@ import SwiftUI
 public struct RootView: View {
     private let app: AppModel
     @Bindable private var navigation: NavigationModel
+    private let lifecycle: SceneLifecycleModel
 
     /// Whether a sheet is on screen, which ``NavigationModel/sheet`` alone does not say:
     /// set as soon as one is asked for, and cleared only by the sheet's `onDismiss`, once
@@ -37,7 +42,7 @@ public struct RootView: View {
 
     private var stackAndSheet: some View {
         NavigationStack(path: $navigation.path) {
-            TodoListView(model: app.todoList) { navigation.present(.about) }
+            TodoListView(model: app.todoList, scene: lifecycle.id) { navigation.present(.about) }
                 .navigationDestination(for: AppRoute.self) { route in
                     // Identified by its route, so a deep link that swaps one pushed item
                     // for another gets a fresh screen, and a fresh model, rather than
@@ -75,10 +80,12 @@ public struct RootView: View {
         )
     }
 
-    /// Creates the root over `app` and `navigation`, which the caller owns.
-    public init(app: AppModel, navigation: NavigationModel) {
+    /// Creates the root over `app`, and over this window's `navigation` and `lifecycle`,
+    /// all of which the caller owns.
+    public init(app: AppModel, navigation: NavigationModel, lifecycle: SceneLifecycleModel) {
         self.app = app
         self.navigation = navigation
+        self.lifecycle = lifecycle
     }
 
     /// Every feature's failure alert, attached to one presentation layer: the stack, or
@@ -87,9 +94,13 @@ public struct RootView: View {
     /// never bound to two alerts. Outside the stack, so a failure presents over whichever
     /// screen is pushed: a toggle on the detail screen is the list's, and fails as the
     /// list's (#78). A new feature adds its `.failureAlert` here, once.
+    ///
+    /// The list is shared by every window, so its failure is read through this window's
+    /// lifecycle model: Core hands it to exactly one window, and only that window's button
+    /// dismisses it (#133).
     private func failureAlerts(on layer: some View, isTopmost: Bool) -> some View {
-        layer.failureAlert(isTopmost ? app.todoList.failure : nil) {
-            app.todoList.dismissFailure()
+        layer.failureAlert(isTopmost ? lifecycle.todoListFailure : nil) {
+            lifecycle.dismissTodoListFailure()
         }
     }
 
@@ -107,7 +118,7 @@ public struct RootView: View {
     private func destination(for route: AppRoute) -> some View {
         switch route {
         case let .todoDetail(id):
-            TodoDetailView(model: app.makeTodoDetailViewModel(id: id))
+            TodoDetailView(model: app.makeTodoDetailViewModel(id: id, scene: lifecycle.id))
         }
     }
 
@@ -124,16 +135,18 @@ public struct RootView: View {
 
 #if DEBUG
     #Preview("Items") {
+        let app = AppModel(
+            repository: PreviewTodoRepository(titles: [
+                "Buy milk",
+                "Call the bank",
+                "Water plants",
+            ]),
+            preferences: PreviewPreferences(),
+        )
         RootView(
-            app: AppModel(
-                repository: PreviewTodoRepository(titles: [
-                    "Buy milk",
-                    "Call the bank",
-                    "Water plants",
-                ]),
-                preferences: PreviewPreferences(),
-            ),
+            app: app,
             navigation: NavigationModel(),
+            lifecycle: app.makeSceneLifecycleModel(),
         )
     }
 #endif

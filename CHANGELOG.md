@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- With two windows open on iPad, a failure now presents in one window instead of both,
+  and OK in one window no longer pulls the alert out from under the other. The window
+  whose action failed presents it while it is in the foreground; a failure no window
+  caused, or one whose window went to the background or closed, presents in the window
+  that has been in the foreground longest. Views pass their window with each action that
+  can fail (`toggle(_:from:)`, `addDraft(from:)`, `delete(atOffsets:from:)`,
+  `load(from:)`, `AppModel.makeTodoDetailViewModel(id:scene:)`) as a new `SceneID`
+  (`SceneLifecycleModel.id`), and `RootView`, which now also takes the scene's lifecycle
+  model, reads and dismisses the failure through it (`todoListFailure`,
+  `dismissTodoListFailure()`), so a dismissal acts only in the presenting window.
 - A failure that arrives while a sheet is up now presents over the sheet: `RootView`
   attaches the same failure alert to the sheet's content, since SwiftUI presents no
   alert from a view that is already presenting a sheet. Dismissing it leaves the sheet

@@ -94,6 +94,15 @@ root type.
 - Entry points are actions named for what the user did or the app saw — `load()`,
   `addDraft()`, `toggle(_:)`, `delete(atOffsets:)` — not setters and not a generic
   `send(_:)`, so a test calls one and asserts the resulting state.
+- An action of a model every scene shares that can fail takes the scene that asked,
+  `from scene: SceneID? = nil`, and keeps it beside the failure
+  (`TodoListViewModel.failureScene`); `nil` means no scene caused it. The scene's
+  `SceneLifecycleModel` then answers whether its window is the one that presents the
+  failure (`todoListFailure`) and dismisses it only there (`dismissTodoListFailure()`),
+  so one failure is one alert however many windows are open
+  (`FailurePresentationTests`; the `designing-ui` skill's `references/navigation.md` ›
+  A failure presents in one window). A new shared model's failure adds the same pair to
+  `SceneLifecycleModel`.
 - An action that waits is `async`; the view calls it from `.task` or `Task { }`.
   Construction has no side effects and spawns no task (nothing is read until
   `load()`), which is also what lets a re-render build and discard a pushed screen's
@@ -101,7 +110,7 @@ root type.
 - `AppModel` builds every view model, never a view or `App/`: a model every scene
   shares is a stored property built from the ports `App/` passes (`todoList`); a pushed
   screen's model comes from one `make…ViewModel(…)` per route
-  (`makeTodoDetailViewModel(id:)`). A screen showing what a shared model holds takes
+  (`makeTodoDetailViewModel(id:scene:)`, which also names the screen's window). A screen showing what a shared model holds takes
   that model plus an identifier, not a copy, so both screens show one state.
   `AppModelTests` builds each route's model over the fakes.
 - Domain rules live in value types (`TodoItem`) the view model delegates to.

@@ -20,17 +20,19 @@ screen looks like — the design lock, a token's value, custom glass — is the
   internal.
 - `App/` is the composition root and nothing else: it picks adapters and hands them to
   `AppModel` as ports. `MyAppApp` keeps the `AppModel` in `@State`; its `SceneRoot` keeps
-  a `NavigationModel` in `@State` per scene, so each window navigates on its own, and
-  passes both to `RootView(app:navigation:)`.
+  a `NavigationModel` in `@State` per scene, so each window navigates on its own.
 - `SceneRoot` keeps a `SceneLifecycleModel` (`app.makeSceneLifecycleModel()`) in
   `@State` too, and forwards that window's `@Environment(\.scenePhase)`, mapped to Core's
   `LifecyclePhase`: `sceneDidEnter(_:)` synchronously in `onChange`, then
   `refreshIfNeeded()` in a `Task`. It decides nothing about the phase: whether one
   refreshes anything is Core's (the `designing-core-logic` skill's
-  `references/view-models.md` › Lifecycle).
-- A model every scene shares comes from `AppModel` (`TodoListView(model: app.todoList)`);
-  a pushed screen's model from its route's factory in `RootView`'s destination switch
-  (`TodoDetailView(model: app.makeTodoDetailViewModel(id:))`), held in
+  `references/view-models.md` › Lifecycle). It passes all three to
+  `RootView(app:navigation:lifecycle:)`; the lifecycle model is also the window's
+  identity there (`lifecycle.id`, a `SceneID`).
+- A model every scene shares comes from `AppModel`
+  (`TodoListView(model: app.todoList, scene: lifecycle.id)`); a pushed screen's model
+  from its route's factory in `RootView`'s destination switch
+  (`TodoDetailView(model: app.makeTodoDetailViewModel(id:scene:))`), held in
   `@State private var model` set with `_model = State(initialValue: model)`, so it keeps
   the first model while pushed and ignores the one a parent re-render builds.
 - A view handed its model holds it as a plain `let`; `@Bindable` only when a control
@@ -54,6 +56,10 @@ screen looks like — the design lock, a token's value, custom glass — is the
 
 - An action that waits is called from `.task` (cancelled with the view) or a `Task { }`
   in a button's closure.
+- An action of a shared model that can fail is passed the window it was asked from
+  (`model.toggle(item.id, from: scene)`), so its failure presents in that window and not
+  in every window showing the model. The view only passes the `SceneID` it was handed;
+  a preview, which has no window, passes `nil`.
 - A view has no localizable literal: `Text("…")` looks up the app's main bundle, not
   Core's, so render a Core resource (`Text(TodoListStrings.emptyTitle)`). The user's
   text, a number, a glyph, or a preview's developer note is `Text(verbatim:)`.
@@ -126,6 +132,13 @@ design-lock decision, never a per-screen one.
   already presenting a sheet (#124) — and which hands the failure only to the topmost
   layer. A feature's failure type adopts Core's `PresentableFailure`, and the feature
   adds its `.failureAlert` once, inside `failureAlerts(on:isTopmost:)`.
+- A shared model's failure is read and dismissed through the window's own
+  `SceneLifecycleModel` (`lifecycle.todoListFailure`, `lifecycle.dismissTodoListFailure()`),
+  never from the shared model directly: every window renders that model, and Core hands
+  one failure to exactly one window — the one whose action caused it while it is in the
+  foreground, otherwise the one that has been in the foreground longest (#133). A view
+  never compares scenes or phases itself; the rule and its reasons are the `designing-ui`
+  skill's `references/navigation.md` › A failure presents in one window.
 - Sheet sizing (`.presentationDetents`) only as the lock says.
 
 ## Size classes, Dynamic Type, safe areas, keyboard

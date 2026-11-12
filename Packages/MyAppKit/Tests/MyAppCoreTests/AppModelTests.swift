@@ -72,7 +72,7 @@ struct AppModelTests {
             preferences: InMemoryPreferences(),
         )
         await model.todoList.load()
-        #expect(model.makeTodoDetailViewModel(id: bread.id).content == .item(bread))
+        #expect(model.makeTodoDetailViewModel(id: bread.id, scene: nil).content == .item(bread))
     }
 
     @Test
@@ -82,7 +82,7 @@ struct AppModelTests {
             over: InMemoryTodoRepository(items: [milk]),
             preferences: InMemoryPreferences(),
         )
-        let detail = model.makeTodoDetailViewModel(id: milk.id)
+        let detail = model.makeTodoDetailViewModel(id: milk.id, scene: nil)
         await detail.load()
         #expect(model.todoList.phase == .loaded)
         #expect(model.todoList.items == [milk])
@@ -96,7 +96,7 @@ struct AppModelTests {
             preferences: InMemoryPreferences(),
         )
         await model.todoList.load()
-        await model.makeTodoDetailViewModel(id: milk.id).toggle()
+        await model.makeTodoDetailViewModel(id: milk.id, scene: nil).toggle()
         #expect(model.todoList.item(withID: milk.id)?.isDone == true)
     }
 
@@ -110,8 +110,8 @@ struct AppModelTests {
             preferences: InMemoryPreferences(),
         )
         await model.todoList.load()
-        let first = model.makeTodoDetailViewModel(id: milk.id)
-        let second = model.makeTodoDetailViewModel(id: milk.id)
+        let first = model.makeTodoDetailViewModel(id: milk.id, scene: nil)
+        let second = model.makeTodoDetailViewModel(id: milk.id, scene: nil)
         #expect(first !== second)
         await first.toggle()
         var done = milk

@@ -4,7 +4,7 @@ import Testing
 
 /// ``TodoListViewModel/refresh()``: the quiet reload a scene's return to the foreground
 /// asks for. It refreshes only a list that has loaded, never shows progress or a failure,
-/// and shares ``TodoListViewModel/load()``'s latest-wins fetch.
+/// and shares ``TodoListViewModel/load(from:)``'s latest-wins fetch.
 @MainActor
 @Suite("TodoListViewModel refresh")
 struct TodoListViewModelRefreshTests {
