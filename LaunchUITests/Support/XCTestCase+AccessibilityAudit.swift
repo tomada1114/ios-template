@@ -44,7 +44,8 @@ extension XCTestCase {
     /// control — except one ``isAcceptedAuditIssue(_:)`` names.
     ///
     /// The audit sees the rendered screen, which SwiftLint's accessibility rules cannot: a
-    /// glyph-only text button, a contrast pair, a control drawn smaller than its token.
+    /// control whose label ends up empty, a contrast pair, a control drawn smaller than its
+    /// token. A label that is present but meaningless, such as a `+`, passes it.
     @MainActor
     func auditAccessibility(of app: XCUIApplication) throws {
         try app.performAccessibilityAudit { issue in

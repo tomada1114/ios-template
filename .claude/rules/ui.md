@@ -142,8 +142,9 @@ design-lock decision, never a per-screen one.
 - A glyph-only control gets `.accessibilityLabel` from a Core resource (`TodoRow`'s
   `toggleLabel`); a decorative image is `Image(decorative:)` or
   `.accessibilityHidden(true)`. SwiftLint's accessibility rules miss a glyph-only text
-  button; the launch test's accessibility audit catches it on a screen it visits, and
-  review on any other. Group a value and its caption with
+  button, and so does the launch test's accessibility audit: a `+` is a description to
+  it, so it reports an empty label but not a meaningless one. Review catches it. Group a
+  value and its caption with
   `.accessibilityElement(children: .combine)`.
 
 ## Previews
@@ -192,8 +193,9 @@ in the view instead.
    rules.
 3. `just uitest` — when an identifier the launch test reads, a screen the launch walk
    visits, or `App/`'s wiring changed. Its accessibility audit (missing labels, hit
-   regions, clipped text, contrast, traits) covers those screens only, in light
-   appearance at the default text size, and only in the states the walk leaves them in.
+   regions, clipped text, contrast, traits) covers those screens only, in the states
+   the walk leaves them in, and in whatever appearance and text size the simulator is
+   set to — light at the default size unless someone changed it; the test pins neither.
 4. `just run`, then screenshots per the `running-the-app` skill on the smallest iPhone
    the Simulator offers (`SIMULATOR_DEVICE="<name>" just run`): light, dark, the largest
    accessibility text size (`accessibility-extra-extra-extra-large`), and Increase
