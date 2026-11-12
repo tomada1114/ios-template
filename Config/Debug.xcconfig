@@ -10,8 +10,9 @@
 // to one person's account, and this repository may be public. Simulator builds sign
 // ad hoc and need no team, so the file is optional (hence `#include?`).
 //
-// Only Debug includes it: `just run-device` builds Debug and no Release route to a
-// device exists. An app that adds distribution revisits this.
+// Only Debug includes it: `just run-device` builds Debug, and the unsigned Release
+// device build (`just build-device`, CODE_SIGNING_ALLOWED=NO) takes no team, so no
+// signed Release route to a device exists. An app that adds distribution revisits this.
 // See docs/running-on-device.md.
 
 #include? "Local.xcconfig"

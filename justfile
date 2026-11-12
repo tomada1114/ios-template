@@ -72,6 +72,14 @@ build:
     mise exec -- xcodegen generate
     set -o pipefail && scripts/run-throttled.sh --lock -- xcodebuild -jobs "$(scripts/run-throttled.sh --print-jobs)" -project MyApp.xcodeproj -scheme MyApp -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/dev-derived-data build | mise exec -- xcbeautify --quiet
 
+# Build Release for the iOS device SDK (`iphoneos`), unsigned, and assert the linked
+# app exists (scripts/build-device.sh): the one device-SDK compile any gate runs. No
+# team is needed; nothing is archived, exported, signed, or installed.
+[doc("Build Release for the iOS device SDK, unsigned, and assert the app exists")]
+build-device:
+    mise exec -- xcodegen generate
+    mise exec -- scripts/run-throttled.sh --lock -- scripts/build-device.sh
+
 # Build (Debug), then install and launch it on an iOS Simulator, replacing any
 # running instance (scripts/run-simulator.sh; SIMULATOR_DEVICE picks the device)
 [doc("Build (Debug), then install and launch it on an iOS Simulator")]
@@ -133,13 +141,14 @@ smoke:
     mise exec -- scripts/run-throttled.sh --lock -- scripts/smoke_launch.sh
 
 # Run all checks: verify hooks, format, lint, script tests, harness checks, test, then
-# the simulator checks (uitest-build, uitest-run, smoke, test-ios) when the change since
-# origin/main touches a path they exercise (scripts/simulator-relevant.sh holds the
-# list). CHECK_ALL=1 runs them regardless; CHECK_JOBS and CHECK_QOS set the throttle
-# (scripts/run-throttled.sh). uitest-build is the Debug compile, so `build` is not run.
+# the simulator checks (uitest-build, uitest-run, smoke, build-device, test-ios) when
+# the change since origin/main touches a path they exercise (scripts/simulator-relevant.sh
+# holds the list). CHECK_ALL=1 runs them regardless; CHECK_JOBS and CHECK_QOS set the
+# throttle (scripts/run-throttled.sh). uitest-build is the Debug compile, so `build` is
+# not run.
 [doc("Run all checks: verify-hooks, fmt, lint, test-scripts, check-harness, test, and the simulator checks when relevant")]
 check: verify-hooks fmt lint test-scripts check-harness test
-    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just test-ios; else echo "Skipped uitest-build, uitest-run, smoke, test-ios (CHECK_ALL=1 runs them)"; fi
+    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just build-device && just test-ios; else echo "Skipped uitest-build, uitest-run, smoke, build-device, test-ios (CHECK_ALL=1 runs them)"; fi
 
 # Remove build artifacts and the generated project
 clean:
