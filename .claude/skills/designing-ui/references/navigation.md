@@ -27,8 +27,8 @@ an identifier nothing holds shows a not-found state.
 
 `NavigationModel` is a `@MainActor @Observable` class holding `path: [AppRoute]` and
 `sheet: AppSheet?`, with one action per intent: `show(_:)` pushes, `popToRoot()` returns,
-`present(_:)` and `dismissSheet()` present and dismiss a sheet, `open(_:)` handles a deep
-link. `App/`'s scene root holds it in `@State` and hands it to the root view, while
+`present(_:)` presents a sheet, `dismissSheet(_:)` dismisses the named sheet if it is
+still up (`dismissSheet()` whatever is up), `open(_:)` handles a deep link. `App/`'s scene root holds it in `@State` and hands it to the root view, while
 the shared view models it routes between stay app-level, in `AppModel`. It never moves
 into `AppModel`: the app supports multiple scenes (two windows on iPad), so an app-level
 path would move every window in lockstep and a deep link would move them all.
@@ -36,7 +36,7 @@ path would move every window in lockstep and a deep link would move them all.
 ## Why the stack and its destinations live in `RootView`
 
 The back button writes the path back, which is why `path` is the one settable property;
-`sheet` is `private(set)`, and the sheet binding writes back through `dismissSheet()`.
+`sheet` is `private(set)`, and the sheet binding writes back through `dismissSheet(_:)`.
 Declaring every destination in one switch means a new screen adds an `AppRoute` case and
 a branch of that switch, and edits no other screen.
 
@@ -52,17 +52,21 @@ deep link that swaps one pushed item for another gets a fresh screen and model.
 identifier, like a route, and is its own `Identifiable` id, so `.sheet(item:)` presents
 a new sheet when the case changes. `RootView` holds the one `.sheet(item:)`, outside the
 stack so it presents over whichever screen is pushed, bound through a `Binding` whose
-getter reads `sheet` and whose setter calls `dismissSheet()`: SwiftUI writes that binding
-only to dismiss (a swipe down), so a swipe and the sheet's close button reach the same
-action. Its `sheet(for:)` switch builds each sheet, as `destination(for:)` builds each
+getter reads `sheet` and whose setter, on a write of `nil` (a swipe down), calls
+`dismissSheet(_:)` with the sheet that was up when the binding was built; any other write
+is ignored. The sheet's close button calls the same action with the sheet it closes. A
+dismissal therefore names its sheet, and one that arrives after another sheet was
+presented leaves the new one up. Its `sheet(for:)` switch builds each sheet, as `destination(for:)` builds each
 pushed screen; a sheet that edits something takes its view model from an `AppModel`
 factory there. The template's sheet is `.about` (`AboutView`): static Core wording and
-the system's close button, the smallest sheet that has a dismiss action.
+the system's close button, the smallest sheet that has a dismiss action. Its button sits
+in `TodoListView`'s one `.primaryAction` toolbar group, after Hide Completed, and calls
+the closure `RootView` passes, which presents it.
 
 One sheet presents at a time: `present(_:)` replaces a sheet already up rather than
-stacking one on it. The sheet sits over the stack, so every action that moves the stack
-— `show(_:)`, `popToRoot()`, and a link `open(_:)` accepts — dismisses the sheet first;
-otherwise the screen it asked for would change out of sight under the sheet, and the
+stacking one on it. The sheet sits over the stack, so everything that moves the stack
+dismisses the sheet: a write to `path` that changes it (its `didSet`), and the actions
+`show(_:)`, `popToRoot()`, and a link `open(_:)` accepts; otherwise the screen it asked for would change out of sight under the sheet, and the
 person would close the sheet onto a stack they did not see move. A link `open(_:)`
 rejects leaves both the path and the sheet alone.
 

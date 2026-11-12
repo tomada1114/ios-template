@@ -5,7 +5,8 @@
 /// a button presented. A new sheet adds a case here and its branch in `RootView`'s sheet
 /// switch; one presents at a time (``NavigationModel/present(_:)``).
 public enum AppSheet: Hashable, Identifiable, Sendable {
-    /// What the app is, with a Done button that dismisses it.
+    /// What the app is, with the system's close button (`Button(role: .close)`) that
+    /// dismisses it.
     case about
 
     /// The sheet itself, so `.sheet(item:)` presents a new sheet when the case changes

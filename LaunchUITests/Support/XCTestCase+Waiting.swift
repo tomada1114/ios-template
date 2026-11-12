@@ -33,10 +33,10 @@ extension XCTestCase {
     }
 
     /// Waits until the list's new-item field is no longer hittable, which is when a
-    /// pushed screen or a sheet has covered the list, so an audit judges the screen on
-    /// top settled rather than mid-transition.
+    /// pushed screen has covered the list, so an audit judges the pushed screen settled
+    /// rather than mid-transition.
     @MainActor
-    func waitForTheListToBeCovered(in app: XCUIApplication) {
+    func waitForThePushToSettle(in app: XCUIApplication) {
         let covered = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false OR hittable == false"),
             object: app.textFields["newItemField"],
@@ -44,7 +44,7 @@ extension XCTestCase {
         XCTAssertEqual(
             XCTWaiter().wait(for: [covered], timeout: Timeout.elementAppears),
             .completed,
-            "the pushed screen or the sheet should cover the list",
+            "the pushed screen should cover the list",
         )
     }
 }

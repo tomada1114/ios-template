@@ -167,7 +167,7 @@ final class LaunchTests: XCTestCase {
             app.buttons["detailToggle"].exists,
             "the detail screen should show the item it was opened for",
         )
-        waitForTheListToBeCovered(in: app)
+        waitForThePushToSettle(in: app)
         try auditAccessibility(of: app)
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(
@@ -218,7 +218,7 @@ final class LaunchTests: XCTestCase {
             waitForDisappearance(of: app.buttons["detailToggle"]),
             "the not-found state should show no item",
         )
-        waitForTheListToBeCovered(in: app)
+        waitForThePushToSettle(in: app)
         try auditAccessibility(of: app)
 
         app.navigationBars.buttons.firstMatch.tap()

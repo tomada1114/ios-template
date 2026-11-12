@@ -144,8 +144,9 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
 - A new feature is, in order: domain values, a port only for storage or an OS service
   (with its fake and contract), a view model (`AppModel` builds it), the adapter, the
   view, an `AppRoute` case (or, for a sheet, an `AppSheet` case) with its branch in
-  `RootView`, and `App/` wiring only for a new port. A new remote API is `Endpoint` values sent through `APIClient`, never a new port;
-  a new stored model is a new schema version, never an edit to a shipped one.
+  `RootView`, and `App/` wiring only for a new port. A new remote API is `Endpoint`
+  values sent through `APIClient`, never a new port; a new stored model is a new schema
+  version, never an edit to a shipped one.
 - `MyApp.xcodeproj` is generated — edit `project.yml` instead.
 - **App shape:** iPhone and iPad (`TARGETED_DEVICE_FAMILY: "1,2"`), multiple windows on
   iPad, no capability or entitlement, and no privacy-gated permission. An app rewrites

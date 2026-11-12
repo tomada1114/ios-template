@@ -168,4 +168,43 @@ struct NavigationModelTests {
         #expect(navigation.sheet == .about)
         #expect(navigation.path == [Self.first])
     }
+
+    @Test
+    func `a write that changes the path while a sheet is up dismisses the sheet`() {
+        let navigation = NavigationModel()
+        navigation.show(Self.first)
+        navigation.show(Self.second)
+        navigation.present(.about)
+        navigation.path = [Self.first]
+        #expect(navigation.sheet == nil)
+        #expect(navigation.path == [Self.first])
+    }
+
+    @Test
+    func `a write of the same path while a sheet is up keeps the sheet`() {
+        let navigation = NavigationModel()
+        navigation.show(Self.first)
+        navigation.present(.about)
+        navigation.path = [Self.first]
+        #expect(navigation.sheet == .about)
+    }
+
+    @Test
+    func `dismissing the sheet that is up clears it, leaving the path alone`() {
+        let navigation = NavigationModel()
+        navigation.show(Self.first)
+        navigation.present(.about)
+        navigation.dismissSheet(.about)
+        #expect(navigation.sheet == nil)
+        #expect(navigation.path == [Self.first])
+    }
+
+    @Test
+    func `dismissing a sheet when none is up changes nothing`() {
+        let navigation = NavigationModel()
+        navigation.show(Self.first)
+        navigation.dismissSheet(.about)
+        #expect(navigation.sheet == nil)
+        #expect(navigation.path == [Self.first])
+    }
 }

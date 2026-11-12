@@ -10,9 +10,10 @@ import Observation
 /// drives navigation without a view. One model per navigation stack: a tab-based app
 /// keeps one per tab.
 ///
-/// The sheet sits over the stack, so an action that moves the stack — ``show(_:)``,
-/// ``popToRoot()``, and a link ``open(_:)`` accepts — dismisses it first: the screen it
-/// asked for would otherwise change out of sight, under the sheet.
+/// The sheet sits over the stack, so anything that moves the stack dismisses it: a write
+/// to ``path`` that changes it, and the actions ``show(_:)``, ``popToRoot()``, and a link
+/// ``open(_:)`` accepts. The screen asked for would otherwise change out of sight, under
+/// the sheet.
 ///
 /// Owned per scene, in `@State` on `App/`'s scene root, and handed to the root view: the
 /// app supports multiple windows, and each navigates on its own. The shared view models
@@ -23,12 +24,22 @@ import Observation
 public final class NavigationModel {
     /// The pushed routes, root first. Settable because `NavigationStack(path:)` writes it
     /// back when the user goes back; every other change goes through an action below.
-    public var path: [AppRoute] = []
+    ///
+    /// A write that changes it dismisses any sheet, as the actions do, so no path of
+    /// change leaves a sheet over a stack that moved under it. A write of the same routes
+    /// (a binding writing back what it read) keeps the sheet.
+    public var path: [AppRoute] = [] {
+        didSet {
+            if path != oldValue {
+                sheet = nil
+            }
+        }
+    }
 
     /// The sheet presented over the stack, or `nil` when none is. Read-only: the root
-    /// view binds `.sheet(item:)` through ``dismissSheet()``, so a swipe down and a Done
-    /// button both go through the action, and ``path`` stays the one property a view
-    /// writes.
+    /// view binds `.sheet(item:)` through ``dismissSheet(_:)``, so a swipe down and the
+    /// sheet's system close button (`Button(role: .close)`) both go through the action,
+    /// and ``path`` stays the one property a view writes.
     public private(set) var sheet: AppSheet?
 
     /// Creates a model at the root, with nothing pushed.
@@ -56,10 +67,19 @@ public final class NavigationModel {
         self.sheet = sheet
     }
 
-    /// Dismisses the sheet, if one is up: the Done button's action, and what the root
-    /// view's sheet binding calls when the person swipes it away.
+    /// Dismisses whatever sheet is up, if one is.
     public func dismissSheet() {
         sheet = nil
+    }
+
+    /// Dismisses `sheet` if it is still the one up, and otherwise does nothing: what the
+    /// sheet's close button and the root view's sheet binding call, each naming the sheet
+    /// that closed. A dismissal that arrives after another sheet was presented names the
+    /// old one, so it cannot close the new one.
+    public func dismissSheet(_ sheet: AppSheet) {
+        if self.sheet == sheet {
+            self.sheet = nil
+        }
     }
 
     /// Opens the screen a deep link names (``DeepLink/route(for:)``), replacing whatever

@@ -6,7 +6,7 @@ import SwiftUI
 ///
 /// The template's worked sheet, over no view model of its own: everything it shows is
 /// Core wording (``AboutStrings``), and its one action is `close`, which `RootView` wires
-/// to ``NavigationModel/dismissSheet()`` — the same action a swipe down reaches through
+/// to ``NavigationModel/dismissSheet(_:)`` — the same action a swipe down reaches through
 /// the sheet's binding. A sheet that edits something takes a view model from `AppModel`
 /// the way a pushed screen does.
 ///

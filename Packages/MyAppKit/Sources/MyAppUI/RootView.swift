@@ -18,7 +18,7 @@ import SwiftUI
 /// navigation model once per scene (both in `@State`), and hands them down. `@Bindable`
 /// is only what lets the stack bind to ``NavigationModel/path``, so a row's link, the
 /// back button, and a deep link all move the same Core state. The sheet binds through
-/// ``NavigationModel/dismissSheet()`` instead, since ``NavigationModel/sheet`` is
+/// ``NavigationModel/dismissSheet(_:)`` instead, since ``NavigationModel/sheet`` is
 /// read-only.
 public struct RootView: View {
     private let app: AppModel
@@ -26,15 +26,12 @@ public struct RootView: View {
 
     public var body: some View {
         NavigationStack(path: $navigation.path) {
-            TodoListView(model: app.todoList)
+            TodoListView(model: app.todoList) { navigation.present(.about) }
                 .navigationDestination(for: AppRoute.self) { route in
                     // Identified by its route, so a deep link that swaps one pushed item
                     // for another gets a fresh screen, and a fresh model, rather than
                     // the previous screen's `@State`.
                     destination(for: route).id(route)
-                }
-                .toolbar {
-                    ToolbarItem(placement: .primaryAction) { aboutButton }
                 }
         }
         // Outside the stack, like the alert below, so it presents whichever screen is on
@@ -47,29 +44,21 @@ public struct RootView: View {
         .failureAlert(app.todoList.failure) { app.todoList.dismissFailure() }
     }
 
-    /// The list's toolbar button that presents the About sheet. Here rather than in
-    /// `TodoListView`, which knows nothing of navigation beyond its rows' links. The
-    /// toolbar shows the glyph alone; the title is what VoiceOver reads.
-    private var aboutButton: some View {
-        Button {
-            navigation.present(.about)
-        } label: {
-            Label {
-                Text(AboutStrings.show)
-            } icon: {
-                Image(systemName: "info.circle")
-            }
-        }
-        .accessibilityIdentifier("aboutButton")
-    }
-
     /// ``NavigationModel/sheet``, written back only through its action. SwiftUI writes
-    /// this binding only to dismiss — a swipe down, or the sheet's own `dismiss` — so
-    /// every write is a dismissal, and presenting stays ``NavigationModel/present(_:)``'s.
+    /// `nil` to dismiss (a swipe down); presenting stays ``NavigationModel/present(_:)``'s,
+    /// so any other write is ignored. The binding is rebuilt on every render and names the
+    /// sheet that was up when it was built, so a write-back from an earlier presentation
+    /// reaches ``NavigationModel/dismissSheet(_:)`` naming the old sheet and leaves a newer
+    /// one up.
     private var presentedSheet: Binding<AppSheet?> {
-        Binding(
+        let shown = navigation.sheet
+        return Binding(
             get: { navigation.sheet },
-            set: { _ in navigation.dismissSheet() },
+            set: { newValue in
+                if newValue == nil, let shown {
+                    navigation.dismissSheet(shown)
+                }
+            },
         )
     }
 
@@ -97,7 +86,7 @@ public struct RootView: View {
     private func sheet(for sheet: AppSheet) -> some View {
         switch sheet {
         case .about:
-            AboutView { navigation.dismissSheet() }
+            AboutView { navigation.dismissSheet(sheet) }
         }
     }
 }

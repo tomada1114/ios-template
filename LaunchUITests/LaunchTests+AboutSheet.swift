@@ -4,7 +4,7 @@ import XCTest
 /// SwiftLint's length limits.
 extension LaunchTests {
     /// The toolbar button presents the sheet through `NavigationModel.present(_:)`, and
-    /// the sheet's close button dismisses it through `dismissSheet()`, back to the list.
+    /// the sheet's close button dismisses it through `dismissSheet(_:)`, back to the list.
     @MainActor
     func openTheAboutSheetAuditItAndCloseIt(in app: XCUIApplication) throws {
         let about = app.buttons["aboutButton"]
@@ -19,9 +19,19 @@ extension LaunchTests {
             sheet.waitForExistence(timeout: Timeout.elementAppears),
             "the About button should present the About sheet",
         )
+        // Settled when its close button can be tapped: the sheet has finished sliding
+        // in. The list behind it is no signal, since on iPad a form sheet leaves it
+        // partly uncovered.
         let close = app.buttons["aboutCloseButton"]
-        XCTAssertTrue(close.exists, "the About sheet should offer a close button")
-        waitForTheListToBeCovered(in: app)
+        let settled = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND hittable == true"),
+            object: close,
+        )
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [settled], timeout: Timeout.elementAppears),
+            .completed,
+            "the About sheet should settle with its close button hittable",
+        )
         try auditAccessibility(of: app)
 
         close.tap()
