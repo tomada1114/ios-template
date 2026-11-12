@@ -78,7 +78,9 @@ once it has run).
 - [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoRepository.swift` — the port and its
       error type, and its null object
       `Packages/MyAppKit/Sources/MyAppCore/UnavailableTodoRepository.swift`
-- [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoListViewModel.swift` and
+- [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoListViewModel.swift` (with
+      `Packages/MyAppKit/Sources/MyAppCore/AcknowledgedWrite.swift`, the writes its load
+      replays) and
       `Packages/MyAppKit/Sources/MyAppCore/TodoDetailViewModel.swift` — the view models
 - [ ] `AppModel.todoList` and `AppModel.makeTodoDetailViewModel(id:scene:)` in
       `Packages/MyAppKit/Sources/MyAppCore/AppModel.swift` — put your own shared view
