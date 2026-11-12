@@ -1,4 +1,4 @@
-# Navigation: routes, the path, sheets, and deep links
+# Navigation: routes, the path, sheets, deep links, and restoration
 
 Why navigation is shaped the way it is. The rules a view follows — one
 `NavigationStack(path:)` and one `navigationDestination(for: AppRoute.self)` in
@@ -28,7 +28,9 @@ an identifier nothing holds shows a not-found state.
 `NavigationModel` is a `@MainActor @Observable` class holding `path: [AppRoute]` and
 `sheet: AppSheet?`, with one action per intent: `show(_:)` pushes, `popToRoot()` returns,
 `present(_:)` presents a sheet, `dismissSheet(_:)` dismisses the named sheet if it is
-still up (`dismissSheet()` whatever is up), `open(_:)` handles a deep link. `App/`'s scene root holds it in `@State` and hands it to the root view, while
+still up (`dismissSheet()` whatever is up), `open(_:)` handles a deep link, and
+`restore(from:)` puts back a stored path ("The path is restored per scene", below).
+`App/`'s scene root holds it in `@State` and hands it to the root view, while
 the shared view models it routes between stay app-level, in `AppModel`. It never moves
 into `AppModel`: the app supports multiple scenes (two windows on iPad), so an app-level
 path would move every window in lockstep and a deep link would move them all.
@@ -119,9 +121,96 @@ and the one `project.yml` registers differ, and `scripts/bootstrap.sh` rewrites 
 together. The scheme is contract once a build has left your machine (`AGENTS.md`'s "What
 is contract and what is private").
 
-## Tabs, split views, and restoration are an app's
+## The path is restored per scene
 
-A tab-based app keeps one `NavigationModel` per tab, one stack each; tabs versus a single
-stack is the design lock's navigation field ([design-lock.md](design-lock.md)).
-`NavigationSplitView` and state restoration (`@SceneStorage` over `path`) are likewise an
-app's to add.
+The system ends a backgrounded app whenever it wants the memory, and a person coming
+back expects the screen they left. So each window's path outlives its process:
+`SceneRoot`'s `PathRestoration` modifier keeps `NavigationModel.encodedPath` in
+`@SceneStorage` — the system's per-scene store, so two iPad windows restore two different
+paths — writing it whenever `path` changes, and hands the stored bytes to
+`NavigationModel.restore(from:)` when the scene appears, in a transaction with
+animations disabled, so the window opens on the restored screen instead of pushing it
+over the list. Right after the restore it stores `encodedPath` again: bytes that
+restored nothing, or only in part, are replaced by the path the person now sees, so
+they are logged once rather than at every launch, and a later build that could read
+them never brings back a screen this launch did not show. `App/` only carries the bytes; what they mean is Core's, and
+`NavigationModelRestorationTests` covers every branch.
+
+- **Once, and only onto an untouched path.** `restore(from:)` applies the first time it
+  is called and only while nothing has changed the path. A deep link that launched the
+  window, or a push, is newer than what was stored and wins, whether it reaches the
+  model before or after the scene appears — the order SwiftUI delivers `.onOpenURL` and
+  `.onAppear` in is not something the result depends on. Every later call does nothing.
+- **Never a crash, and never a stack that did not exist.** The path restores up to the
+  first route this build cannot read (a screen a later build stored, a damaged
+  identifier) and stops there. The screens above an unreadable one were pushed from it,
+  so joining what lies either side of it would show a stack the person never saw, with
+  a back button leading somewhere they never were. Bytes that are not a stored path, or
+  are of a version this build does not know, restore nothing: the window opens at the
+  root. Both are logged in the `navigation` category, and apart: an unknown version is
+  what a downgrade leaves behind, so it is a notice carrying the version number, while
+  bytes that are not a stored path are an error, by size only.
+- **A route to an item that no longer exists is restored.** `NavigationModel` holds
+  routes, not items, and the list has not loaded when a scene is rebuilt, so restore
+  cannot ask whether the item is still there, and it does not wait to find out. The
+  detail screen already answers the question: it shows progress while the list loads
+  (`TodoDetailViewModel` starts that load itself) and its not-found state if the item is
+  gone, exactly as a stale deep link does. Dropping the route instead would need the
+  navigation model to know about every feature's data.
+- **A presented sheet is not restored.** Only the path is stored, so a restored window
+  has no sheet up. A sheet is a short detour over a screen, and the screen is what the
+  person returns to; About restored over the list would be noise, and a sheet holding a
+  half-typed draft would come back empty, since no view-model state is stored either.
+  An app whose sheet must survive stores it beside the path, as a second field of the
+  stored form, and restores it in the same action.
+- **Nothing but the path.** Drafts, scroll position, and Edit mode start fresh.
+- **Not under UI testing.** With `-uiTesting`, `SceneRoot` leaves the `PathRestoration`
+  modifier off — the one place the opt-out is read — so nothing is stored, read, or
+  encoded, and the launch walk starts at the root whatever an earlier launch left
+  pushed.
+
+How long a scene's storage lives is the system's rule, not this app's: it is kept
+while the system may bring the scene back, and goes with the scene when the scene is
+discarded.
+
+### The stored form is contract
+
+A stored path is read by whichever build launches next, so its format is contract once
+a build has left your machine (`AGENTS.md`'s "What is contract and what is private").
+It is UTF-8 JSON with sorted keys:
+
+```json
+{"routes":[{"id":"00000000-0000-0000-0000-000000000001","screen":"todoDetail"}],"version":1}
+```
+
+`StoredNavigationPath` (`Sources/MyAppCore/Navigation/`) owns the envelope and
+`AppRoute`'s hand-written `Codable` conformance owns one route. Neither is synthesized:
+synthesized enum coding takes its keys from the Swift case and label names, so renaming
+`todoDetail` would silently stop every stored path from restoring. Here the Swift name
+is free to change and the stored name (`"todoDetail"`, the `screen` and `id` keys) is
+not. `NavigationModelRestorationTests` pins the bytes in both directions, from a literal
+typed by hand: a change that alters what is written, or stops reading what was, fails
+it.
+
+- A new screen adds its stored name and a branch in `AppRoute`'s `init(from:)` and
+  `encode(to:)`, with a test for its literal. An older build's path ends before it.
+- A removed screen's routes stop decoding, and a stored path ends at the first of them;
+  nothing else is needed.
+- A case that gains a value must keep decoding the form stored without it: read the new
+  value with `decodeIfPresent` and a default, and keep the old form's literal test beside
+  the new one. No gate enforces this; the literal tests are what fail when it is broken,
+  so they are never edited to pass.
+- A change old builds' payloads cannot survive — a different envelope, a route that is
+  no longer an object — takes `version` 2, written from then on, while
+  `StoredNavigationPath.routes(from:)` keeps reading version 1. The version is read
+  before the routes, so a build never guesses at a newer shape: it opens at the root.
+
+The `@SceneStorage` key (`navigation.path`, in `SceneRoot`) is not contract in the same
+way: under a new key each window opens at the root once, and nothing is misread.
+
+## Tabs and split views are an app's
+
+A tab-based app keeps one `NavigationModel` per tab, one stack each — and one stored
+path per tab, each under its own `@SceneStorage` key; tabs versus a single stack is the
+design lock's navigation field ([design-lock.md](design-lock.md)). `NavigationSplitView`
+is likewise an app's to add.
