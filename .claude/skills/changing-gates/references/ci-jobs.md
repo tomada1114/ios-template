@@ -9,7 +9,11 @@ required `Test & Coverage Gate`, the one macOS gate job: xcode-27 runs
 `scripts/coverage.sh`, then `just build` — the Debug app for the generic iOS Simulator
 destination — then `just build-device` — the Release app for the generic iOS device
 destination with `CODE_SIGNING_ALLOWED=NO`, the one `iphoneos` compile, asserting the
-`.app` exists; nothing is signed, archived, or installed), `bootstrap-smoke` (the required `Template Bootstrap Smoke`:
+`.app` exists; nothing is signed, archived, or installed — then `just analyze` —
+`swiftlint analyze --strict` with `.swiftlint.yml`'s `analyzer_rules`, over the compiler
+log of a clean iOS Simulator `build-for-testing` of the app and of the package that
+`scripts/analyze.sh` makes itself, since the analyzer needs the test targets' compile
+commands too and `just build` compiles neither), `bootstrap-smoke` (the required `Template Bootstrap Smoke`:
 `scripts/bootstrap.sh` renames a clone of the template, then the renamed tree is
 linted, its skill descriptions are re-checked (`scripts/checks/skills-descriptions.sh`,
 which on every pull request already refuses a description naming a placeholder the

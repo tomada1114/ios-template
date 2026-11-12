@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `just analyze`: `swiftlint analyze --strict` with `.swiftlint.yml`'s new
+  `analyzer_rules` (`unused_declaration`, `unused_import`), over the compiler log of a
+  clean iOS Simulator `build-for-testing` of the app and of the package that
+  `scripts/analyze.sh` makes itself. It fails when any Swift file is in no compile
+  command, rather than letting SwiftLint skip it silently. It runs in `just check`'s
+  simulator-relevant tail (now also triggered by a `.swiftlint.yml` change) and as a step
+  of CI's `Test & Coverage Gate`. The unused imports and two dead declarations it found
+  are removed; `App/` now builds its `APIClient` in `init()` instead of keeping a stored
+  property nothing reads.
 - `just build-device`: an unsigned Release build for the iOS device SDK
   (`generic/platform=iOS`, `CODE_SIGNING_ALLOWED=NO`) that asserts the `.app` exists,
   so a device-only compile break or a Release device failure (asset catalog, linker)

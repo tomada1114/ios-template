@@ -16,8 +16,13 @@ struct NewRemoteItem: Encodable, Sendable {
 }
 
 /// A body `JSONEncoder` refuses: its default non-conforming-float strategy throws on NaN.
+/// It encodes by hand, not through a synthesized stored property, so the analyzer's
+/// `unused_declaration` sees no property only the synthesized conformance reads.
 struct UnencodableBody: Encodable, Sendable {
-    var ratio = Double.nan
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(Double.nan)
+    }
 }
 
 /// Shared values and builders for the `APIClient` suites.

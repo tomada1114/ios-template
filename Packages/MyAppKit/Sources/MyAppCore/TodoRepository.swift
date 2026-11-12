@@ -1,5 +1,3 @@
-import Foundation
-
 /// Everything a ``TodoRepository`` can report, in Core's vocabulary.
 ///
 /// Payloads carry identifiers, never a title: an error can end up in a log line or a

@@ -1,7 +1,6 @@
 import Foundation
 import MyAppCore
 @testable import MyAppPlatform
-import SwiftData
 import Testing
 
 extension SwiftDataTodoRepositoryTests {

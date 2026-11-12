@@ -80,6 +80,14 @@ build-device:
     mise exec -- xcodegen generate
     mise exec -- scripts/run-throttled.sh --lock -- scripts/build-device.sh
 
+# Run SwiftLint's analyzer rules (.swiftlint.yml's analyzer_rules: unused declarations
+# and imports) over the compiler log of a clean build-for-testing of the app and of the
+# package for the iOS Simulator (scripts/analyze.sh, which makes that log itself)
+[doc("Run swiftlint analyze (unused declarations and imports) over a clean iOS Simulator build's log")]
+analyze:
+    mise exec -- xcodegen generate
+    mise exec -- scripts/run-throttled.sh --lock -- scripts/analyze.sh
+
 # Build (Debug), then install and launch it on an iOS Simulator, replacing any
 # running instance (scripts/run-simulator.sh; SIMULATOR_DEVICE picks the device)
 [doc("Build (Debug), then install and launch it on an iOS Simulator")]
@@ -141,14 +149,14 @@ smoke:
     mise exec -- scripts/run-throttled.sh --lock -- scripts/smoke_launch.sh
 
 # Run all checks: verify hooks, format, lint, script tests, harness checks, test, then
-# the simulator checks (uitest-build, uitest-run, smoke, build-device, test-ios) when
+# the simulator checks (uitest-build, uitest-run, smoke, build-device, analyze, test-ios) when
 # the change since origin/main touches a path they exercise (scripts/simulator-relevant.sh
 # holds the list). CHECK_ALL=1 runs them regardless; CHECK_JOBS and CHECK_QOS set the
 # throttle (scripts/run-throttled.sh). uitest-build is the Debug compile, so `build` is
 # not run.
 [doc("Run all checks: verify-hooks, fmt, lint, test-scripts, check-harness, test, and the simulator checks when relevant")]
 check: verify-hooks fmt lint test-scripts check-harness test
-    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just build-device && just test-ios; else echo "Skipped uitest-build, uitest-run, smoke, build-device, test-ios (CHECK_ALL=1 runs them)"; fi
+    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just build-device && just analyze && just test-ios; else echo "Skipped uitest-build, uitest-run, smoke, build-device, analyze, test-ios (CHECK_ALL=1 runs them)"; fi
 
 # Remove build artifacts and the generated project
 clean:

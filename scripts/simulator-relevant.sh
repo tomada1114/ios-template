@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prints `true` or `false`: whether a change set touches any path the simulator checks
-# (uitest-build, uitest-run, smoke, build-device, test-ios) exercise. `just check` runs
+# (uitest-build, uitest-run, smoke, build-device, analyze, test-ios) exercise. `just check` runs
 # those checks only on `true`; CI's `changes` job uses the answer to decide whether its
 # macOS jobs (`test`, `bootstrap-smoke`) have work (#54).
 # This file holds the only copy of the path list.
@@ -24,8 +24,9 @@
 set -euo pipefail
 
 # The paths the simulator checks exercise, as one extended regex: anything matching
-# sends them through in full.
-RELEVANT='^(App/|Packages/|LaunchUITests/|Config/|scripts/|\.github/actions/|project\.yml$|justfile$|mise\.toml$|\.xcode-version$|\.github/workflows/ci\.yml$)'
+# sends them through in full. `.swiftlint.yml` is here for `analyze`: its analyzer_rules
+# are read by that check alone.
+RELEVANT='^(App/|Packages/|LaunchUITests/|Config/|scripts/|\.github/actions/|project\.yml$|justfile$|mise\.toml$|\.xcode-version$|\.swiftlint\.yml$|\.github/workflows/ci\.yml$)'
 
 usage_fail() {
     {
@@ -85,7 +86,7 @@ else
 fi
 
 if [ -n "${FILES}" ] && ! grep -qE -- "${RELEVANT}" <<<"${FILES}"; then
-    echo "simulator-relevant: nothing under the simulator paths changed since ${BASE}, so uitest-build, uitest-run, smoke, build-device, and test-ios are skipped; CHECK_ALL=1 runs them anyway" >&2
+    echo "simulator-relevant: nothing under the simulator paths changed since ${BASE}, so uitest-build, uitest-run, smoke, build-device, analyze, and test-ios are skipped; CHECK_ALL=1 runs them anyway" >&2
     echo false
 else
     echo true
