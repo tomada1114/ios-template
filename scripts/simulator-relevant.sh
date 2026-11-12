@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Prints `true` or `false`: whether a change set touches any path the simulator checks
-# (uitest-build, uitest-run, smoke, test-ios) exercise. `just check` runs those checks
-# only on `true`; CI's `changes` job uses the answer to decide whether its macOS jobs
-# (`test`, `bootstrap-smoke`) have work (#54).
+# Prints `true` or `false`: whether a change set touches any path the Xcode checks
+# (uitest-build, uitest-run, smoke, build-device, test-ios) exercise. `just check` runs
+# those checks only on `true`; CI's `changes` job uses the answer to decide whether its
+# macOS jobs (`test`, `bootstrap-smoke`) have work (#54).
 # This file holds the only copy of the path list.
 #
 #   scripts/simulator-relevant.sh --base REF --head REF   (CI: git diff BASE...HEAD)
@@ -85,7 +85,7 @@ else
 fi
 
 if [ -n "${FILES}" ] && ! grep -qE -- "${RELEVANT}" <<<"${FILES}"; then
-    echo "simulator-relevant: nothing under the simulator paths changed since ${BASE}, so uitest-build, uitest-run, smoke, and test-ios are skipped; CHECK_ALL=1 runs them anyway" >&2
+    echo "simulator-relevant: nothing under the simulator paths changed since ${BASE}, so uitest-build, uitest-run, smoke, build-device, and test-ios are skipped; CHECK_ALL=1 runs them anyway" >&2
     echo false
 else
     echo true

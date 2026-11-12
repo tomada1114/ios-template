@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `just build-device`: an unsigned Release build for the iOS device SDK
+  (`generic/platform=iOS`, `CODE_SIGNING_ALLOWED=NO`) that asserts the `.app` exists,
+  so a device-only compile break or a Release device failure (asset catalog, linker)
+  no longer reaches `main` unseen. It runs in `just check`'s simulator-relevant tail and
+  as a step of CI's `Test & Coverage Gate`; nothing is signed, archived, or installed.
 - A per-configuration API base URL: `API_BASE_URL` in `Config/Debug.xcconfig` and a new
   `Config/Release.xcconfig` (placeholder `.invalid` hosts, the `//` written `/$()/`),
   expanded into `Info.plist` under `APIBaseURL` and parsed by Core's `AppConfiguration`,

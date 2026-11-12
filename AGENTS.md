@@ -50,6 +50,7 @@ just test-fast TodoItemTests  # Run only the matching tests, no coverage floor (
 just test-scripts  # Run the plain-bash tests for scripts/ and the skills' Python suites (scripts/tests/run.sh)
 just check-harness # Re-assert the harness's claims about itself (scripts/checks/run-all.sh)
 just build         # Build the app (Debug) for the iOS Simulator
+just build-device  # Build Release for the iOS device SDK, unsigned, and assert the app bundle exists
 just run           # Build, then install and launch it on an iOS Simulator (SIMULATOR_DEVICE picks one)
 just run-device    # Build (Debug), then install and launch it on a connected iPhone (Config/Local.xcconfig; IOS_DEVICE picks one)
 just logs          # Stream this app's log output from the booted simulator (Ctrl-C to stop)
@@ -59,7 +60,7 @@ just uitest-build  # Build the app and the launch UI test for an iOS Simulator, 
 just uitest-run    # Run the launch UI test uitest-build compiled, without rebuilding
 just test-ios      # Run the package tests on an iOS Simulator (no coverage floor)
 just smoke         # Build Release and assert the app launches and stays alive on a simulator
-just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → test-ios, when simulator-relevant)
+just check         # Run all checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run → smoke → build-device → test-ios, when simulator-relevant)
 just clean         # Remove build artifacts and the generated project
 just labels        # Create/update GitHub labels from .github/labels.yml (never deletes)
 just ruleset       # Create/update the "main" branch ruleset from .github/rulesets/main.json (admin-only)
@@ -76,7 +77,7 @@ for the area you touched names its own check; the rest are here.
 
 | What you changed | The narrowest check that can fail |
 |---|---|
-| The Release configuration, or anything only a Release launch shows | `just smoke` |
+| The Release configuration, or anything only a Release launch shows | `just smoke`; `just build-device` too for the Release device build — the one `iphoneos` compile, which a device-only branch (`#if !targetEnvironment(simulator)`), an API one SDK lacks, or asset-catalog or linker validation breaks while every simulator build passes |
 | Behavior only the running app shows | `just run`, then `just logs` — no gate asserts it, so the PR carries the evidence (a screenshot: `xcrun simctl io booted screenshot shot.png`; the `running-the-app` skill) |
 | A permission prompt, or behavior after a grant is revoked | `just reset-permissions`, then `just run` |
 | A `just` recipe name, a workflow's `uses:`, `permissions:`, `concurrency:`, or `run:` shell, a Dependabot or Renovate commit prefix or cooldown, a skill's frontmatter, the `## Product` section, `.claude/settings.json`'s `permissions` rules, the Core import ban list (`.swiftlint.yml`'s `no_ui_import_in_core` or `ArchitectureBoundaryTests.forbiddenModules`), the gates `just check` or `ci.yml` runs, `.github/rulesets/main.json`'s required contexts, or a label an issue form, a workflow, a dependency bot, or `scripts/label-pr.sh` applies | `just check-harness` |
@@ -277,7 +278,7 @@ stops and asks.
 
 Before submitting a PR:
 
-1. `just check` passes (it runs `just uitest`, `just smoke`, and `just test-ios` when the change
+1. `just check` passes (it runs `just uitest`, `just smoke`, `just build-device`, and `just test-ios` when the change
    touches a simulator path; `CHECK_ALL=1 just check` forces them)
 2. New public APIs have `///` doc comments explaining *why*
 3. Tests cover the new functionality (happy path and error path)

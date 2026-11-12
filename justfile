@@ -72,6 +72,21 @@ build:
     mise exec -- xcodegen generate
     set -o pipefail && scripts/run-throttled.sh --lock -- xcodebuild -jobs "$(scripts/run-throttled.sh --print-jobs)" -project MyApp.xcodeproj -scheme MyApp -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/dev-derived-data build | mise exec -- xcbeautify --quiet
 
+# Build Release for the iOS device SDK (`iphoneos`), unsigned, and assert the app bundle
+# exists. It is the one device-SDK compile any gate runs: every other recipe builds for
+# the simulator, so a device-only branch (`#if !targetEnvironment(simulator)`), an API
+# one SDK lacks, or a Release device failure in asset-catalog validation or the linker
+# would otherwise reach main unseen. CODE_SIGNING_ALLOWED=NO needs no team; nothing is
+# archived, exported, signed, or installed. The stale bundle is removed first, so a
+# build that produces none cannot pass on an earlier run's.
+[doc("Build Release for the iOS device SDK, unsigned, and assert the app bundle exists")]
+build-device:
+    mise exec -- xcodegen generate
+    rm -rf build/device-derived-data/Build/Products/Release-iphoneos/MyApp.app
+    set -o pipefail && scripts/run-throttled.sh --lock -- xcodebuild -jobs "$(scripts/run-throttled.sh --print-jobs)" -project MyApp.xcodeproj -scheme MyApp -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/device-derived-data CODE_SIGNING_ALLOWED=NO build | mise exec -- xcbeautify --quiet
+    @test -f build/device-derived-data/Build/Products/Release-iphoneos/MyApp.app/Info.plist || { printf '%s\n' 'ERR_BUILD_DEVICE_NO_APP: the Release device build produced no app bundle' 'Expected: an app at build/device-derived-data/Build/Products/Release-iphoneos/MyApp.app' 'Actual: no Info.plist there, though xcodebuild exited 0' "Next: check the scheme's product name in project.yml, then rerun \`just build-device\`" >&2; exit 1; }
+    @echo "BUILD-DEVICE OK: build/device-derived-data/Build/Products/Release-iphoneos/MyApp.app"
+
 # Build (Debug), then install and launch it on an iOS Simulator, replacing any
 # running instance (scripts/run-simulator.sh; SIMULATOR_DEVICE picks the device)
 [doc("Build (Debug), then install and launch it on an iOS Simulator")]
@@ -133,13 +148,14 @@ smoke:
     mise exec -- scripts/run-throttled.sh --lock -- scripts/smoke_launch.sh
 
 # Run all checks: verify hooks, format, lint, script tests, harness checks, test, then
-# the simulator checks (uitest-build, uitest-run, smoke, test-ios) when the change since
-# origin/main touches a path they exercise (scripts/simulator-relevant.sh holds the
-# list). CHECK_ALL=1 runs them regardless; CHECK_JOBS and CHECK_QOS set the throttle
-# (scripts/run-throttled.sh). uitest-build is the Debug compile, so `build` is not run.
+# the Xcode checks (uitest-build, uitest-run, smoke, build-device, test-ios) when the
+# change since origin/main touches a path they exercise (scripts/simulator-relevant.sh
+# holds the list). CHECK_ALL=1 runs them regardless; CHECK_JOBS and CHECK_QOS set the
+# throttle (scripts/run-throttled.sh). uitest-build is the Debug compile, so `build` is
+# not run.
 [doc("Run all checks: verify-hooks, fmt, lint, test-scripts, check-harness, test, and the simulator checks when relevant")]
 check: verify-hooks fmt lint test-scripts check-harness test
-    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just test-ios; else echo "Skipped uitest-build, uitest-run, smoke, test-ios (CHECK_ALL=1 runs them)"; fi
+    @if [ "$(scripts/simulator-relevant.sh)" != false ]; then just uitest-build && just uitest-run && just smoke && just build-device && just test-ios; else echo "Skipped uitest-build, uitest-run, smoke, build-device, test-ios (CHECK_ALL=1 runs them)"; fi
 
 # Remove build artifacts and the generated project
 clean:
