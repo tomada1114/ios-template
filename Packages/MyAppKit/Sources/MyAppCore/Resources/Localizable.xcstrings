@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "about.description" : {
+      "comment" : "Body text of the About sheet: what the app is for, in one sentence.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep a list of what you need to do, and check each item off when it is done."
+          }
+        }
+      }
+    },
+    "about.show" : {
+      "comment" : "Toolbar button on the to-do list that opens the About sheet.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show About"
+          }
+        }
+      }
+    },
+    "about.title" : {
+      "comment" : "Navigation title of the sheet that says what the app is.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About"
+          }
+        }
+      }
+    },
     "failure.dismiss" : {
       "comment" : "Button that dismisses the failure alert.",
       "localizations" : {
