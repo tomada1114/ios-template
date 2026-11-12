@@ -213,5 +213,9 @@ shape could not solve (`AGENTS.md` › Before changing the architecture).
   secret on the device.
 - A route, a deep link, or the URL scheme: `DeepLinkTests` holds Core's scheme to the
   one `project.yml` registers; run `just uitest` too.
+- The stored navigation path — `AppRoute`'s stored names and `StoredNavigationPath`'s
+  envelope — is pinned by `NavigationModelRestorationTests`' literal payload: a build in
+  the wild has stored those bytes, so a change keeps reading them (a new version beside
+  the old), never an edit to that literal.
 - `LocalizationTests` holds the catalog (above); `AppLogTests` holds `AppLog.subsystem`
   to the bundle identifier.
