@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The app now ships `App/PrivacyInfo.xcprivacy`, which declares the `UserDefaults`
+  required-reason API (`NSPrivacyAccessedAPICategoryUserDefaults`, reason `CA92.1`)
+  that `UserDefaultsPreferences` calls, with no tracking and no collected data, so an
+  App Store Connect upload no longer flags a missing declaration. `PrivacyManifestTests`
+  parses the file and fails when the entry or its reason is removed.
+
 ### Added
 
 - `just build-device`: an unsigned Release build for the iOS device SDK
