@@ -61,7 +61,7 @@ scene's root (`SceneRoot`) owns that scene's `NavigationModel` and
 phase to the second ("Lifecycle", below), keeps the first's encoded path in
 `@SceneStorage` and hands it back when the scene is rebuilt (the `designing-ui` skill's
 `references/navigation.md`), and renders `MyAppUI`'s `RootView` over the app model and
-the navigation model. It also parses `Bundle.main.infoDictionary` once into Core's
+both of the scene's models. It also parses `Bundle.main.infoDictionary` once into Core's
 `AppConfiguration` and builds the `APIClient` at its base URL (the
 `integrating-system-apis` skill's `references/http-client.md`): the parsing is Core's,
 so `App/` hands over a dictionary and decides nothing about it. `App/` chooses adapters
@@ -83,7 +83,12 @@ is shaped that way:
   presented sheet — stays in the scene's own `NavigationModel` (the `designing-ui`
   skill's `references/navigation.md`), and so does where the window stands in its lifecycle:
   `AppModel` builds a scene's `SceneLifecycleModel` (`makeSceneLifecycleModel()`) over
-  the shared list, and the scene keeps it ("Lifecycle", below).
+  the shared list, and the scene keeps it ("Lifecycle", below). The one thing `AppModel`
+  keeps across scenes is the list of open windows, which it hands to each of those
+  models and to each shared view model, and which only the choice of the window that
+  presents a failure reads (the `designing-ui` skill's `references/navigation.md` ›
+  A failure presents in one window). That is why a shared view model's initializer is
+  internal and `AppModel` is the one thing that builds it.
 
 ## Lifecycle
 
@@ -94,7 +99,8 @@ it, `SceneLifecycleModel`. `AppModel.makeSceneLifecycleModel()` builds one over 
 its state lives exactly as long as the window. `SceneRoot` reads
 `@Environment(\.scenePhase)` — that window's phase, not the app's — and forwards every
 value, the initial one included (`.onChange(of:initial: true)`), mapped to Core's enum, an
-unknown future phase as `inactive`. `App/` decides nothing about the phase; every rule
+unknown future phase as `background` (it must not make a window the one a failure
+is presented in; the price is one quiet refresh at the next active). `App/` decides nothing about the phase; every rule
 below is Core's, under `SceneLifecycleModelTests` and `TodoListViewModelRefreshTests`.
 
 - **Two steps, so phases apply in order.** `sceneDidEnter(_:)` records the phase
@@ -124,12 +130,22 @@ below is Core's, under `SceneLifecycleModelTests` and `TodoListViewModelRefreshT
   down; their next pull-to-refresh or Retry reports a failure that persists. It shares
   `load()`'s fetch and latest-wins guard ("Reentrancy", above), so a load that starts
   during a refresh supersedes it.
-- **Phases are per scene, not app-wide.** Each window keeps its own model, and the scene
-  that returns asks, whatever the others do; one window going to the background arms
-  nothing in another window that only went inactive. An app-wide phase — the most active
-  of all windows — was the alternative: it needs every window's last report to be
-  trusted, and a window that closed with a stale `active` would suppress every later
-  refresh. Lifecycle decisions log under `AppLog.lifecycle`.
+- **A refresh is decided per scene, not app-wide.** Each window keeps its own model, and
+  the scene that returns asks, whatever the others do; one window going to the
+  background arms nothing in another window that only went inactive. An app-wide phase —
+  the most active of all windows — was the alternative: it needs every window's last
+  report to be trusted, and a window that closed with a stale `active` would suppress
+  every later refresh. Lifecycle decisions log under `AppLog.lifecycle`.
+- **The phases also say which windows are open, for one decision only.** A scene's first
+  report adds it to the list of open windows `AppModel` keeps, each later one records
+  whether it is in the foreground (every phase but `background`; `App/` maps an unknown
+  future phase to `background`), and `sceneDidClose()`, which `SceneRoot` calls from
+  `onDisappear`, removes it. Only the choice of the window that presents a failure reads
+  that list, and it survives what the app-wide phase could not: a window that went
+  without closing is dropped at the next change any window reports, and the worst a
+  wrong entry does meanwhile is hold a failure in a window nobody sees until then. The
+  rule is the `designing-ui` skill's `references/navigation.md` › A failure presents in
+  one window.
 - **Where the next lifecycle rule goes.** Work for leaving the foreground — flushing a
   pending write, pausing a timer — is a `.background` (or `.inactive`) branch of
   `SceneLifecycleModel.sceneDidEnter(_:)`, calling a view model's action; `SceneRoot`

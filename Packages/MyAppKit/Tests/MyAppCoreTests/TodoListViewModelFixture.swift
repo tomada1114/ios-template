@@ -49,11 +49,12 @@ enum TodoListViewModelFixture {
     ) -> TodoListViewModel {
         let pinnedNow = now
         let pinnedID = fixedID
-        return TodoListViewModel(
+        // Through the app model, which is what builds one: it is the list the app shows.
+        return AppModel(
             repository: repository,
             preferences: preferences,
             now: { pinnedNow },
             makeID: { pinnedID },
-        )
+        ).todoList
     }
 }

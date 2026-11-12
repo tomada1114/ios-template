@@ -48,7 +48,7 @@ public struct TodoDetailView: View {
     }
 
     /// Creates the detail screen over `model` — built for its route by
-    /// `AppModel.makeTodoDetailViewModel(id:)`.
+    /// `AppModel.makeTodoDetailViewModel(id:scene:)`.
     public init(model: TodoDetailViewModel) {
         _model = State(initialValue: model)
     }
@@ -89,7 +89,9 @@ public struct TodoDetailView: View {
             preferences: PreviewPreferences(),
         )
         return NavigationStack {
-            TodoDetailView(model: app.makeTodoDetailViewModel(id: stored?.id ?? UUID()))
+            TodoDetailView(
+                model: app.makeTodoDetailViewModel(id: stored?.id ?? UUID(), scene: nil),
+            )
         }
     }
 

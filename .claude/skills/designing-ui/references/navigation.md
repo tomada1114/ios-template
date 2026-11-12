@@ -77,7 +77,8 @@ that is already presenting a sheet, so an alert outside the stack cannot show wh
 sheet is up. `RootView` therefore attaches every failure alert to each presentation
 layer — the stack, and the `sheet(for:)` content — through one function,
 `failureAlerts(on:isTopmost:)`, and hands the failures only to the topmost layer, so a
-feature adds its alert once and one failure is never bound to two alerts. The topmost
+feature adds its alert once and one failure is never bound to two alerts in a window
+(which window gets it at all is "A failure presents in one window", below). The topmost
 layer is the sheet from the moment one is asked for until its `onDismiss` — after it has
 finished sliding away, not when `NavigationModel.sheet` turns `nil` — because an alert
 handed to the stack while the sheet is still leaving is dropped by UIKit and never comes
@@ -97,6 +98,80 @@ presents over the sheet, OK leaves the sheet up, and a deep link that closes the
 under the alert brings the alert back over the screen it pushed.
 
 Full-screen covers, popovers, and a sheet presented from inside a sheet are not modeled.
+
+## A failure presents in one window
+
+The list is app-wide and every window renders it, so a failure presented wherever it is
+set would show in every window at once, and OK in one would pull the alert out from under
+the person in another. Core therefore hands one failure to exactly one window. A shared
+model holds its failure as a `ReportedFailure` — the failure and the scene whose action
+caused it, one value so the two cannot disagree — and each `RootView` reads it through
+its own scene's `SceneLifecycleModel`: `lifecycle.presented(app.todoList.reportedFailure)`
+is that value in the presenting window and `nil` in every other. The alert's button
+hands the value it was shown back (`dismissFailure(_:)`), so it dismisses that failure
+and no other.
+
+The presenter is chosen once, when the failure is reported:
+
+1. **The window whose action caused it, if that window is in the foreground.** The alert
+   shows beside the row whose change failed. A view passes its window with every action
+   that can fail — `toggle(_:from:)`, `addDraft(from:)`, `delete(atOffsets:from:)`,
+   `load(from:)` — as a `SceneID`, which is `SceneLifecycleModel.id`; a pushed screen's
+   model gets it from its factory (`makeTodoDetailViewModel(id:scene:)`). `from:` has no
+   default, so a call site says which window asked, or `nil` when none did (work Core
+   starts on its own).
+2. **Otherwise, the window that has been in the foreground longest.**
+3. **Otherwise — no window is in the foreground — the first open window.** With no
+   window open at all, the failure waits for the first one to open.
+
+**The presenter is sticky.** It keeps the failure until its window closes, or goes to the
+background while another window is in the foreground; the failure then goes to a window
+chosen by the same three steps. Nothing else moves the alert:
+
+- A window coming back to the foreground takes nothing, even when its own action caused
+  the failure: the person may be reading the alert in the window that took it.
+- While every window is in the background the presenter does not change, and a window
+  that comes back before the presenter does not take the failure. An app-wide trip
+  through the background therefore leaves a single window's alert up, and two windows'
+  alert where it was — provided the presenter is not reported in the background while
+  the other window is still recorded in the foreground. Windows report one at a time,
+  and Core cannot tell that case from one window being put away, so the failure then
+  moves to the other window, and stays there.
+- An `inactive` window — Control Center, the app switcher — is still in the foreground.
+- One failure is held at a time, as in one window: a second failure replaces the first,
+  and its presenter is chosen afresh by the three steps, wherever the first ended up.
+
+Stickiness is why the presenter is stored and not computed from the phases on every
+render: a computed answer follows the phases, so the alert would return to the window
+that caused it, or hop to whichever window came back first, under a person who had
+started reading it elsewhere.
+
+The windows are known to Core through what they already report. `AppModel` keeps one
+internal list of open windows (`OpenScenes`), in the order each last came to the
+foreground, and hands it to every `SceneLifecycleModel` and every shared view model it
+builds. A scene joins on the first phase it reports — every phase but `background`
+counts as the foreground, and `App/` maps a phase a later SDK adds to `background` so an
+unknown phase never makes a window a candidate — never when it is built, because
+`SceneRoot` builds a spare model on every re-render. It leaves when `SceneRoot`'s
+`onDisappear` calls `sceneDidClose()`: an observed change, so the next window re-renders
+and presents at once. A phase reported after a close opens the window again, so a close
+delivered for a window that is still there costs nothing lasting. The list holds each
+scene weakly, only so a window that went without closing is not kept alive; it is
+dropped at the next change any window reports.
+
+A shared model reports a failure through a `FailureSlot`, which claims the presenter
+from `OpenScenes` and gives the claim up when the failure is dismissed or replaced. A
+second shared model keeps a slot of its own over the same `OpenScenes`, exposes its
+`ReportedFailure`, and adds one `.failureAlert` line to `RootView`; nothing in
+`SceneLifecycleModel` or `OpenScenes` names a feature.
+
+An app-wide coordinator that owns every failure was the alternative: it would put a
+second owner beside each view model's failure, to decide what a claim on the list of
+open windows already decides. Presenting in the key window only was the other: windows
+side by side are all active at once, and Core has no way to tell which one the person
+last touched, so it could not say which window a failed toggle belongs to. No UI test
+opens a second window; `FailurePresentationTests` pins every rule above, and the failure
+launch test pins that a single window still presents its own.
 
 ## Deep links are parsed in Core
 
