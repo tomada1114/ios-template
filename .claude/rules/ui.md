@@ -171,7 +171,9 @@ key has a `comment` and an `en` value.
 
 The one XCTest target proves only what the assembled app shows (`testing.md` › Where a
 Test Goes). It waits on a predicate with a timeout (`waitForExistence(timeout:)`),
-never `sleep`, and keeps its timeouts in `LaunchTests.swift`'s `Timeout`.
+never `sleep`, and keeps its timeouts in `Support/Timeout.swift`'s `Timeout`. A wait or
+helper more than one test file needs (`focus`, `waitForDisappearance`) goes in
+`LaunchUITests/Support/`, never copied into a second file.
 
 ## Verifying a screen
 

@@ -51,8 +51,8 @@ Module-specific rules: `core.md` (MyAppCore), `ui.md` (MyAppUI, `App/`, LaunchUI
 - Where each kind lives: a view's spacing, radius, or hit target in `DesignTokens`
   (`ui.md`); a number someone might tune in Core's one `Tuning` type (`core.md`);
   user-visible wording as a `static` on a caseless enum in Core (`TodoListStrings`); the
-  logging subsystem in `AppLog`, once; a test's timeouts in a caseless enum in the test
-  file (`LaunchTests.swift`'s `Timeout`)
+  logging subsystem in `AppLog`, once; the UI tests' timeouts in one caseless enum
+  (`LaunchUITests/Support/Timeout.swift`'s `Timeout`)
 
 ## Error Handling
 

@@ -120,6 +120,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `LaunchTests` now opens a `my-app://todo/<uuid>` link to the item its walk created
+  and asserts the detail screen shows it, then a link to an unknown item and asserts
+  the not-found state, so removing `App/`'s `.onOpenURL` fails `just uitest`. The
+  helpers and timeouts every UI test file shares (`focus`, `waitForDisappearance`,
+  `Timeout`) move to `LaunchUITests/Support/` (#80)
+
 - A typed JSON API layer in `MyAppCore/Networking`, over the `HTTPClient` port: an
   `Endpoint<Response>` describes one call, `APIClient` sends it below a base URL with
   coders configured once (ISO 8601 dates, keys as the type spells them) and returns the
