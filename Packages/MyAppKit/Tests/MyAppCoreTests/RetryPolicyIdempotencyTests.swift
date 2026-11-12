@@ -27,7 +27,7 @@ struct RetryPolicyIdempotencyTests {
             answering: [RetryPolicyFixture.status(503), .respond(RetryPolicyFixture.itemResponse)],
             waits: 0,
         )
-        #expect(run.error == .server(status: 503))
+        #expect(run.error == .server(status: 503, retryAfter: nil))
         #expect(run.requests.count == 1)
         #expect(run.sleeps.isEmpty)
     }

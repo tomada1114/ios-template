@@ -87,8 +87,8 @@ public struct RetryPolicy: Sendable, Equatable {
     ///
     /// Never a shortened wait: coming back sooner than the server asked would only earn
     /// another refusal, and count against the client. So a `Retry-After` past the cap is
-    /// not a wait at all; the caller gives up and reports the rate limit. No jitter, for
-    /// the same reason. A negative value is read as zero.
+    /// not a wait at all; the caller gives up and reports the 429 or the 503. No jitter,
+    /// for the same reason. A negative value is read as zero.
     public func delay(honoring retryAfter: Duration) -> Duration? {
         let wait = max(retryAfter, .zero)
         return wait > max(maxDelay, .zero) ? nil : wait

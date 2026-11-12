@@ -12,15 +12,20 @@ import os
 /// what the server receives.
 ///
 /// - **What is retried:** ``APIError/timedOut``, ``APIError/offline``,
-///   ``APIError/rateLimited(retryAfter:)``, and ``APIError/server(status:)`` for a 500,
-///   502, 503, or 504 — failures that describe the moment, not the request. Every other
-///   case would fail the same way again and is thrown at once; that includes a 501, a
-///   505, and every other 5xx, which say the server will not do this, not that it
-///   cannot right now.
-/// - **How long it waits:** exactly a 429's `Retry-After`, when the server sent one;
-///   otherwise the policy's jittered exponential backoff. A `Retry-After` longer than
+///   ``APIError/rateLimited(retryAfter:)``, and ``APIError/server(status:retryAfter:)``
+///   for a 500, 502, 503, or 504 — failures that describe the moment, not the request.
+///   Every other case would fail the same way again and is thrown at once; that
+///   includes a 501, a 505, and every other 5xx, which say the server will not do this,
+///   not that it cannot right now.
+/// - **How long it waits:** exactly a 429's or a 503's `Retry-After`, when the server
+///   sent one; otherwise the policy's jittered exponential backoff. A 500's, 502's, or
+///   504's `Retry-After` is ignored: only a 429 and a 503 say when the server will
+///   accept the call again (RFC 9110 §10.2.3). A `Retry-After` longer than
 ///   ``RetryPolicy/maxDelay`` is not shortened to fit — coming back early would only be
-///   refused again — so that 429 is thrown at once, for the feature to show.
+///   refused again — so that 429 or 503 is thrown at once, for the feature to show.
+///   That is deliberate for a 503 too, a maintenance window's `Retry-After: 3600`
+///   included: backing off instead would send requests inside the window the server
+///   asked to be left alone for, and still fail; the feature shows "try again later".
 /// - **What is never repeated:** a call whose method is not idempotent
 ///   (``HTTPRequest/Method/isIdempotent``), unless its endpoint opts in with
 ///   ``Endpoint/isSafeToRepeat``. A timed-out `POST` may have reached the server; sending
@@ -118,21 +123,18 @@ public actor RetryingAPIClient {
         case .offline, .timedOut:
             return policy.delay(afterAttempt: attempt, using: &generator)
 
-        case let .server(status):
+        case let .server(status, retryAfter):
             // Only a status that describes the moment. A 501 or a 505 says the server
             // will never do this, so asking again only delays the error.
             guard Self.transientServerStatuses.contains(status) else {
                 return nil
             }
-            return policy.delay(afterAttempt: attempt, using: &generator)
+            // Only a 503's wait says when the server is back; another 5xx backs off.
+            let wait = status == Self.serviceUnavailable ? retryAfter : nil
+            return delay(honoring: wait, afterAttempt: attempt)
 
         case let .rateLimited(retryAfter):
-            guard let retryAfter else {
-                return policy.delay(afterAttempt: attempt, using: &generator)
-            }
-            // `nil` when the server asked for longer than the policy waits: the 429 is
-            // thrown rather than retried early.
-            return policy.delay(honoring: retryAfter)
+            return delay(honoring: retryAfter, afterAttempt: attempt)
 
         case .cancelled:
             // The caller gave up: there is nobody to retry for.
@@ -149,9 +151,19 @@ public actor RetryingAPIClient {
         }
     }
 
+    /// The server's own wait when it sent one, else the policy's backoff for `attempt`.
+    /// `nil` when the server asked for longer than the policy waits: the 429 or 503 is
+    /// thrown rather than retried early.
+    private func delay(honoring retryAfter: Duration?, afterAttempt attempt: Int) -> Duration? {
+        guard let retryAfter else {
+            return policy.delay(afterAttempt: attempt, using: &generator)
+        }
+        return policy.delay(honoring: retryAfter)
+    }
+
     /// Records that a call is about to be sent again: which attempt failed, as which
     /// ``APIError`` case, and the wait. All three are `.public` — an error case carries
-    /// a status or a duration at most, never a URL or a body, which are not logged here
+    /// a status and a duration at most, never a URL or a body, which are not logged here
     /// at any privacy level.
     private func logRetry(after error: APIError, attempt: Int, delay: Duration) {
         let failure = String(describing: error)
