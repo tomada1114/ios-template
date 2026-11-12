@@ -88,11 +88,13 @@ Module-specific rules: `core.md` (MyAppCore), `ui.md` (MyAppUI, `App/`, LaunchUI
 - Swift 6 language mode is on: data-race safety errors are non-negotiable
 - UI-facing state is `@MainActor` (`TodoListViewModel`); keep Core types `Sendable` where
   they cross actors
-- Ports are `Sendable`. The repository and HTTP ports are `async`; `PreferencesStoring` is
-  deliberately synchronous (the `persisting-data` skill's `references/preferences.md`)
-- Adapters and fakes are actors (`SwiftDataTodoRepository`, `InMemoryTodoRepository`),
+- Ports are `Sendable`. The repository, HTTP, and secure-storage ports are `async`;
+  `PreferencesStoring` is deliberately synchronous (the `persisting-data` skill's
+  `references/preferences.md`)
+- Adapters and fakes are actors (`SwiftDataTodoRepository`, `InMemoryTodoRepository`,
+  `InMemorySecureStore`),
   `Sendable` structs holding only `Sendable` values (`URLSessionHTTPClient`,
-  `UserDefaultsPreferences`), or final classes guarding their state with a `Mutex`
+  `UserDefaultsPreferences`, `KeychainSecureStore`), or final classes guarding their state with a `Mutex`
   (`InMemoryPreferences`)
 - A closure a test injects (`now`, `makeID`, the fake's `onSave` and `onFetch`) is
   `@Sendable`; it captures values, not a `@MainActor` static

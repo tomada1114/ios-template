@@ -1,24 +1,27 @@
 ---
 name: persisting-data
 description: >
-  Covers how this iOS app keeps state between launches - a repository port in MyAppCore
+  Covers how this iOS app keeps state between launches - a repository port in Core
   (TodoRepository, value types across it, typed throws, Core-defined ordering), the
-  SwiftData adapter in MyAppPlatform/Persistence (@ModelActor, PersistenceStore and the
+  SwiftData adapter in the Platform module (@ModelActor, PersistenceStore and the
   one ModelContainer, Storage .onDisk/.inMemory/.file, AppSchemaV1 and AppMigrationPlan,
   @Attribute(.unique)), the UnavailableTodoRepository null object when the store will
-  not open, and small settings through the synchronous PreferencesStoring port
-  (PreferenceKey, PreferenceKeys, UserDefaultsPreferences, scratch suites). Use when
-  adding or changing a @Model, a stored property, a schema version or migration stage, a
-  second repository or entity, a preference key or its default, when a store fails to
-  open or a save fails, when PreferenceKeysTests or a migration test fails, or when
-  deciding between SwiftData, UserDefaults, a file, or CloudKit sync.
+  not open, small settings through the synchronous PreferencesStoring port
+  (PreferenceKey, PreferenceKeys, UserDefaultsPreferences, scratch suites), and secrets
+  through the SecureStoring port (SecureKeys, KeychainSecureStore). Use when adding or
+  changing a @Model, a stored property, a schema version or migration stage, a second
+  repository or entity, a preference key or its default, a token or other secret, when
+  a store fails to open or a save fails, when PreferenceKeysTests or a migration test
+  fails, or when deciding between SwiftData, UserDefaults, the Keychain, a file, or
+  CloudKit sync.
 ---
 
 # Persisting Data
 
 **Owns:** how state survives a relaunch here — the repository port's shape, the SwiftData
 adapter and the one store it opens, the versioned schema and its migrations, what the app
-does when the store will not open, and the preferences port and its keys. **Does not
+does when the store will not open, the preferences port and its keys, and the
+secure-storage port, its keys, and the Keychain item behind it. **Does not
 own:** the conventions an adapter and its schema follow (`.claude/rules/platform.md` ›
 Persistence, loaded with any file under `MyAppPlatform/`); the view model that calls a
 repository (`.claude/rules/core.md` › View models); the Core error enum an adapter maps a
@@ -37,7 +40,7 @@ floor. Core never sees either: the repository is a port in Core's vocabulary, so
 Core test runs without SwiftData, and the store stays replaceable.
 
 Where the state is kept, and in what format — the schema and its migration plan, CloudKit
-sync, `UserDefaults` keys, files — is a design change (`AGENTS.md`'s "Before changing the
+sync, `UserDefaults` keys, Keychain items, files — is a design change (`AGENTS.md`'s "Before changing the
 architecture"), and the stored shape is contract (`AGENTS.md`'s "What is contract and
 what is private"). A pull request that changes either rewrites this skill in place.
 
@@ -50,13 +53,17 @@ what is private"). A pull request that changes either rewrites this skill in pla
 | The one container, the schema, the migration plan, the adapter | `Sources/MyAppPlatform/Persistence/` |
 | The preferences port, `PreferenceKey`, and every key | `Sources/MyAppCore/Preferences/` |
 | The `UserDefaults` adapter | `Sources/MyAppPlatform/Preferences/UserDefaultsPreferences.swift` |
-| Fakes and contracts | `Tests/MyAppTestSupport/` (`InMemoryTodoRepository`, `TodoRepositoryContract`, `InMemoryPreferences`, `PreferencesContract`) |
+| The secure-storage port, `SecureKey`, its error enum, and every key | `Sources/MyAppCore/SecureStorage/` |
+| The Keychain adapter | `Sources/MyAppPlatform/SecureStorage/KeychainSecureStore.swift` |
+| Fakes and contracts | `Tests/MyAppTestSupport/` (`InMemoryTodoRepository`, `TodoRepositoryContract`, `InMemoryPreferences`, `PreferencesContract`, `InMemorySecureStore`, `SecureStoringContract`) |
 | Store, migration, and adapter tests | `Tests/MyAppPlatformTests/` |
 
 Where SwiftData may appear, the `@ModelActor` adapter, and never editing a shipped schema
 version are `.claude/rules/platform.md` › Persistence. Enforced by: `.swiftlint.yml`'s
 `no_ui_import_in_core` and `ArchitectureBoundaryTests` (Core never imports SwiftData or
-names `UserDefaults`).
+Security, names `UserDefaults`, or calls `SecItemAdd`, `SecItemCopyMatching`,
+`SecItemUpdate`, or `SecItemDelete` — the scan covers those four calls and no other
+Security name).
 
 ## A repository is a port
 
@@ -112,6 +119,20 @@ that test. The port's shape, the value types it admits, and how UI tests start c
 **REQUIRED:** [references/preferences.md](references/preferences.md) before adding or
 changing a key.
 
+## Secrets
+
+A token, a key, or any other credential goes through `SecureStoring`, an `async`
+throwing port over the Keychain — never through a preference, which `UserDefaults` keeps
+unencrypted and includes in backups, and never through SwiftData. Every key is a
+`SecureKeys` constant whose name `SecureKeysTests` pins, and a Keychain item survives
+the app's deletion, so a rename is a migration in Core that also deletes the old item.
+The adapter writes one generic-password item per key, readable after first unlock, on
+this device only, in the app's default access group — no entitlement. No gate can store
+a Keychain item, so the adapter is verified in the running app. The port's promises, the
+item's attributes and why, and what is tested where are **REQUIRED:**
+[references/secure-storage.md](references/secure-storage.md) before adding a key, or
+changing the port or the adapter.
+
 ## Before you call it done
 
 - [ ] The change follows `.claude/rules/platform.md` › Persistence (a changed stored
@@ -119,5 +140,8 @@ changing a key.
       `just test` pass.
 - [ ] A changed preference key or default reads the old one and migrates it in Core, with
       a test that starts from the old value.
-- [ ] The contract runs against the fake and the adapter, and both pass.
+- [ ] A changed secure key reads the old one, writes the new one, and deletes the old, in
+      Core, with a test that starts from the old key.
+- [ ] The contract runs against the fake and the adapter, and both pass — except the
+      Keychain adapter, whose pull request carries the running app's log instead.
 - [ ] The pull request rewrites this skill where the persistence design changed.

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A `SecureStoring` port for secrets, with a Keychain adapter (`KeychainSecureStore`: a
+  generic-password item per `SecureKeys` constant, the bundle identifier as its service,
+  `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, no entitlement), the
+  `InMemorySecureStore` fake, and `SecureStoringContract`. The contract runs against the
+  fake under `just test`; no gate runs it against the Keychain, which refuses a test
+  runner on the host and on the Simulator, so the adapter is verified in the running
+  app. `MyAppCore` may no longer import `Security` or call `SecItemAdd`,
+  `SecItemCopyMatching`, `SecItemUpdate`, or `SecItemDelete`.
+
 ### Changed
 
 - The repository no longer depends on the owner's user-level skills. `designing-ui`
@@ -184,6 +195,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Skill descriptions name the Core and Platform layers without the app prefix, so
+  renaming the app no longer lengthens them: after a rename to a 19-character name
+  `persisting-data`'s was 1,046 characters, past the 1,024-character limit
+  `just check-harness` enforces. `scripts/checks/skills-descriptions.sh` now refuses a
+  description that names any placeholder `scripts/bootstrap.sh` rewrites
+  (`ERR_CHECK_SKILL_PLACEHOLDER`), and CI's `Template Bootstrap Smoke` also runs it on
+  the renamed tree.
 - CI's `lint` job runs on `ubuntu-24.04` instead of `ubuntu-latest`, so SwiftLint
   starts again: `ubuntu-latest` moved to Ubuntu 26.04, whose image ships only
   `libxml2.so.16`, while the SwiftLint Linux binary mise installs needs

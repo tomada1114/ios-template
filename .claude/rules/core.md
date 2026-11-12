@@ -199,6 +199,9 @@ shape could not solve (`AGENTS.md` › Before changing the architecture).
 - A `PreferenceKeys` name or default is pinned by `PreferenceKeysTests`: a rename is a
   stored-data migration (`AGENTS.md` › What is contract and what is private), not an
   edit to that test.
+- A `SecureKeys` name is pinned by `SecureKeysTests`, for the same reason and a harder
+  one: a Keychain item outlives the app's deletion, so a rename also strands the old
+  secret on the device.
 - A route, a deep link, or the URL scheme: `DeepLinkTests` holds Core's scheme to the
   one `project.yml` registers; run `just uitest` too.
 - `LocalizationTests` holds the catalog (above); `AppLogTests` holds `AppLog.subsystem`

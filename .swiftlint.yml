@@ -45,8 +45,8 @@ custom_rules:
   # filter would drop the attributed-import case.
   no_ui_import_in_core:
     included: 'Packages/MyAppKit/Sources/MyAppCore/.+\.swift$'
-    regex: '^\s*(@[\w()]+\s+)*import\s+((typealias|struct|class|enum|protocol|let|var|func)\s+)?(SwiftUI|UIKit|AppKit|Cocoa|SwiftData|CoreData|CloudKit|UserNotifications|CoreLocation|Photos|PhotosUI|StoreKit|WidgetKit)\b'
-    message: "MyAppCore must not import a UI, persistence, or OS-integration framework (SwiftUI, UIKit, AppKit, Cocoa, SwiftData, CoreData, CloudKit, UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, WidgetKit); put the adapter in MyAppPlatform behind a Core port (AGENTS.md › Architecture)."
+    regex: '^\s*(@[\w()]+\s+)*import\s+((typealias|struct|class|enum|protocol|let|var|func)\s+)?(SwiftUI|UIKit|AppKit|Cocoa|SwiftData|CoreData|CloudKit|UserNotifications|CoreLocation|Photos|PhotosUI|StoreKit|WidgetKit|Security)\b'
+    message: "MyAppCore must not import a UI, persistence, or OS-integration framework (SwiftUI, UIKit, AppKit, Cocoa, SwiftData, CoreData, CloudKit, UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, WidgetKit, Security); put the adapter in MyAppPlatform behind a Core port (AGENTS.md › Architecture)."
     severity: error
 
   # Shipped code logs through AppLog (os.Logger), never stdout: an app launched from the
