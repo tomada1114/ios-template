@@ -244,7 +244,7 @@ public struct TodoListView: View {
     ) -> some View {
         NavigationStack {
             TodoListView(
-                model: TodoListViewModel(repository: repository, preferences: preferences),
+                model: AppModel(repository: repository, preferences: preferences).todoList,
                 scene: nil,
             ) {
                 // Nothing to present: a preview has no navigation model.

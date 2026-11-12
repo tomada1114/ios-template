@@ -18,7 +18,7 @@ struct TodoListViewModelHideCompletedTests {
         preferences.set(true, for: PreferenceKeys.hideCompleted)
         let model = Fixture.model(over: InMemoryTodoRepository(), preferences: preferences)
         #expect(!model.hideCompleted)
-        await model.load()
+        await model.load(from: nil)
         #expect(model.hideCompleted)
     }
 
@@ -29,7 +29,7 @@ struct TodoListViewModelHideCompletedTests {
         let preferences = InMemoryPreferences()
         preferences.set(true, for: PreferenceKeys.hideCompleted)
         let model = Fixture.model(over: repository, preferences: preferences)
-        await model.load()
+        await model.load(from: nil)
         #expect(model.phase == .failed)
         #expect(model.hideCompleted)
     }
@@ -37,7 +37,7 @@ struct TodoListViewModelHideCompletedTests {
     @Test
     func `an unset preference loads as off`() async {
         let model = Fixture.model(over: InMemoryTodoRepository())
-        await model.load()
+        await model.load(from: nil)
         #expect(!model.hideCompleted)
     }
 
@@ -56,7 +56,7 @@ struct TodoListViewModelHideCompletedTests {
         let preferences = InMemoryPreferences()
         let model = Fixture.model(over: InMemoryTodoRepository(), preferences: preferences)
         model.setHideCompleted(true)
-        await model.load()
+        await model.load(from: nil)
         #expect(model.hideCompleted)
     }
 
@@ -67,7 +67,7 @@ struct TodoListViewModelHideCompletedTests {
         let done = try Fixture.doneItem("Done", minute: 1)
         let open = try Fixture.item("Open", minute: 2)
         let model = Fixture.model(over: InMemoryTodoRepository(items: [done, open]))
-        await model.load()
+        await model.load(from: nil)
         #expect(model.visibleItems == [done, open])
         model.setHideCompleted(true)
         #expect(model.visibleItems == [open])
@@ -80,9 +80,9 @@ struct TodoListViewModelHideCompletedTests {
     func `checking off an item hides it while hiding`() async throws {
         let open = try Fixture.item("Open", minute: 1)
         let model = Fixture.model(over: InMemoryTodoRepository(items: [open]))
-        await model.load()
+        await model.load(from: nil)
         model.setHideCompleted(true)
-        await model.toggle(open.id)
+        await model.toggle(open.id, from: nil)
         #expect(model.visibleItems.isEmpty)
         #expect(model.showsAllDoneState)
     }
@@ -92,7 +92,7 @@ struct TodoListViewModelHideCompletedTests {
         let done = try Fixture.doneItem("Done", minute: 1)
         let model = Fixture.model(over: InMemoryTodoRepository(items: [done]))
         #expect(!model.showsAllDoneState)
-        await model.load()
+        await model.load(from: nil)
         #expect(!model.showsAllDoneState)
         model.setHideCompleted(true)
         #expect(model.showsAllDoneState)
@@ -104,7 +104,7 @@ struct TodoListViewModelHideCompletedTests {
         let done = try Fixture.doneItem("Done", minute: 1)
         let open = try Fixture.item("Open", minute: 2)
         let model = Fixture.model(over: InMemoryTodoRepository(items: [done, open]))
-        await model.load()
+        await model.load(from: nil)
         model.setHideCompleted(true)
         #expect(!model.showsAllDoneState)
     }
@@ -112,7 +112,7 @@ struct TodoListViewModelHideCompletedTests {
     @Test
     func `an empty list shows the empty state, not the all-done state`() async {
         let model = Fixture.model(over: InMemoryTodoRepository())
-        await model.load()
+        await model.load(from: nil)
         model.setHideCompleted(true)
         #expect(model.showsEmptyState)
         #expect(!model.showsAllDoneState)
@@ -123,10 +123,10 @@ struct TodoListViewModelHideCompletedTests {
         let done = try Fixture.doneItem("Done", minute: 1)
         let repository = InMemoryTodoRepository(items: [done])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         model.setHideCompleted(true)
         await repository.fail(.fetchAll, with: .storageFailure)
-        await model.load()
+        await model.load(from: nil)
         #expect(model.phase == .failed)
         #expect(!model.showsAllDoneState)
     }
@@ -141,9 +141,9 @@ struct TodoListViewModelHideCompletedTests {
         let open = try Fixture.item("Open", minute: 2)
         let repository = InMemoryTodoRepository(items: [done, open])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         model.setHideCompleted(true)
-        await model.delete(atOffsets: IndexSet(integer: 0))
+        await model.delete(atOffsets: IndexSet(integer: 0), from: nil)
         #expect(model.items == [done])
         #expect(await repository.snapshot == [done])
     }
@@ -154,9 +154,9 @@ struct TodoListViewModelHideCompletedTests {
         let open = try Fixture.item("Open", minute: 2)
         let repository = InMemoryTodoRepository(items: [done, open])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         model.setHideCompleted(true)
-        await model.delete(atOffsets: IndexSet(integer: 1))
+        await model.delete(atOffsets: IndexSet(integer: 1), from: nil)
         #expect(model.items == [done, open])
         #expect(await repository.calls == [.fetchAll])
     }

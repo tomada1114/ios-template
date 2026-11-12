@@ -96,11 +96,12 @@ public struct RootView: View {
     /// list's (#78). A new feature adds its `.failureAlert` here, once.
     ///
     /// The list is shared by every window, so its failure is read through this window's
-    /// lifecycle model: Core hands it to exactly one window, and only that window's button
-    /// dismisses it (#133).
+    /// lifecycle model: Core hands it to exactly one window, and the button dismisses the
+    /// failure it was shown for, so only that window's button can (#133).
     private func failureAlerts(on layer: some View, isTopmost: Bool) -> some View {
-        layer.failureAlert(isTopmost ? lifecycle.todoListFailure : nil) {
-            lifecycle.dismissTodoListFailure()
+        let shown = isTopmost ? lifecycle.presented(app.todoList.reportedFailure) : nil
+        return layer.failureAlert(shown?.failure) {
+            app.todoList.dismissFailure(shown)
         }
     }
 

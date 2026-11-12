@@ -49,12 +49,6 @@ public final class TodoListViewModel {
     public var draftTitle = ""
     /// Whether a save started by ``addDraft(from:)`` is still in flight.
     public private(set) var isAdding = false
-    /// The failure to present, or `nil`. Cleared by ``dismissFailure()``.
-    public private(set) var failure: TodoListFailure?
-    /// The scene whose action caused ``failure`` — what an action's `from:` named — or
-    /// `nil` when no scene did. Which window presents it is that window's
-    /// ``SceneLifecycleModel/todoListFailure``.
-    public private(set) var failureScene: SceneID?
     /// Whether done items are hidden: ``PreferenceKeys/hideCompleted``, read by
     /// ``load(from:)`` and written by ``setHideCompleted(_:)``. Off until the first load.
     public private(set) var hideCompleted = false
@@ -74,10 +68,23 @@ public final class TodoListViewModel {
     /// records nothing.
     private var writesDuringLoad: [AcknowledgedWrite] = []
 
+    /// The failure waiting to be dismissed, and its claim on a presenting window.
+    private var failures: FailureSlot<TodoListFailure>
     private let repository: any TodoRepository
     private let preferences: any PreferencesStoring
     private let now: @Sendable () -> Date
     private let makeID: @Sendable () -> UUID
+
+    /// The failure to present, or `nil`, with the scene whose action caused it. A window
+    /// renders it through its own ``SceneLifecycleModel/presented(_:)``, never directly.
+    public var reportedFailure: ReportedFailure<TodoListFailure>? {
+        failures.reported
+    }
+
+    /// What ``reportedFailure`` reports, or `nil`. Cleared by ``dismissFailure()``.
+    public var failure: TodoListFailure? {
+        failures.reported?.failure
+    }
 
     /// Whether Add would do anything: the draft has a usable title and no add is in
     /// flight, so a double tap cannot store the same item twice.
@@ -125,14 +132,16 @@ public final class TodoListViewModel {
     /// ``load(from:)``: touching storage in an initializer would make construction a side
     /// effect.
     ///
-    /// `preferences` has no default: a composition root that forgot to wire it would
-    /// otherwise compile and silently stop remembering the user's settings.
-    public init(
+    /// Built only by ``AppModel``, which hands it the open windows its failure is
+    /// presented among — the same ones its scene models join.
+    init(
         repository: any TodoRepository,
         preferences: any PreferencesStoring,
-        now: @escaping @Sendable () -> Date = { Date() },
-        makeID: @escaping @Sendable () -> UUID = { UUID() },
+        now: @escaping @Sendable () -> Date,
+        makeID: @escaping @Sendable () -> UUID,
+        openScenes: OpenScenes,
     ) {
+        failures = FailureSlot(openScenes: openScenes)
         self.repository = repository
         self.preferences = preferences
         self.now = now
@@ -142,7 +151,7 @@ public final class TodoListViewModel {
     /// Reads ``hideCompleted`` from the preferences, then replaces ``items`` with what the
     /// repository holds. The preference is read first, so it is current even when the
     /// repository fails. `scene` is the window that asked — here and in every action that
-    /// can fail — so the failure presents there (``failureScene``).
+    /// can fail — so the failure presents there; `nil` only when no window asked.
     ///
     /// Safe to call while another load is in flight — `.task`, pull-to-refresh, Retry, and
     /// the detail screen can all ask at once, and a lifecycle ``refresh()`` can be running
@@ -156,7 +165,7 @@ public final class TodoListViewModel {
     ///   after the fetch, not from the port, because ``TodoRepositoryError`` has no
     ///   cancellation case — a store that sees its caller cancel reports a failure, which
     ///   the cancelled caller no longer wants (`.claude/rules/core.md` › Cancellation).
-    public func load(from scene: SceneID? = nil) async {
+    public func load(from scene: SceneID?) async {
         hideCompleted = preferences.value(for: PreferenceKeys.hideCompleted)
         if phase != .loading {
             phaseBeforeLoading = phase
@@ -222,7 +231,7 @@ public final class TodoListViewModel {
     /// The row appears only once the save succeeded, so the list never shows an item the
     /// store does not have. The draft is cleared only if it still holds what was
     /// submitted: whatever the user typed while the save was in flight is theirs.
-    public func addDraft(from scene: SceneID? = nil) async {
+    public func addDraft(from scene: SceneID?) async {
         guard canAdd else {
             return
         }
@@ -253,7 +262,7 @@ public final class TodoListViewModel {
     }
 
     /// Flips the item's done state, keeping the row unchanged if the save fails.
-    public func toggle(_ id: TodoItem.ID, from scene: SceneID? = nil) async {
+    public func toggle(_ id: TodoItem.ID, from scene: SceneID?) async {
         guard var updated = items.first(where: { $0.id == id }) else {
             return
         }
@@ -275,7 +284,7 @@ public final class TodoListViewModel {
     /// the shape `List.onDelete` hands over. Resolving them against ``items`` would delete
     /// a hidden row whenever ``hideCompleted`` is on. Offsets are resolved to identifiers
     /// before anything suspends.
-    public func delete(atOffsets offsets: IndexSet, from scene: SceneID? = nil) async {
+    public func delete(atOffsets offsets: IndexSet, from scene: SceneID?) async {
         let shown = visibleItems
         let ids = offsets.filter(shown.indices.contains).map { shown[$0].id }
         await delete(ids, from: scene)
@@ -283,7 +292,7 @@ public final class TodoListViewModel {
 
     /// Deletes each item in turn, stopping at the first failure so the rows still shown
     /// are exactly the ones the store still has.
-    public func delete(_ ids: [TodoItem.ID], from scene: SceneID? = nil) async {
+    public func delete(_ ids: [TodoItem.ID], from scene: SceneID?) async {
         for id in ids {
             do {
                 try await repository.delete(id: id)
@@ -311,11 +320,16 @@ public final class TodoListViewModel {
         items.first { $0.id == id }
     }
 
-    /// Clears ``failure``, whichever window presents it. A window's alert button calls
-    /// ``SceneLifecycleModel/dismissTodoListFailure()``, which acts only in that window.
+    /// Clears ``failure``, whichever window presents it.
     public func dismissFailure() {
-        failure = nil
-        failureScene = nil
+        failures.dismiss()
+    }
+
+    /// Clears ``failure`` if it is still `shown`: what an alert's button calls, naming the
+    /// failure it presented, so a tap that lands after another failure replaced that one
+    /// dismisses nothing the person did not see.
+    public func dismissFailure(_ shown: ReportedFailure<TodoListFailure>?) {
+        failures.dismiss(shown)
     }
 
     /// What VoiceOver reads for the done toggle of `item`, which is otherwise a glyph.
@@ -374,8 +388,7 @@ public final class TodoListViewModel {
         _ error: TodoRepositoryError,
         from scene: SceneID?,
     ) {
-        self.failure = failure
-        failureScene = scene
+        failures.report(failure, from: scene)
         AppLog.todos.error(
             "\(String(describing: failure), privacy: .public): \(String(describing: error), privacy: .public)",
         )

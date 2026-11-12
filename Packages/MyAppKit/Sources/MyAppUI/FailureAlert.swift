@@ -9,7 +9,7 @@ import SwiftUI
 /// instead, a failure on a pushed screen showed nothing until the user went back (#78);
 /// attached only outside the stack, a failure while a sheet was up did not show over it
 /// (#124). Which window is handed a shared model's failure at all is Core's
-/// (`SceneLifecycleModel.todoListFailure`, #133).
+/// (`SceneLifecycleModel.presented(_:)`, #133).
 private struct FailureAlert<Failure: PresentableFailure>: ViewModifier {
     let failure: Failure?
     let dismiss: () -> Void

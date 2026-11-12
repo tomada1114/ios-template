@@ -27,7 +27,7 @@ struct TodoListViewModelRefreshTests {
         await repository.onFetch { _ in
             await model.refresh()
         }
-        await model.load()
+        await model.load(from: nil)
         #expect(await repository.calls == [.fetchAll])
         #expect(model.items == [milk])
     }
@@ -36,7 +36,7 @@ struct TodoListViewModelRefreshTests {
     func `a refresh during a refresh fetches nothing`() async {
         let repository = InMemoryTodoRepository()
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         await repository.onFetch { _ in
             await model.refresh()
         }
@@ -51,7 +51,7 @@ struct TodoListViewModelRefreshTests {
         let preferences = InMemoryPreferences()
         let repository = InMemoryTodoRepository(items: [milk])
         let model = Fixture.model(over: repository, preferences: preferences)
-        await model.load()
+        await model.load(from: nil)
         try await repository.save(bread)
         preferences.set(true, for: PreferenceKeys.hideCompleted)
         await model.refresh()
@@ -65,7 +65,7 @@ struct TodoListViewModelRefreshTests {
         let milk = try Fixture.item("Milk", minute: 1)
         let repository = InMemoryTodoRepository(items: [milk])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         await repository.onFetch { _ in
             await MainActor.run {
                 #expect(model.phase == .loaded)
@@ -81,7 +81,7 @@ struct TodoListViewModelRefreshTests {
         let milk = try Fixture.item("Milk", minute: 1)
         let repository = InMemoryTodoRepository(items: [milk])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         await repository.fail(.fetchAll, with: .storageFailure)
         await model.refresh()
         #expect(await repository.calls == [.fetchAll, .fetchAll])
@@ -96,7 +96,7 @@ struct TodoListViewModelRefreshTests {
         let repository = InMemoryTodoRepository(items: [milk])
         let model = Fixture.model(over: repository)
         await repository.fail(.fetchAll, with: .storageFailure)
-        await model.load()
+        await model.load(from: nil)
         model.dismissFailure()
         await repository.succeed(.fetchAll)
         await model.refresh()
@@ -110,7 +110,7 @@ struct TodoListViewModelRefreshTests {
         let repository = InMemoryTodoRepository()
         let model = Fixture.model(over: repository)
         await repository.fail(.fetchAll, with: .storageFailure)
-        await model.load()
+        await model.load(from: nil)
         model.dismissFailure()
         await model.refresh()
         #expect(model.phase == .failed)
@@ -123,7 +123,7 @@ struct TodoListViewModelRefreshTests {
         let new = try Fixture.item("New", minute: 2)
         let repository = InMemoryTodoRepository(items: [old])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         await repository.onFetch { _ in
             // Only the refresh's fetch acts: the second call overall.
             guard await repository.calls == [.fetchAll, .fetchAll] else {
@@ -134,7 +134,7 @@ struct TodoListViewModelRefreshTests {
             } catch {
                 Issue.record(error)
             }
-            await model.load()
+            await model.load(from: nil)
         }
         await model.refresh()
         #expect(model.items == [old, new])
@@ -148,10 +148,10 @@ struct TodoListViewModelRefreshTests {
         let stored = try Fixture.item("Stored", minute: 1)
         let repository = InMemoryTodoRepository(items: [stored])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         await repository.onFetch { _ in
             await MainActor.run { model.draftTitle = "Added" }
-            await model.addDraft()
+            await model.addDraft(from: nil)
         }
         await model.refresh()
         let added = try TodoItem(id: Fixture.fixedID, title: "Added", createdAt: Fixture.now)
@@ -164,7 +164,7 @@ struct TodoListViewModelRefreshTests {
         let bread = try Fixture.item("Bread", minute: 2)
         let repository = InMemoryTodoRepository(items: [milk])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         try await repository.save(bread)
         // Cancelled before it starts: the task cannot run until this test suspends.
         let refreshing = Task { await model.refresh() }

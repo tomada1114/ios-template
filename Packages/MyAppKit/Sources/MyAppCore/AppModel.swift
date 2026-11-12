@@ -28,33 +28,37 @@ public final class AppModel {
     /// the same items and a pushed detail screen shows what the list shows.
     public let todoList: TodoListViewModel
 
-    /// The open windows, shared by every scene model built here: what makes one failure
-    /// present in one window (``SceneLifecycleModel/todoListFailure``).
-    private let openScenes = OpenScenes()
+    /// The open windows, shared by every scene model and every shared view model built
+    /// here: what makes one failure present in one window
+    /// (``SceneLifecycleModel/presented(_:)``).
+    private let openScenes: OpenScenes
 
     /// Builds the shared view models over `repository` and `preferences`. Nothing is read
     /// until a view model's own `load()`: construction stays free of side effects.
     ///
     /// `now` and `makeID` reach every view model that stamps a new value, so a test pins
-    /// both here once. `preferences` has no default, for the reason
-    /// ``TodoListViewModel/init(repository:preferences:now:makeID:)`` gives.
+    /// both here once. `preferences` has no default: a composition root that forgot to
+    /// wire it would otherwise compile and silently stop remembering the user's settings.
     public init(
         repository: any TodoRepository,
         preferences: any PreferencesStoring,
         now: @escaping @Sendable () -> Date = { Date() },
         makeID: @escaping @Sendable () -> UUID = { UUID() },
     ) {
+        let scenes = OpenScenes()
+        openScenes = scenes
         todoList = TodoListViewModel(
             repository: repository,
             preferences: preferences,
             now: now,
             makeID: makeID,
+            openScenes: scenes,
         )
     }
 
     /// A new lifecycle model for one scene, over the shared ``todoList``: the scene root
-    /// keeps it in `@State`, so it lives exactly as long as the scene. It gets an identity
-    /// of its own, and becomes an open window only once it reports a phase.
+    /// keeps it in `@State`, so it lives exactly as long as the scene. It becomes an open
+    /// window only once it reports a phase.
     public func makeSceneLifecycleModel() -> SceneLifecycleModel {
         SceneLifecycleModel(list: todoList, openScenes: openScenes)
     }

@@ -66,7 +66,7 @@ struct TodoDetailViewModelTests {
         let milk = try Fixture.item("Milk", minute: 1)
         let (app, detail) = Self.detail(of: milk.id, over: InMemoryTodoRepository(items: [milk]))
         await detail.load()
-        await app.todoList.delete([milk.id])
+        await app.todoList.delete([milk.id], from: nil)
         #expect(detail.content == .notFound)
     }
 
@@ -98,7 +98,7 @@ struct TodoDetailViewModelTests {
         let milk = try Fixture.item("Milk", minute: 1)
         let repository = InMemoryTodoRepository(items: [milk])
         let (app, detail) = Self.detail(of: milk.id, over: repository)
-        await app.todoList.load()
+        await app.todoList.load(from: nil)
         await detail.load()
         await detail.load()
         #expect(await repository.calls == [.fetchAll])
@@ -110,7 +110,7 @@ struct TodoDetailViewModelTests {
         let repository = InMemoryTodoRepository(items: [milk])
         await repository.fail(.fetchAll, with: .storageFailure)
         let (app, detail) = Self.detail(of: milk.id, over: repository)
-        await app.todoList.load()
+        await app.todoList.load(from: nil)
         await detail.load()
         #expect(await repository.calls == [.fetchAll])
     }

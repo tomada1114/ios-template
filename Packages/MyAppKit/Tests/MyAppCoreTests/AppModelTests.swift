@@ -45,7 +45,7 @@ struct AppModelTests {
             over: InMemoryTodoRepository(items: [milk]),
             preferences: preferences,
         )
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         #expect(model.todoList.items == [milk])
         #expect(model.todoList.hideCompleted)
     }
@@ -55,7 +55,7 @@ struct AppModelTests {
         let repository = InMemoryTodoRepository()
         let model = Self.appModel(over: repository, preferences: InMemoryPreferences())
         model.todoList.draftTitle = "Milk"
-        await model.todoList.addDraft()
+        await model.todoList.addDraft(from: nil)
         let expected = try TodoItem(id: Fixture.fixedID, title: "Milk", createdAt: Fixture.now)
         #expect(model.todoList.items == [expected])
         #expect(await repository.snapshot == [expected])
@@ -71,7 +71,7 @@ struct AppModelTests {
             over: InMemoryTodoRepository(items: [milk, bread]),
             preferences: InMemoryPreferences(),
         )
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         #expect(model.makeTodoDetailViewModel(id: bread.id, scene: nil).content == .item(bread))
     }
 
@@ -95,7 +95,7 @@ struct AppModelTests {
             over: InMemoryTodoRepository(items: [milk]),
             preferences: InMemoryPreferences(),
         )
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         await model.makeTodoDetailViewModel(id: milk.id, scene: nil).toggle()
         #expect(model.todoList.item(withID: milk.id)?.isDone == true)
     }
@@ -109,7 +109,7 @@ struct AppModelTests {
             over: InMemoryTodoRepository(items: [milk]),
             preferences: InMemoryPreferences(),
         )
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         let first = model.makeTodoDetailViewModel(id: milk.id, scene: nil)
         let second = model.makeTodoDetailViewModel(id: milk.id, scene: nil)
         #expect(first !== second)

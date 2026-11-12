@@ -26,9 +26,10 @@ screen looks like — the design lock, a token's value, custom glass — is the
   `LifecyclePhase`: `sceneDidEnter(_:)` synchronously in `onChange`, then
   `refreshIfNeeded()` in a `Task`. It decides nothing about the phase: whether one
   refreshes anything is Core's (the `designing-core-logic` skill's
-  `references/view-models.md` › Lifecycle). It passes all three to
-  `RootView(app:navigation:lifecycle:)`; the lifecycle model is also the window's
-  identity there (`lifecycle.id`, a `SceneID`).
+  `references/view-models.md` › Lifecycle). It maps a phase a later SDK adds to
+  `background`, and calls `sceneDidClose()` from `onDisappear`, so Core knows the window
+  is gone. It passes all three to `RootView(app:navigation:lifecycle:)`; the lifecycle
+  model is also the window's identity there (`lifecycle.id`, a `SceneID`).
 - `SceneRoot` keeps the window's path across launches with its `PathRestoration`
   modifier: `NavigationModel.encodedPath` in `@SceneStorage`, handed to `restore(from:)`
   in `onAppear` with animations disabled and stored again right after, then written by
@@ -65,8 +66,8 @@ screen looks like — the design lock, a token's value, custom glass — is the
   in a button's closure.
 - An action of a shared model that can fail is passed the window it was asked from
   (`model.toggle(item.id, from: scene)`), so its failure presents in that window and not
-  in every window showing the model. The view only passes the `SceneID` it was handed;
-  a preview, which has no window, passes `nil`.
+  in every window showing the model. `from:` has no default: the view passes the
+  `SceneID` it was handed, and a preview, which has no window, passes `nil`.
 - A view has no localizable literal: `Text("…")` looks up the app's main bundle, not
   Core's, so render a Core resource (`Text(TodoListStrings.emptyTitle)`). The user's
   text, a number, a glyph, or a preview's developer note is `Text(verbatim:)`.
@@ -139,13 +140,17 @@ design-lock decision, never a per-screen one.
   already presenting a sheet (#124) — and which hands the failure only to the topmost
   layer. A feature's failure type adopts Core's `PresentableFailure`, and the feature
   adds its `.failureAlert` once, inside `failureAlerts(on:isTopmost:)`.
-- A shared model's failure is read and dismissed through the window's own
-  `SceneLifecycleModel` (`lifecycle.todoListFailure`, `lifecycle.dismissTodoListFailure()`),
-  never from the shared model directly: every window renders that model, and Core hands
-  one failure to exactly one window — the one whose action caused it while it is in the
-  foreground, otherwise the one that has been in the foreground longest (#133). A view
-  never compares scenes or phases itself; the rule and its reasons are the `designing-ui`
-  skill's `references/navigation.md` › A failure presents in one window.
+- A shared model's failure is read through the window's own `SceneLifecycleModel`
+  (`lifecycle.presented(app.todoList.reportedFailure)`), never from the shared model
+  directly, and its alert's button hands back the value it was shown
+  (`app.todoList.dismissFailure(shown)`): every window renders that model, and Core hands
+  one failure to exactly one window. The presenter is chosen when the failure is
+  reported — the window whose action caused it if it is in the foreground, otherwise the
+  one longest in the foreground, otherwise the first open window — and is sticky: it
+  keeps the failure until it closes, or goes to the background while another window is
+  in the foreground (#133). A view never compares scenes or phases itself; the rule and
+  its reasons are the `designing-ui` skill's `references/navigation.md` › A failure
+  presents in one window.
 - Sheet sizing (`.presentationDetents`) only as the lock says.
 
 ## Size classes, Dynamic Type, safe areas, keyboard

@@ -14,7 +14,7 @@ struct TodoListViewModelLookupTests {
         let milk = try Fixture.item("Milk", minute: 1)
         let bread = try Fixture.item("Bread", minute: 2)
         let model = Fixture.model(over: InMemoryTodoRepository(items: [milk, bread]))
-        await model.load()
+        await model.load(from: nil)
         #expect(model.item(withID: bread.id) == bread)
     }
 
@@ -23,7 +23,7 @@ struct TodoListViewModelLookupTests {
     func `finds an item that hideCompleted hides`() async throws {
         let done = try Fixture.doneItem("Done", minute: 1)
         let model = Fixture.model(over: InMemoryTodoRepository(items: [done]))
-        await model.load()
+        await model.load(from: nil)
         model.setHideCompleted(true)
         #expect(model.visibleItems.isEmpty)
         #expect(model.item(withID: done.id) == done)
@@ -33,7 +33,7 @@ struct TodoListViewModelLookupTests {
     func `answers nil for an identifier it does not hold`() async throws {
         let milk = try Fixture.item("Milk", minute: 1)
         let model = Fixture.model(over: InMemoryTodoRepository(items: [milk]))
-        await model.load()
+        await model.load(from: nil)
         #expect(model.item(withID: Fixture.fixedID) == nil)
     }
 
@@ -58,7 +58,7 @@ struct TodoListViewModelLookupTests {
     @Test
     func `is no longer awaiting items once a load has succeeded`() async {
         let model = Fixture.model(over: InMemoryTodoRepository())
-        await model.load()
+        await model.load(from: nil)
         #expect(!model.isAwaitingItems)
     }
 
@@ -67,7 +67,7 @@ struct TodoListViewModelLookupTests {
         let repository = InMemoryTodoRepository()
         await repository.fail(.fetchAll, with: .storageFailure)
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         #expect(model.phase == .failed)
         #expect(!model.isAwaitingItems)
     }
@@ -76,8 +76,8 @@ struct TodoListViewModelLookupTests {
     func `reflects a toggle`() async throws {
         let milk = try Fixture.item("Milk", minute: 1)
         let model = Fixture.model(over: InMemoryTodoRepository(items: [milk]))
-        await model.load()
-        await model.toggle(milk.id)
+        await model.load(from: nil)
+        await model.toggle(milk.id, from: nil)
         #expect(model.item(withID: milk.id)?.isDone == true)
     }
 }
