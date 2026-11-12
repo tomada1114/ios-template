@@ -87,6 +87,13 @@ func loadItem(using client: APIClient) async {
   maps across: `notConnected` to `offline`, `timedOut`, `cancelled`, and the rest to
   `transport`. A 429's `Retry-After` is read as delta-seconds or an HTTP-date, the date
   measured from the `now` the client is handed so a test pins it.
+- **A 2xx with no body is `Endpoint<EmptyResponse>`.** A call that succeeds with nothing
+  to read — a `204 No Content`, the bodiless `200` of many `DELETE` and `PUT`
+  endpoints — declares `EmptyResponse` as its response type. The client returns it for
+  an empty 2xx body without decoding, and it decodes from any JSON body, ignoring the
+  content, so a server that later adds a body does not break the call. An empty body
+  for any other type is still `decoding`: that case means a body arrived and did not
+  decode as the declared type, so a feature never catches it as success.
 - **Cancellation is a no-op.** A cancelled task ends the call with `cancelled`, which the
   caller drops quietly, as it would the port's own `cancelled`.
 - **Wiring.** The composition root makes the client once —

@@ -58,6 +58,66 @@ struct APIClientTests {
         }
     }
 
+    // MARK: - 2xx with no body
+
+    @Test(arguments: [204, 200])
+    func `an empty 2xx body returns the empty response for an EmptyResponse endpoint`(
+        statusCode: Int,
+    ) async throws {
+        let fake = FakeHTTPClient()
+        await fake.enqueue(.respond(APIClientFixture.response(statusCode, headers: [:], body: "")))
+        let client = APIClientFixture.client(over: fake)
+
+        let response = try await client.send(
+            Endpoint<EmptyResponse>(method: .delete, path: "items/7"),
+        )
+
+        #expect(response == EmptyResponse())
+    }
+
+    @Test(arguments: [204, 200])
+    func `an empty 2xx body still throws decoding for any other response type`(
+        statusCode: Int,
+    ) async {
+        let fake = FakeHTTPClient()
+        await fake.enqueue(.respond(APIClientFixture.response(statusCode, headers: [:], body: "")))
+        let client = APIClientFixture.client(over: fake)
+
+        await #expect(throws: APIError.decoding) {
+            try await client.send(Endpoint<RemoteItem>(method: .delete, path: "items/7"))
+        }
+    }
+
+    @Test(arguments: [Self.itemJSON, "{}", "[1,2]", #""done""#, "null"])
+    func `an EmptyResponse endpoint ignores any JSON body the server adds`(
+        body: String,
+    ) async throws {
+        let fake = FakeHTTPClient()
+        await fake.enqueue(.respond(APIClientFixture.response(200, headers: [:], body: body)))
+        let client = APIClientFixture.client(over: fake)
+
+        let response = try await client.send(
+            Endpoint<EmptyResponse>(method: .put, path: "items/7"),
+        )
+
+        #expect(response == EmptyResponse())
+    }
+
+    @Test
+    func `an EmptyResponse endpoint still throws decoding for a body that is not JSON`() async {
+        let fake = FakeHTTPClient()
+        await fake.enqueue(.respond(APIClientFixture.response(
+            200,
+            headers: [:],
+            body: "<html>Service page</html>",
+        )))
+        let client = APIClientFixture.client(over: fake)
+
+        await #expect(throws: APIError.decoding) {
+            try await client.send(Endpoint<EmptyResponse>(method: .put, path: "items/7"))
+        }
+    }
+
     // MARK: - Other statuses
 
     @Test(arguments: [
