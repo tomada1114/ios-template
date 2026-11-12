@@ -20,14 +20,16 @@ screen looks like — the design lock, a token's value, custom glass — is the
   internal.
 - `App/` is the composition root and nothing else: it picks adapters and hands them to
   `AppModel` as ports. `MyAppApp` keeps the `AppModel` in `@State`; its `SceneRoot` keeps
-  a `NavigationModel` in `@State` per scene, so each window navigates on its own, and
-  passes both to `RootView(app:navigation:)`.
+  a `NavigationModel` in `@State` per scene, so each window navigates on its own.
 - `SceneRoot` keeps a `SceneLifecycleModel` (`app.makeSceneLifecycleModel()`) in
   `@State` too, and forwards that window's `@Environment(\.scenePhase)`, mapped to Core's
   `LifecyclePhase`: `sceneDidEnter(_:)` synchronously in `onChange`, then
   `refreshIfNeeded()` in a `Task`. It decides nothing about the phase: whether one
   refreshes anything is Core's (the `designing-core-logic` skill's
-  `references/view-models.md` › Lifecycle).
+  `references/view-models.md` › Lifecycle). It maps a phase a later SDK adds to
+  `background`, and calls `sceneDidClose()` from `onDisappear`, so Core knows the window
+  is gone. It passes all three to `RootView(app:navigation:lifecycle:)`; the lifecycle
+  model is also the window's identity there (`lifecycle.id`, a `SceneID`).
 - `SceneRoot` keeps the window's path across launches with its `PathRestoration`
   modifier: `NavigationModel.encodedPath` in `@SceneStorage`, handed to `restore(from:)`
   in `onAppear` with animations disabled and stored again right after, then written by
@@ -35,9 +37,10 @@ screen looks like — the design lock, a token's value, custom glass — is the
   stored one). It only carries the bytes — what restores, and when, is Core's — and the
   modifier is left off under `-uiTesting` (the `designing-ui` skill's `references/navigation.md` › The path is
   restored per scene).
-- A model every scene shares comes from `AppModel` (`TodoListView(model: app.todoList)`);
-  a pushed screen's model from its route's factory in `RootView`'s destination switch
-  (`TodoDetailView(model: app.makeTodoDetailViewModel(id:))`), held in
+- A model every scene shares comes from `AppModel`
+  (`TodoListView(model: app.todoList, scene: lifecycle.id)`); a pushed screen's model
+  from its route's factory in `RootView`'s destination switch
+  (`TodoDetailView(model: app.makeTodoDetailViewModel(id:scene:))`), held in
   `@State private var model` set with `_model = State(initialValue: model)`, so it keeps
   the first model while pushed and ignores the one a parent re-render builds.
 - A view handed its model holds it as a plain `let`; `@Bindable` only when a control
@@ -61,6 +64,10 @@ screen looks like — the design lock, a token's value, custom glass — is the
 
 - An action that waits is called from `.task` (cancelled with the view) or a `Task { }`
   in a button's closure.
+- An action of a shared model that can fail is passed the window it was asked from
+  (`model.toggle(item.id, from: scene)`), so its failure presents in that window and not
+  in every window showing the model. `from:` has no default: the view passes the
+  `SceneID` it was handed, and a preview, which has no window, passes `nil`.
 - A view has no localizable literal: `Text("…")` looks up the app's main bundle, not
   Core's, so render a Core resource (`Text(TodoListStrings.emptyTitle)`). The user's
   text, a number, a glyph, or a preview's developer note is `Text(verbatim:)`.
@@ -133,6 +140,17 @@ design-lock decision, never a per-screen one.
   already presenting a sheet (#124) — and which hands the failure only to the topmost
   layer. A feature's failure type adopts Core's `PresentableFailure`, and the feature
   adds its `.failureAlert` once, inside `failureAlerts(on:isTopmost:)`.
+- A shared model's failure is read through the window's own `SceneLifecycleModel`
+  (`lifecycle.presented(app.todoList.reportedFailure)`), never from the shared model
+  directly, and its alert's button hands back the value it was shown
+  (`app.todoList.dismissFailure(shown)`): every window renders that model, and Core hands
+  one failure to exactly one window. The presenter is chosen when the failure is
+  reported — the window whose action caused it if it is in the foreground, otherwise the
+  one longest in the foreground, otherwise the first open window — and is sticky: it
+  keeps the failure until it closes, or goes to the background while another window is
+  in the foreground (#133). A view never compares scenes or phases itself; the rule and
+  its reasons are the `designing-ui` skill's `references/navigation.md` › A failure
+  presents in one window.
 - Sheet sizing (`.presentationDetents`) only as the lock says.
 
 ## Size classes, Dynamic Type, safe areas, keyboard

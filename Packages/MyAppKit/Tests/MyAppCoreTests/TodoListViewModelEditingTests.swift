@@ -16,11 +16,11 @@ struct TodoListViewModelEditingTests {
         let item = try Fixture.item("Milk", minute: 1)
         let repository = InMemoryTodoRepository(items: [item])
         let model = Fixture.model(over: repository)
-        await model.load()
-        await model.toggle(item.id)
+        await model.load(from: nil)
+        await model.toggle(item.id, from: nil)
         #expect(model.items.first?.isDone == true)
         #expect(await repository.snapshot.first?.isDone == true)
-        await model.toggle(item.id)
+        await model.toggle(item.id, from: nil)
         #expect(model.items.first?.isDone == false)
     }
 
@@ -29,9 +29,9 @@ struct TodoListViewModelEditingTests {
         let item = try Fixture.item("Milk", minute: 1)
         let repository = InMemoryTodoRepository(items: [item])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         await repository.fail(.save, with: .storageFailure)
-        await model.toggle(item.id)
+        await model.toggle(item.id, from: nil)
         #expect(model.items == [item])
         #expect(model.failure == .saveFailed)
     }
@@ -40,7 +40,7 @@ struct TodoListViewModelEditingTests {
     func `toggling an unknown item does nothing`() async {
         let repository = InMemoryTodoRepository()
         let model = Fixture.model(over: repository)
-        await model.toggle(UUID())
+        await model.toggle(UUID(), from: nil)
         #expect(await repository.calls.isEmpty)
     }
 
@@ -61,8 +61,8 @@ struct TodoListViewModelEditingTests {
         let second = try Fixture.item("Second", minute: 2)
         let repository = InMemoryTodoRepository(items: [first, second])
         let model = Fixture.model(over: repository)
-        await model.load()
-        await model.delete(atOffsets: IndexSet(integer: 0))
+        await model.load(from: nil)
+        await model.delete(atOffsets: IndexSet(integer: 0), from: nil)
         #expect(model.items == [second])
         #expect(await repository.snapshot == [second])
     }
@@ -72,8 +72,8 @@ struct TodoListViewModelEditingTests {
         let item = try Fixture.item("Only", minute: 1)
         let repository = InMemoryTodoRepository(items: [item])
         let model = Fixture.model(over: repository)
-        await model.load()
-        await model.delete(atOffsets: IndexSet(integer: 5))
+        await model.load(from: nil)
+        await model.delete(atOffsets: IndexSet(integer: 5), from: nil)
         #expect(model.items == [item])
         #expect(await repository.calls == [.fetchAll])
     }
@@ -83,9 +83,9 @@ struct TodoListViewModelEditingTests {
         let item = try Fixture.item("Stale", minute: 1)
         let repository = InMemoryTodoRepository(items: [item])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         try await repository.delete(id: item.id)
-        await model.delete([item.id])
+        await model.delete([item.id], from: nil)
         #expect(model.items.isEmpty)
         #expect(model.failure == nil)
     }
@@ -96,9 +96,9 @@ struct TodoListViewModelEditingTests {
         let second = try Fixture.item("Second", minute: 2)
         let repository = InMemoryTodoRepository(items: [first, second])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         await repository.fail(.delete, with: .storageFailure)
-        await model.delete([first.id, second.id])
+        await model.delete([first.id, second.id], from: nil)
         #expect(model.items == [first, second])
         #expect(model.failure == .deleteFailed)
         #expect(await repository.calls == [.fetchAll, .delete])
@@ -111,7 +111,7 @@ struct TodoListViewModelEditingTests {
         let repository = InMemoryTodoRepository()
         await repository.fail(.fetchAll, with: .storageFailure)
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         model.dismissFailure()
         #expect(model.failure == nil)
     }
@@ -141,13 +141,13 @@ struct TodoListViewModelEditingTests {
     @Test
     func `an unavailable store fails every operation`() async throws {
         let model = Fixture.model(over: UnavailableTodoRepository())
-        await model.load()
+        await model.load(from: nil)
         #expect(model.failure == .loadFailed)
         model.draftTitle = "Milk"
-        await model.addDraft()
+        await model.addDraft(from: nil)
         #expect(model.failure == .saveFailed)
         let item = try Fixture.item("Ghost", minute: 1)
-        await model.delete([item.id])
+        await model.delete([item.id], from: nil)
         #expect(model.failure == .deleteFailed)
     }
 }

@@ -36,9 +36,12 @@ private struct TodoRow: View {
 /// ``TodoListViewModel/draftTitle``.
 ///
 /// It presents no alert of its own: a ``TodoListViewModel/failure`` presents from
-/// `RootView`, over whichever screen is on top.
+/// `RootView`, over whichever screen is on top, in the window whose action caused it —
+/// which is why every action that can fail is passed `scene`.
 public struct TodoListView: View {
     @Bindable private var model: TodoListViewModel
+    /// The window this list is in, or `nil` in a preview, which has none.
+    private let scene: SceneID?
     @FocusState private var isDraftFocused: Bool
     /// What the About button does: `RootView` presents the About sheet through its
     /// navigation model, which this view never holds.
@@ -50,13 +53,13 @@ public struct TodoListView: View {
             .navigationTitle(Text(TodoListStrings.title))
             .toolbar { toolbar }
             .safeAreaInset(edge: .bottom) { addBar }
-            .refreshable { await model.load() }
+            .refreshable { await model.load(from: scene) }
             .task {
                 // Only the first appearance loads; a return to this screen keeps what
                 // is shown. Pull-to-refresh reloads, and so does Core when a window
                 // returns to the foreground (`SceneLifecycleModel`).
                 if model.phase == .idle {
-                    await model.load()
+                    await model.load(from: scene)
                 }
             }
     }
@@ -86,13 +89,13 @@ public struct TodoListView: View {
         List {
             ForEach(model.visibleItems) { item in
                 TodoRow(item: item, toggleLabel: model.toggleLabel(for: item)) {
-                    Task { await model.toggle(item.id) }
+                    Task { await model.toggle(item.id, from: scene) }
                 }
             }
             // The offsets index `visibleItems`, which is what the view model resolves them
             // against.
             .onDelete { offsets in
-                Task { await model.delete(atOffsets: offsets) }
+                Task { await model.delete(atOffsets: offsets, from: scene) }
             }
         }
     }
@@ -111,7 +114,7 @@ public struct TodoListView: View {
                 Text(TodoListFailure.loadFailed.message)
             } actions: {
                 Button(TodoListStrings.retry) {
-                    Task { await model.load() }
+                    Task { await model.load(from: scene) }
                 }
                 .accessibilityIdentifier("retryButton")
             }
@@ -194,11 +197,11 @@ public struct TodoListView: View {
                 .accessibilityHidden(true)
             }
             .submitLabel(.done)
-            .onSubmit { Task { await model.addDraft() } }
+            .onSubmit { Task { await model.addDraft(from: scene) } }
             .accessibilityIdentifier("newItemField")
 
             Button(TodoListStrings.add) {
-                Task { await model.addDraft() }
+                Task { await model.addDraft(from: scene) }
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
@@ -221,11 +224,12 @@ public struct TodoListView: View {
         )
     }
 
-    /// Creates the view over `model`, which the caller owns, calling `showAbout` when the
-    /// About button is tapped. The caller also provides the navigation stack a row's link
-    /// pushes onto (`RootView`).
-    public init(model: TodoListViewModel, showAbout: @escaping () -> Void) {
+    /// Creates the view over `model`, which the caller owns, in the window `scene` names,
+    /// calling `showAbout` when the About button is tapped. The caller also provides the
+    /// navigation stack a row's link pushes onto (`RootView`).
+    public init(model: TodoListViewModel, scene: SceneID?, showAbout: @escaping () -> Void) {
         self.model = model
+        self.scene = scene
         self.showAbout = showAbout
     }
 }
@@ -240,7 +244,8 @@ public struct TodoListView: View {
     ) -> some View {
         NavigationStack {
             TodoListView(
-                model: TodoListViewModel(repository: repository, preferences: preferences),
+                model: AppModel(repository: repository, preferences: preferences).todoList,
+                scene: nil,
             ) {
                 // Nothing to present: a preview has no navigation model.
             }

@@ -96,7 +96,7 @@ struct SceneLifecycleModelTests {
         let milk = try Fixture.item("Milk", minute: 1)
         let repository = InMemoryTodoRepository(items: [milk])
         let model = Self.appModel(over: repository)
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         await Self.report(sequence.phases, to: model.makeSceneLifecycleModel())
         // The load above is the first fetch; the rest are the lifecycle's.
         #expect(await Self.fetchCount(repository) == 1 + sequence.fetches)
@@ -112,7 +112,7 @@ struct SceneLifecycleModelTests {
         let repository = InMemoryTodoRepository(items: [milk])
         let model = Self.appModel(over: repository)
         await Self.report([.active], to: model.makeSceneLifecycleModel())
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         await Self.report([.inactive, .background], to: model.makeSceneLifecycleModel())
         try await repository.save(bread)
         await Self.report([.active], to: model.makeSceneLifecycleModel())
@@ -125,7 +125,7 @@ struct SceneLifecycleModelTests {
         let repository = InMemoryTodoRepository()
         let model = Self.appModel(over: repository)
         await Self.report([.active], to: model.makeSceneLifecycleModel())
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         #expect(await Self.fetchCount(repository) == 1)
     }
 
@@ -140,7 +140,7 @@ struct SceneLifecycleModelTests {
             }
             await Self.report([.active], to: scene)
         }
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         #expect(await Self.fetchCount(repository) == 1)
         #expect(model.todoList.phase == .loaded)
     }
@@ -149,7 +149,7 @@ struct SceneLifecycleModelTests {
     func `phases recorded before the refresh runs apply in order`() async {
         let repository = InMemoryTodoRepository()
         let model = Self.appModel(over: repository)
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         let scene = model.makeSceneLifecycleModel()
         await Self.report([.active], to: scene)
         // Recorded with no chance for the refresh tasks to run in between.
@@ -183,7 +183,7 @@ struct SceneLifecycleModelTests {
         let model = Self.appModel(over: repository)
         let scene = model.makeSceneLifecycleModel()
         await Self.report([.active], to: scene)
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         await Self.report([.background], to: scene)
         // Written while the app was in the background, as a widget or a sync would.
         try await repository.save(bread)
@@ -199,7 +199,7 @@ struct SceneLifecycleModelTests {
         let model = Self.appModel(over: repository)
         let scene = model.makeSceneLifecycleModel()
         await Self.report([.active], to: scene)
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         await Self.report([.background], to: scene)
         await repository.fail(.fetchAll, with: .storageFailure)
         await Self.report([.active], to: scene)
@@ -221,7 +221,7 @@ struct SceneLifecycleModelTests {
         let second = model.makeSceneLifecycleModel()
         await Self.report([.active], to: first)
         await Self.report([.active], to: second)
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         await Self.report([.background], to: first)
         await Self.report([.inactive, .active], to: second)
         #expect(await Self.fetchCount(repository) == 1)
@@ -238,7 +238,7 @@ struct SceneLifecycleModelTests {
         let second = model.makeSceneLifecycleModel()
         await Self.report([.active], to: first)
         await Self.report([.active], to: second)
-        await model.todoList.load()
+        await model.todoList.load(from: nil)
         await Self.report([.background], to: first)
         await Self.report([.background], to: second)
         await repository.onFetch { _ in

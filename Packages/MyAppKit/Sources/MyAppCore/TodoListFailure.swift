@@ -5,7 +5,7 @@ import Foundation
 public enum TodoListFailure: Equatable, PresentableFailure {
     /// A delete could not be completed.
     case deleteFailed
-    /// ``TodoListViewModel/load()`` could not read the repository.
+    /// ``TodoListViewModel/load(from:)`` could not read the repository.
     case loadFailed
     /// An add or a toggle could not be saved.
     case saveFailed

@@ -78,9 +78,11 @@ once it has run).
 - [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoRepository.swift` — the port and its
       error type, and its null object
       `Packages/MyAppKit/Sources/MyAppCore/UnavailableTodoRepository.swift`
-- [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoListViewModel.swift` and
+- [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoListViewModel.swift` (with
+      `Packages/MyAppKit/Sources/MyAppCore/AcknowledgedWrite.swift`, the writes its load
+      replays) and
       `Packages/MyAppKit/Sources/MyAppCore/TodoDetailViewModel.swift` — the view models
-- [ ] `AppModel.todoList` and `AppModel.makeTodoDetailViewModel(id:)` in
+- [ ] `AppModel.todoList` and `AppModel.makeTodoDetailViewModel(id:scene:)` in
       `Packages/MyAppKit/Sources/MyAppCore/AppModel.swift` — put your own shared view
       models and route factories there instead
 - [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoListStrings.swift` and
@@ -89,6 +91,12 @@ once it has run).
       `Packages/MyAppKit/Sources/MyAppCore/Resources/Localizable.xcstrings`, and the
       `TodoListStrings` and `TodoDetailStrings` cases in
       `Packages/MyAppKit/Tests/MyAppCoreTests/LocalizationTests.swift`
+- [ ] What `Packages/MyAppKit/Sources/MyAppCore/SceneLifecycleModel.swift` does with the
+      list: it is built over `AppModel.todoList` (`makeSceneLifecycleModel()`) and
+      `refreshIfNeeded()` calls `TodoListViewModel.refresh()` — point both at your own
+      shared model. Its failure presentation (`presented(_:)`) names no feature: give
+      your shared model a `FailureSlot` and a `reportedFailure` as `TodoListViewModel`
+      has, and swap the one `.failureAlert` line in `RootView`
 - [ ] `AppLog.todos`, the `todos` log category, in
       `Packages/MyAppKit/Sources/MyAppCore/AppLog.swift` — add a `Logger` for your own
       concern instead
@@ -97,10 +105,14 @@ once it has run).
       `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelEditingTests.swift`,
       `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelHideCompletedTests.swift`,
       `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelLookupTests.swift`,
+      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelRefreshTests.swift`,
       `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelFixture.swift`,
       `Packages/MyAppKit/Tests/MyAppCoreTests/TodoDetailViewModelTests.swift`, the to-do
-      cases in `Packages/MyAppKit/Tests/MyAppCoreTests/AppModelTests.swift`, and
-      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoRepositoryContractTests.swift`
+      cases in `Packages/MyAppKit/Tests/MyAppCoreTests/AppModelTests.swift`,
+      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoRepositoryContractTests.swift`, and —
+      rewritten over your own shared model rather than deleted, since the rules they pin
+      stay — `Packages/MyAppKit/Tests/MyAppCoreTests/SceneLifecycleModelTests.swift` and
+      `Packages/MyAppKit/Tests/MyAppCoreTests/FailurePresentationTests.swift`
 
 **Platform:**
 
@@ -200,9 +212,9 @@ once it has run).
 4. Replace `AppRoute.todoDetail` and the `todo` deep link with a route of your own,
    updating `DeepLinkTests`, `NavigationModelTests`, and `LaunchTests`' deep-link step
    in the same step, and replace
-   `AppModel.makeTodoDetailViewModel(id:)` and `RootView`'s `.todoDetail` branch with
+   `AppModel.makeTodoDetailViewModel(id:scene:)` and `RootView`'s `.todoDetail` branch with
    your route's factory and screen.
-5. Delete `TodoListViewModel` and `TodoDetailViewModel` with their tests (the four
+5. Delete `TodoListViewModel` and `TodoDetailViewModel` with their tests (the five
    `TodoListViewModel*Tests.swift` files, `TodoDetailViewModelTests.swift`, the to-do
    cases in `AppModelTests.swift`, and `TodoListViewModelFixture.swift`), the two
    strings files, their catalog keys, and their `LocalizationTests` cases together.

@@ -25,7 +25,7 @@ struct TodoListViewModelTests {
         let first = try Fixture.item("First", minute: 1)
         let second = try Fixture.item("Second", minute: 2)
         let model = Fixture.model(over: InMemoryTodoRepository(items: [second, first]))
-        await model.load()
+        await model.load(from: nil)
         #expect(model.phase == .loaded)
         #expect(model.items == [first, second])
         #expect(!model.showsEmptyState)
@@ -35,7 +35,7 @@ struct TodoListViewModelTests {
     func `an empty store shows the empty state only once loaded`() async {
         let model = Fixture.model(over: InMemoryTodoRepository())
         #expect(!model.showsEmptyState)
-        await model.load()
+        await model.load(from: nil)
         #expect(model.showsEmptyState)
         #expect(!model.showsLoadFailure)
     }
@@ -45,7 +45,7 @@ struct TodoListViewModelTests {
         let repository = InMemoryTodoRepository()
         await repository.fail(.fetchAll, with: .storageFailure)
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         #expect(model.phase == .failed)
         #expect(model.showsLoadFailure)
         #expect(!model.showsEmptyState)
@@ -58,9 +58,9 @@ struct TodoListViewModelTests {
         let repository = InMemoryTodoRepository(items: [stored])
         await repository.fail(.fetchAll, with: .storageFailure)
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         await repository.succeed(.fetchAll)
-        await model.load()
+        await model.load(from: nil)
         #expect(model.phase == .loaded)
         #expect(model.items == [stored])
     }
@@ -69,7 +69,7 @@ struct TodoListViewModelTests {
     func `progress shows while the first load runs`() async {
         let repository = InMemoryTodoRepository()
         let model = Fixture.model(over: repository)
-        let loading = Task { await model.load() }
+        let loading = Task { await model.load(from: nil) }
         // The load sets its phase before its first suspension point.
         await Task.yield()
         #expect(model.phase == .loading || model.phase == .loaded)
@@ -96,9 +96,9 @@ struct TodoListViewModelTests {
             } catch {
                 Issue.record(error)
             }
-            await model.load()
+            await model.load(from: nil)
         }
-        await model.load()
+        await model.load(from: nil)
         #expect(model.items == [old, new])
         #expect(model.phase == .loaded)
         #expect(await repository.calls == [.fetchAll, .save, .fetchAll])
@@ -109,12 +109,12 @@ struct TodoListViewModelTests {
         let stored = try Fixture.item("Stored", minute: 1)
         let repository = InMemoryTodoRepository(items: [stored])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         await repository.onFetch { _ in
             await MainActor.run { model.draftTitle = "Added" }
-            await model.addDraft()
+            await model.addDraft(from: nil)
         }
-        await model.load()
+        await model.load(from: nil)
         let added = try TodoItem(id: Fixture.fixedID, title: "Added", createdAt: Fixture.now)
         #expect(model.items == [stored, added])
         #expect(await repository.snapshot == [stored, added])
@@ -127,12 +127,12 @@ struct TodoListViewModelTests {
         let deleted = try Fixture.item("Deleted", minute: 2)
         let repository = InMemoryTodoRepository(items: [kept, deleted])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         await repository.onFetch { _ in
-            await model.toggle(kept.id)
-            await model.delete([deleted.id])
+            await model.toggle(kept.id, from: nil)
+            await model.delete([deleted.id], from: nil)
         }
-        await model.load()
+        await model.load(from: nil)
         var done = kept
         done.isDone = true
         #expect(model.items == [done])
@@ -146,7 +146,7 @@ struct TodoListViewModelTests {
         await repository.fail(.fetchAll, with: .storageFailure)
         let model = Fixture.model(over: repository)
         // Cancelled before it starts: the task cannot run until this test suspends.
-        let loading = Task { await model.load() }
+        let loading = Task { await model.load(from: nil) }
         loading.cancel()
         await loading.value
         #expect(model.failure == nil)
@@ -161,9 +161,9 @@ struct TodoListViewModelTests {
         let arrived = try Fixture.item("Arrived", minute: 2)
         let repository = InMemoryTodoRepository(items: [shown])
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         try await repository.save(arrived)
-        let reloading = Task { await model.load() }
+        let reloading = Task { await model.load(from: nil) }
         reloading.cancel()
         await reloading.value
         #expect(model.items == [shown])
@@ -187,9 +187,9 @@ struct TodoListViewModelTests {
     func `adding stores a trimmed item, shows it, and clears the draft`() async throws {
         let repository = InMemoryTodoRepository()
         let model = Fixture.model(over: repository)
-        await model.load()
+        await model.load(from: nil)
         model.draftTitle = "  Buy milk "
-        await model.addDraft()
+        await model.addDraft(from: nil)
         let expected = try TodoItem(
             id: Fixture.fixedID,
             title: "Buy milk",
@@ -206,7 +206,7 @@ struct TodoListViewModelTests {
         let repository = InMemoryTodoRepository()
         let model = Fixture.model(over: repository)
         model.draftTitle = " "
-        await model.addDraft()
+        await model.addDraft(from: nil)
         #expect(await repository.calls.isEmpty)
         #expect(model.items.isEmpty)
     }
@@ -217,7 +217,7 @@ struct TodoListViewModelTests {
         await repository.fail(.save, with: .storageFailure)
         let model = Fixture.model(over: repository)
         model.draftTitle = "Buy milk"
-        await model.addDraft()
+        await model.addDraft(from: nil)
         #expect(model.items.isEmpty)
         #expect(model.draftTitle == "Buy milk")
         #expect(model.failure == .saveFailed)
@@ -232,7 +232,7 @@ struct TodoListViewModelTests {
             await MainActor.run { model.draftTitle = "Typed meanwhile" }
         }
         model.draftTitle = "Buy milk"
-        await model.addDraft()
+        await model.addDraft(from: nil)
         #expect(model.items.map(\.title) == ["Buy milk"])
         #expect(model.draftTitle == "Typed meanwhile")
     }
@@ -248,8 +248,8 @@ struct TodoListViewModelTests {
             }
         }
         model.draftTitle = "Buy milk"
-        async let first: Void = model.addDraft()
-        async let second: Void = model.addDraft()
+        async let first: Void = model.addDraft(from: nil)
+        async let second: Void = model.addDraft(from: nil)
         _ = await (first, second)
         #expect(await repository.calls == [.save])
         #expect(model.items.count == 1)
@@ -259,9 +259,9 @@ struct TodoListViewModelTests {
     func `a new item is placed by creation time`() async throws {
         let later = try Fixture.item("Later", minute: 120)
         let model = Fixture.model(over: InMemoryTodoRepository(items: [later]))
-        await model.load()
+        await model.load(from: nil)
         model.draftTitle = "Now"
-        await model.addDraft()
+        await model.addDraft(from: nil)
         #expect(model.items.map(\.title) == ["Now", "Later"])
     }
 }

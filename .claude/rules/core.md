@@ -45,7 +45,7 @@ ports. A port exists only when the answer comes from a framework Core may not im
   real clock (`RetryingAPIClient`'s backoff wait). A generic `C: Clock` only when a
   profiler shows the existential matters.
 - **Now:** a long-lived view model takes `now: @Sendable () -> Date` defaulting to
-  `{ Date() }` (`TodoListViewModel.init`); a pure function takes the `Date` as an
+  `{ Date() }` (`AppModel.init`, which hands it to `TodoListViewModel`); a pure function takes the `Date` as an
   argument (`TodoItem`'s `createdAt`). Never `Date()` or `Date.now` inside a branch.
 - **Identity:** `makeID: @Sendable () -> UUID`, so a test knows the identifier a new
   item gets.
@@ -94,6 +94,15 @@ root type.
 - Entry points are actions named for what the user did or the app saw — `load()`,
   `addDraft()`, `toggle(_:)`, `delete(atOffsets:)` — not setters and not a generic
   `send(_:)`, so a test calls one and asserts the resulting state.
+- An action of a model every scene shares that can fail takes the scene that asked,
+  `from scene: SceneID?`, with no default, so every call site says which window asked
+  (`nil`: none did). The model holds its one failure in a `FailureSlot`, which pairs it
+  with that scene as a `ReportedFailure` and claims the one window that presents it; the
+  window's `SceneLifecycleModel.presented(_:)` answers in that window only, and
+  `dismissFailure(_:)` clears the failure only if it is still the one that was shown
+  (`FailurePresentationTests`; the `designing-ui` skill's `references/navigation.md` ›
+  A failure presents in one window). A new shared model keeps a slot of its own, over
+  the open windows `AppModel` hands it.
 - An action that waits is `async`; the view calls it from `.task` or `Task { }`.
   Construction has no side effects and spawns no task (nothing is read until
   `load()`), which is also what lets a re-render build and discard a pushed screen's
@@ -101,9 +110,11 @@ root type.
 - `AppModel` builds every view model, never a view or `App/`: a model every scene
   shares is a stored property built from the ports `App/` passes (`todoList`); a pushed
   screen's model comes from one `make…ViewModel(…)` per route
-  (`makeTodoDetailViewModel(id:)`). A screen showing what a shared model holds takes
+  (`makeTodoDetailViewModel(id:scene:)`, which also names the screen's window). A screen showing what a shared model holds takes
   that model plus an identifier, not a copy, so both screens show one state.
-  `AppModelTests` builds each route's model over the fakes.
+  `AppModelTests` builds each route's model over the fakes. A shared model's
+  initializer is internal for the same reason: a test or a preview takes it from an
+  `AppModel` (`TodoListViewModelFixture`).
 - Domain rules live in value types (`TodoItem`) the view model delegates to.
 - Why, reentrancy after an `await`, and the composition root: the `designing-core-logic`
   skill's `references/view-models.md`.
