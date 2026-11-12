@@ -170,11 +170,10 @@ final class LaunchTests: XCTestCase {
             "the row toggle's identifier should end in the item's UUID",
         )
 
-        openFromTheSystem(link(toItemWithID: id))
         // The found state's identifier lands on its Form, a collection view to XCUITest.
         let detail = app.collectionViews["todoDetail"]
         XCTAssertTrue(
-            detail.waitForExistence(timeout: Timeout.elementAppears),
+            openFromTheSystem(link(toItemWithID: id), expecting: detail),
             "a link to an item should push that item's detail screen",
         )
         XCTAssertTrue(
@@ -182,13 +181,16 @@ final class LaunchTests: XCTestCase {
             "the detail screen a link opened should show the item it names",
         )
 
-        openFromTheSystem(link(toItemWithID: UUID()))
         XCTAssertTrue(
-            app.staticTexts["Item Not Found"].waitForExistence(timeout: Timeout.elementAppears),
+            openFromTheSystem(
+                link(toItemWithID: UUID()),
+                expecting: app.staticTexts["Item Not Found"],
+            ),
             "a link to an unknown item should show the detail screen's not-found state",
         )
-        XCTAssertFalse(
-            app.buttons["detailToggle"].exists,
+        // The found screen it replaced may still be animating out.
+        XCTAssertTrue(
+            waitForDisappearance(of: app.buttons["detailToggle"]),
             "the not-found state should show no item",
         )
 
@@ -203,14 +205,28 @@ final class LaunchTests: XCTestCase {
     /// the app the build registered it for and hands the link to the running app.
     /// `XCUIApplication.open(_:)` would relaunch the app instead, emptying its in-memory
     /// store. The first link of the scheme on a simulator asks "Open in …?" over the app;
-    /// later ones open directly, so the prompt is answered only when it shows.
+    /// later ones open directly. So it waits for whichever comes first, `target` or the
+    /// prompt, and answers the prompt only when it shows — with its last button, the
+    /// confirming one after Cancel, because its labels follow the simulator's language.
+    ///
+    /// - Returns: whether `target` appeared within `Timeout.elementAppears` of the link
+    ///   opening (or of the prompt being answered).
     @MainActor
-    private func openFromTheSystem(_ url: URL) {
+    private func openFromTheSystem(_ url: URL, expecting target: XCUIElement) -> Bool {
         XCUIDevice.shared.system.open(url)
-        let open = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Open"]
-        if open.waitForExistence(timeout: Timeout.systemPrompt) {
-            open.tap()
+        let prompt = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        var deadline = Date.now.addingTimeInterval(Timeout.elementAppears)
+        while Date.now < deadline {
+            if target.waitForExistence(timeout: Timeout.poll) {
+                return true
+            }
+            if prompt.exists {
+                let buttons = prompt.buttons
+                buttons.element(boundBy: buttons.count - 1).tap()
+                deadline = Date.now.addingTimeInterval(Timeout.elementAppears)
+            }
         }
+        return target.exists
     }
 
     /// The link that opens the item with `id`: the one shape `DeepLink` accepts.
@@ -229,7 +245,7 @@ final class LaunchTests: XCTestCase {
     private func completeAndHideTheItem(in app: XCUIApplication) {
         let item = app.staticTexts["Buy milk"]
         let hideCompleted = app.buttons["hideCompletedToggle"]
-        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'toggle-'"))
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", Self.rowTogglePrefix))
             .firstMatch.tap()
         XCTAssertTrue(
             hideCompleted.waitForExistence(timeout: Timeout.elementAppears),
