@@ -34,6 +34,25 @@ Persistence) and the next change to `TodoRecord` is an `AppSchemaV2` with its st
 
 - A second entity is the same move: a `@Model` in `AppSchemaV2` plus a stage in
   `AppMigrationPlan`, and a repository over the shared container.
+- `SchemaMigrationTests` holds the line. Its fingerprint test reads every version in
+  `AppMigrationPlan.schemas` through `Schema(versionedSchema:)` — entities, uniqueness
+  constraints, and every property of an attribute or a relationship SwiftData exposes,
+  with type names free of the app's module and schema names — and compares it with a
+  literal written by hand in `ShippedSchema.fingerprints`, so an edit to a shipped
+  version fails with the instruction to add a version and a stage instead. A pinned
+  version missing from the plan fails too: a shipped version is never removed, and its
+  identifier never changes. Its plan test asserts the
+  versions run oldest first, each stage joins one version to the next, and
+  `makeContainer` opens the plan's last schema.
+- Adding `AppSchemaV2` is, in order: the new `VersionedSchema`, appended to
+  `AppMigrationPlan.schemas` with its stage, `PersistenceStore` opening it, its row in
+  `ShippedSchema.fingerprints`, and a migration test. That test writes a store with
+  `AppSchemaV1` through `StoreFiles.write(_:plan:at:populate:)`, under a frozen copy of
+  the plan as it shipped, ending at V1 (the way `PreRenameMigrationPlan` freezes the old
+  one): `write` fails the test for a plan that does not end at the version it writes.
+  It then reopens the file with `StoreFiles.reopen(_:)`, the production container, and
+  asserts what V2 holds. The shared IDs, dates, and writers live in `StoreFixture`.
+  Today the harness runs V1 to V1.
 - The store records the model's entities, attributes, and version identifier — never
   the Swift names of the schema or the plan — so a store written before both were
   renamed to their `App` names opens unchanged (`PersistenceStoreTests` reopens one

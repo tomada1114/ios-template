@@ -33,7 +33,9 @@ branch on domain values belongs in Core, where a test sees it. Fakes and contrac
 - A shipped `VersionedSchema` (`AppSchemaV1`) is never edited: a changed or new stored
   model is a new schema version plus an `AppMigrationPlan` stage, with a test that opens
   a store the previous version wrote (`AGENTS.md` › What is contract and what is
-  private).
+  private). `SchemaMigrationTests` fails when a shipped version's shape drifts from its
+  pinned fingerprint, and `StoreFiles` writes and reopens the store file a migration test
+  needs.
 - Why one container, a versioned schema, the null object when the store will not open,
   and the preferences port: the `persisting-data` skill.
 
