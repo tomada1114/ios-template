@@ -17,26 +17,23 @@ public struct AppConfiguration: Equatable, Sendable {
     /// two differ.
     public static let apiBaseURLKey = "APIBaseURL"
 
-    /// The schemes a base URL may use. Plain `http` is accepted for a server on the
-    /// developer's machine; App Transport Security still refuses it on a device unless
-    /// the app declares an exception.
-    private static let webSchemes: Set<String> = ["https", "http"]
+    /// The one scheme a base URL may use: App Transport Security refuses plain `http`
+    /// on a device, so an `http` value would only fail later, at the first request.
+    private static let scheme = "https"
 
     /// The URL every ``Endpoint`` is resolved below (``APIClient``).
     public let apiBaseURL: URL
 
-    /// A configuration holding `apiBaseURL` as given, for a test or a preview.
-    public init(apiBaseURL: URL) {
-        self.apiBaseURL = apiBaseURL
-    }
-
     /// Parses the configuration out of an `Info.plist` dictionary.
     ///
-    /// Throws ``AppConfigurationError/missing(key:)`` when the key is absent or empty —
-    /// an empty value is what an xcconfig that never sets the build setting leaves —
-    /// and ``AppConfigurationError/malformed(key:)`` when the value is not an absolute
-    /// `https` or `http` URL with a host. That includes `https:`, which is what an
-    /// xcconfig leaves of `https://…` when the `//` is not escaped as `/$()/`.
+    /// Surrounding whitespace and newlines are ignored. Throws
+    /// ``AppConfigurationError/missing(key:)`` when the key is absent or blank — an empty
+    /// value is what an xcconfig that never sets the build setting leaves — and
+    /// ``AppConfigurationError/malformed(key:)`` when the value is not an absolute
+    /// `https` URL with a host and nothing else: no user or password, which would ship
+    /// a credential in `Info.plist`, and no query or fragment, which every request's
+    /// path would be resolved after. That includes `https:`, which is what an xcconfig
+    /// leaves of `https://…` when the `//` is not escaped as `/$()/`.
     public init(infoDictionary: [String: Any]) throws(AppConfigurationError) {
         apiBaseURL = try Self.webURL(infoDictionary, key: Self.apiBaseURLKey)
     }
@@ -51,14 +48,18 @@ public struct AppConfiguration: Equatable, Sendable {
         guard let text = raw as? String else {
             throw .malformed(key: key)
         }
-        if text.trimmingCharacters(in: .whitespaces).isEmpty {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
             throw .missing(key: key)
         }
-        guard let components = URLComponents(string: text),
-              let scheme = components.scheme?.lowercased(),
-              webSchemes.contains(scheme),
+        guard let components = URLComponents(string: trimmed),
+              components.scheme?.lowercased() == scheme,
               let host = components.host,
               !host.isEmpty,
+              components.user == nil,
+              components.password == nil,
+              components.query == nil,
+              components.fragment == nil,
               let url = components.url
         else {
             throw .malformed(key: key)

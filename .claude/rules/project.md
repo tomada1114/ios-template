@@ -69,7 +69,8 @@ gate: it needs the sign-off in AGENTS.md › Security and human approval, and th
 - `project.yml`'s `info.properties` expands it into `Info.plist` under one key
   (`APIBaseURL: $(API_BASE_URL)`); `App/` reads `Bundle.main.infoDictionary` once and
   Core's `AppConfiguration` parses it, with the key as a constant
-  (`AppConfiguration.apiBaseURLKey`). `AppConfigurationTests` fails when the key, the
+  (`AppConfiguration.apiBaseURLKey`). A base URL is `https` with a host and no user,
+  password, query, or fragment. `AppConfigurationTests` fails when the key, the
   setting's name, or either file's value drifts. A new value adds a property, a key
   constant, and its tests there, not a second reader
 - `//` starts an xcconfig comment, so `https://api…` silently becomes `https:`; write

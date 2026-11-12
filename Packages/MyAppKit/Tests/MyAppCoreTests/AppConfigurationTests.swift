@@ -18,19 +18,6 @@ struct AppConfigurationTests {
 
     // MARK: - Helpers
 
-    /// The value a `project.yml` gives `key`: the rest of the first line that starts with
-    /// `key:` once trimmed, unquoted, or `nil` when no line does.
-    static func value(of key: String, inManifest manifest: String) -> String? {
-        let prefix = "\(key):"
-        return manifest.components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .first { $0.hasPrefix(prefix) }
-            .map { line in
-                AppLogTests
-                    .unquoted(line.dropFirst(prefix.count).trimmingCharacters(in: .whitespaces))
-            }
-    }
-
     /// The value an xcconfig assigns `setting`, as the build reads it: everything from a
     /// `//` on is a comment, and an empty `$()` expands to nothing — the escape that lets
     /// a URL keep its `//`. `nil` when the file assigns no value.
@@ -58,7 +45,7 @@ struct AppConfigurationTests {
     @Test(arguments: [
         "https://api.staging.invalid/v1",
         "https://api.invalid",
-        "http://localhost:8080/api",
+        "https://localhost:8443/api",
         "HTTPS://api.invalid/v1",
     ])
     func `a well formed base URL is the API base URL`(text: String) throws {
@@ -66,6 +53,14 @@ struct AppConfigurationTests {
             infoDictionary: [AppConfiguration.apiBaseURLKey: text, "CFBundleName": "App"],
         )
         #expect(configuration.apiBaseURL.absoluteString == text)
+    }
+
+    /// A value pasted with a stray space or line break around it still reads as the URL.
+    @Test(arguments: ["https://api.invalid/v1 ", "\thttps://api.invalid/v1\n"])
+    func `whitespace around a base URL is ignored`(text: String) throws {
+        let configuration =
+            try AppConfiguration(infoDictionary: [AppConfiguration.apiBaseURLKey: text])
+        #expect(configuration.apiBaseURL.absoluteString == "https://api.invalid/v1")
     }
 
     @Test
@@ -77,21 +72,29 @@ struct AppConfigurationTests {
 
     /// What an unset `$(API_BASE_URL)` leaves in the built `Info.plist`: the key, with an
     /// empty value — a build configuration that never set it, not a typo in one.
-    @Test(arguments: ["", "   "])
+    @Test(arguments: ["", "   ", "\n", " \r\n\t"])
     func `an empty value reports the key missing`(text: String) {
         #expect(throws: AppConfigurationError.missing(key: "APIBaseURL")) {
             try AppConfiguration(infoDictionary: [AppConfiguration.apiBaseURLKey: text])
         }
     }
 
-    /// Every value that is there but is not an absolute web URL with a host, each with
-    /// its own reason.
+    /// Every value that is there but is not an absolute `https` URL with a host and
+    /// nothing else, each with its own reason.
     @Test(arguments: [
         ("the `//` comment trap", "https:"),
         ("no host", "https:///v1"),
         ("no scheme", "api.invalid/v1"),
         ("a relative path", "/v1"),
         ("another scheme", "ftp://api.invalid"),
+        ("plain http, which App Transport Security refuses", "http://api.invalid/v1"),
+        ("a user", "https://me@api.invalid/v1"),
+        ("a user and a password", "https://me:secret@api.invalid/v1"),
+        ("an empty password", "https://me:@api.invalid/v1"),
+        ("a query", "https://api.invalid/v1?key=1"),
+        ("an empty query", "https://api.invalid/v1?"),
+        ("a fragment", "https://api.invalid/v1#top"),
+        ("an empty fragment", "https://api.invalid/v1#"),
         ("an unexpanded build setting", "$(API_BASE_URL)"),
         ("not a URL at all", "https://api invalid"),
     ])
@@ -113,7 +116,7 @@ struct AppConfigurationTests {
     @Test
     func `the key Core reads is the one project yml expands the build setting under`() throws {
         let manifest = AppLogTests.repositoryRoot.appendingPathComponent("project.yml")
-        let value = try Self.value(
+        let value = try ProjectManifest.value(
             of: AppConfiguration.apiBaseURLKey,
             inManifest: String(contentsOf: manifest, encoding: .utf8),
         )
@@ -135,11 +138,9 @@ struct AppConfigurationTests {
             Self.value(of: Self.buildSetting, inXcconfig: xcconfig),
             "\(path) must set \(Self.buildSetting)",
         )
-        let configuration = try AppConfiguration(
-            infoDictionary: [AppConfiguration.apiBaseURLKey: value],
-        )
-        // A template placeholder never names a host that resolves (RFC 6761).
-        #expect(configuration.apiBaseURL.host()?.hasSuffix(".invalid") == true, "\(path): \(value)")
+        // Any value the parser accepts passes: the template's `.invalid` placeholders and
+        // an app's real servers alike. The `//` trap's `https:` does not.
+        _ = try AppConfiguration(infoDictionary: [AppConfiguration.apiBaseURLKey: value])
     }
 
     @Test
@@ -154,9 +155,11 @@ struct AppConfigurationTests {
 
     @Test
     func `the manifest reader reads the first line that sets the key`() {
-        let read = { Self.value(of: "APIBaseURL", inManifest: $0) }
+        let read = { ProjectManifest.value(of: "APIBaseURL", inManifest: $0) }
         #expect(read("        APIBaseURL: $(API_BASE_URL)\n") == "$(API_BASE_URL)")
         #expect(read("APIBaseURL: \"$(API_BASE_URL)\"\n") == "$(API_BASE_URL)")
+        #expect(read("APIBaseURL: $(API_BASE_URL) # per configuration\n") == "$(API_BASE_URL)")
+        #expect(read("APIBaseURL: # TBD\n") == nil)
         #expect(read("APIBaseURLV2: x\n") == nil)
         #expect(read("name: MyApp\n") == nil)
     }

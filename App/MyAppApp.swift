@@ -99,6 +99,12 @@ struct MyAppApp: App {
         do {
             configuration = try AppConfiguration(infoDictionary: Bundle.main.infoDictionary ?? [:])
         } catch {
+            // The error names the key, never the value: a value is build input, and the
+            // key is all a reader needs to find the xcconfig line.
+            let key = AppConfiguration.apiBaseURLKey
+            AppLog.network.fault(
+                "Info.plist \(key, privacy: .public) is unusable: \(String(describing: error), privacy: .public)",
+            )
             fatalError("The build's Info.plist has no usable API base URL: \(error)")
         }
         return APIClient(httpClient: URLSessionHTTPClient(), baseURL: configuration.apiBaseURL)
