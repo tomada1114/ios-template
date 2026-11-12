@@ -37,7 +37,6 @@ public struct APIClient: Sendable {
     private static let forbiddenCode = 403
     private static let notFoundCode = 404
     private static let tooManyRequestsCode = 429
-    private static let serviceUnavailableCode = 503
 
     private let httpClient: any HTTPClient
     private let baseURL: URL
@@ -170,13 +169,10 @@ public struct APIClient: Sendable {
         case Self.tooManyRequestsCode:
             return .rateLimited(retryAfter: retryAfter(in: response))
 
-        case Self.serviceUnavailableCode:
-            return .server(status: status, retryAfter: retryAfter(in: response))
-
         case Self.serverErrorCodes:
-            // Only a 503 says the server will be back after a wait; another 5xx's
-            // `Retry-After` is not read.
-            return .server(status: status, retryAfter: nil)
+            // Reported for any 5xx, so the client states what the server said;
+            // whether a wait is honored is ``RetryingAPIClient``'s decision.
+            return .server(status: status, retryAfter: retryAfter(in: response))
 
         default:
             return .unexpectedStatus(status)
@@ -199,8 +195,6 @@ public struct APIClient: Sendable {
         }
     }
 
-    /// `response`'s value for the header `name`, matched case-insensitively
-    /// (``HTTPResponse/headers``: HTTP/2 names arrive lowercase).
     /// The wait `response`'s `Retry-After` header asks for, or `nil` when it has none
     /// or it is unreadable.
     private func retryAfter(in response: HTTPResponse) -> Duration? {
@@ -208,6 +202,8 @@ public struct APIClient: Sendable {
             .flatMap { RetryAfter.delay(fromHeaderValue: $0, now: now()) }
     }
 
+    /// `response`'s value for the header `name`, matched case-insensitively
+    /// (``HTTPResponse/headers``: HTTP/2 names arrive lowercase).
     private func headerValue(named name: String, in response: HTTPResponse) -> String? {
         response.headers.first { $0.key.caseInsensitiveCompare(name) == .orderedSame }?.value
     }

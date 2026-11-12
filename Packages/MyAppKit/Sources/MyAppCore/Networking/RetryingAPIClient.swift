@@ -13,16 +13,19 @@ import os
 ///
 /// - **What is retried:** ``APIError/timedOut``, ``APIError/offline``,
 ///   ``APIError/rateLimited(retryAfter:)``, and ``APIError/server(status:retryAfter:)``
-///   for a 500,
-///   502, 503, or 504 — failures that describe the moment, not the request. Every other
-///   case would fail the same way again and is thrown at once; that includes a 501, a
-///   505, and every other 5xx, which say the server will not do this, not that it
-///   cannot right now.
+///   for a 500, 502, 503, or 504 — failures that describe the moment, not the request.
+///   Every other case would fail the same way again and is thrown at once; that
+///   includes a 501, a 505, and every other 5xx, which say the server will not do this,
+///   not that it cannot right now.
 /// - **How long it waits:** exactly a 429's or a 503's `Retry-After`, when the server
-///   sent one; otherwise the policy's jittered exponential backoff. A `Retry-After`
-///   longer than ``RetryPolicy/maxDelay`` is not shortened to fit — coming back early
-///   would only be refused again — so that 429 or 503 is thrown at once, for the feature
-///   to show.
+///   sent one; otherwise the policy's jittered exponential backoff. A 500's, 502's, or
+///   504's `Retry-After` is ignored: only a 429 and a 503 say when the server will
+///   accept the call again (RFC 9110 §10.2.3). A `Retry-After` longer than
+///   ``RetryPolicy/maxDelay`` is not shortened to fit — coming back early would only be
+///   refused again — so that 429 or 503 is thrown at once, for the feature to show.
+///   That is deliberate for a 503 too, a maintenance window's `Retry-After: 3600`
+///   included: backing off instead would send requests inside the window the server
+///   asked to be left alone for, and still fail; the feature shows "try again later".
 /// - **What is never repeated:** a call whose method is not idempotent
 ///   (``HTTPRequest/Method/isIdempotent``), unless its endpoint opts in with
 ///   ``Endpoint/isSafeToRepeat``. A timed-out `POST` may have reached the server; sending
@@ -126,7 +129,9 @@ public actor RetryingAPIClient {
             guard Self.transientServerStatuses.contains(status) else {
                 return nil
             }
-            return delay(honoring: retryAfter, afterAttempt: attempt)
+            // Only a 503's wait says when the server is back; another 5xx backs off.
+            let wait = status == Self.serviceUnavailable ? retryAfter : nil
+            return delay(honoring: wait, afterAttempt: attempt)
 
         case let .rateLimited(retryAfter):
             return delay(honoring: retryAfter, afterAttempt: attempt)

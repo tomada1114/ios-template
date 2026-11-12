@@ -206,11 +206,34 @@ struct RetryPolicyAttemptTests {
     }
 
     @Test
-    func `a Retry-After of zero retries without waiting`() async throws {
+    func `a 503 in maintenance whose Retry-After is past the cap is thrown at once, not backed off`(
+    ) async {
         let run = await RetryPolicyFixture.run(
             RetryPolicyFixture.getItem,
             answering: [
-                RetryPolicyFixture.status(429, headers: ["Retry-After": "0"]),
+                RetryPolicyFixture.status(503, headers: ["Retry-After": "3600"]),
+                .respond(RetryPolicyFixture.itemResponse),
+            ],
+            waits: 0,
+        )
+        #expect(run.error == .server(status: 503, retryAfter: .seconds(3_600)))
+        #expect(run.requests.count == 1)
+        #expect(run.sleeps.isEmpty)
+    }
+
+    @Test(arguments: [429, 503], [
+        ["Retry-After": "0"],
+        // A day before the pinned now: a date already past is a wait of zero.
+        ["Retry-After": "Sat, 05 Nov 1994 08:49:37 GMT"],
+    ])
+    func `a Retry-After of zero or a date already past retries without waiting`(
+        statusCode: Int,
+        headers: [String: String],
+    ) async throws {
+        let run = await RetryPolicyFixture.run(
+            RetryPolicyFixture.getItem,
+            answering: [
+                RetryPolicyFixture.status(statusCode, headers: headers),
                 .respond(RetryPolicyFixture.itemResponse),
             ],
             waits: 0,

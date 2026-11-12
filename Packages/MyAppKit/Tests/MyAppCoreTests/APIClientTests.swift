@@ -207,8 +207,8 @@ struct APIClientTests {
         }
     }
 
-    @Test(arguments: [500, 502, 504, 599])
-    func `a 5xx other than 503 does not read its Retry-After`(statusCode: Int) async {
+    @Test(arguments: [500, 501, 502, 504, 599])
+    func `every 5xx reports the Retry-After it carried, not only a 503`(statusCode: Int) async {
         let fake = FakeHTTPClient()
         await fake.enqueue(.respond(APIClientFixture.response(
             statusCode,
@@ -217,9 +217,26 @@ struct APIClientTests {
         )))
         let client = APIClientFixture.client(over: fake)
 
-        await #expect(throws: APIError.server(status: statusCode, retryAfter: nil)) {
+        await #expect(throws: APIError.server(status: statusCode, retryAfter: .seconds(120))) {
             try await client.send(Endpoint<RemoteItem>(method: .get, path: "items/7"))
         }
+    }
+
+    // MARK: - Matching a 5xx
+
+    @Test(arguments: [
+        (APIError.server(status: 503, retryAfter: nil), 503, true),
+        (.server(status: 503, retryAfter: .seconds(10)), 503, true),
+        (.server(status: 500, retryAfter: nil), 503, false),
+        (.rateLimited(retryAfter: nil), 429, false),
+        (.unexpectedStatus(503), 503, false),
+    ])
+    func `isServerError matches a 5xx by status whatever wait it carries`(
+        error: APIError,
+        status: Int,
+        expected: Bool,
+    ) {
+        #expect(error.isServerError(status) == expected)
     }
 
     // MARK: - No response
