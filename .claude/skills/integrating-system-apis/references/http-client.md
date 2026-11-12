@@ -81,12 +81,13 @@ func loadItem(using client: APIClient) async {
   as `imageUrl`, never `imageURL`. Encoded keys are sorted, so a body is the same bytes
   every time and a test compares it with a literal.
 - **Every outcome is a case.** 401, 403, 404, and 429 have cases of their own; a 5xx is
-  `server(status:)`, any other status `unexpectedStatus(_:)`. A 2xx body that does not
+  `server(status:retryAfter:)`, any other status `unexpectedStatus(_:)`. A 2xx body that does not
   decode as the declared type, an empty one included, is `decoding` — logged under `AppLog.network` by the response type's name, never the
   body — and one that cannot be encoded is `encoding`, sent nowhere. `HTTPClientError`
   maps across: `notConnected` to `offline`, `timedOut`, `cancelled`, and the rest to
-  `transport`. A 429's `Retry-After` is read as delta-seconds or an HTTP-date, the date
-  measured from the `now` the client is handed so a test pins it.
+  `transport`. A 429's or a 503's `Retry-After` is read as delta-seconds or an
+  HTTP-date, the date measured from the `now` the client is handed so a test pins it;
+  another 5xx's is not read, since only a 503 says the server will be back after a wait.
 - **A 2xx with no body is `Endpoint<EmptyResponse>`.** A call that succeeds with nothing
   to read — a `204 No Content`, the bodiless `200` of many `DELETE` and `PUT`
   endpoints — declares `EmptyResponse` as its response type. The client decides by that
@@ -123,17 +124,16 @@ bare client — `RetryingAPIClient(client: apiClient)` — and calls the same `s
   anyway, and need a retry flag on `HTTPRequest`, which describes only what the server
   receives. The port stays one request in, one response out.
 - **What is retried.** `timedOut`, `offline`, `rateLimited(retryAfter:)`, and
-  `server(status:)` for a 500, 502, 503, or 504: failures that describe the moment, not
-  the request. Every other case is thrown at once — a 501, a 505, and any other 5xx
+  `server(status:retryAfter:)` for a 500, 502, 503, or 504: failures that describe the
+  moment, not the request. Every other case is thrown at once — a 501, a 505, and any other 5xx
   included, since they say the server will not do this at all. The switch over
   `APIError` is exhaustive, so a new case must be sorted before it compiles.
-- **How long it waits.** A 429's `Retry-After` exactly; otherwise `baseDelay`
-  multiplied once per earlier retry, held to `maxDelay`, then shortened by a random
-  share of `jitter`. Jitter only shortens, so the cap always holds. A `Retry-After`
+- **How long it waits.** A 429's or a 503's `Retry-After` exactly; otherwise
+  `baseDelay` multiplied once per earlier retry, held to `maxDelay`, then shortened by a
+  random share of `jitter`. Jitter only shortens, so the cap always holds. A `Retry-After`
   longer than `maxDelay` is never shortened to fit — coming back early would only be
-  refused again — so that 429 is thrown at once and the feature shows the rate limit. A
-  5xx's `Retry-After` is not read: `APIError.server(status:)` carries no wait. A policy
-  with a negative delay, or a multiplier that is not a finite number of at least 1,
+  refused again — so that 429 or 503 is thrown at once and the feature shows it. A
+  policy with a negative delay, or a multiplier that is not a finite number of at least 1,
   still waits within zero through `maxDelay`.
 - **A non-idempotent call is sent once.** `POST` and `PATCH`
   (`HTTPRequest.Method.isIdempotent`) are not repeated — a timed-out `POST` may have

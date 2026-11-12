@@ -8,6 +8,15 @@ struct APIClientTests {
     private static let itemJSON =
         #"{"createdAt":"\#(APIClientFixture.nowISO8601)","id":7,"title":"Milk"}"#
 
+    /// The error each status that reads `Retry-After` throws, given the wait it read.
+    private static let waitingErrors: [
+        (statusCode: Int, error: @Sendable (Duration?) -> APIError)
+    ] =
+        [
+            (429, { .rateLimited(retryAfter: $0) }),
+            (503, { .server(status: 503, retryAfter: $0) }),
+        ]
+
     // MARK: - 2xx
 
     @Test(arguments: [200, 201, 299])
@@ -132,9 +141,9 @@ struct APIClientTests {
         (401, APIError.unauthorized),
         (403, .forbidden),
         (404, .notFound),
-        (500, .server(status: 500)),
-        (503, .server(status: 503)),
-        (599, .server(status: 599)),
+        (500, .server(status: 500, retryAfter: nil)),
+        (503, .server(status: 503, retryAfter: nil)),
+        (599, .server(status: 599, retryAfter: nil)),
         (400, .unexpectedStatus(400)),
         (409, .unexpectedStatus(409)),
         (422, .unexpectedStatus(422)),
@@ -162,9 +171,9 @@ struct APIClientTests {
         }
     }
 
-    // MARK: - 429 and Retry-After
+    // MARK: - 429, 503, and Retry-After
 
-    @Test(arguments: [
+    @Test(arguments: waitingErrors, [
         ([:], nil),
         (["Retry-After": "120"], Duration.seconds(120)),
         (["retry-after": "0"], .zero),
@@ -181,15 +190,34 @@ struct APIClientTests {
         // RFC 850's obsolete form, which Foundation's HTTP-date parser does not read.
         (["Retry-After": "Sunday, 06-Nov-94 08:51:37 GMT"], nil),
     ])
-    func `a 429 throws rateLimited with the Retry-After delay it could read`(
-        headers: [String: String],
-        expected: Duration?,
+    func `a 429 or a 503 throws its error with the Retry-After delay it could read`(
+        status: (statusCode: Int, error: @Sendable (Duration?) -> APIError),
+        retryAfter: (headers: [String: String], expected: Duration?),
     ) async {
         let fake = FakeHTTPClient()
-        await fake.enqueue(.respond(APIClientFixture.response(429, headers: headers, body: "")))
+        await fake.enqueue(.respond(APIClientFixture.response(
+            status.statusCode,
+            headers: retryAfter.headers,
+            body: "",
+        )))
         let client = APIClientFixture.client(over: fake)
 
-        await #expect(throws: APIError.rateLimited(retryAfter: expected)) {
+        await #expect(throws: status.error(retryAfter.expected)) {
+            try await client.send(Endpoint<RemoteItem>(method: .get, path: "items/7"))
+        }
+    }
+
+    @Test(arguments: [500, 502, 504, 599])
+    func `a 5xx other than 503 does not read its Retry-After`(statusCode: Int) async {
+        let fake = FakeHTTPClient()
+        await fake.enqueue(.respond(APIClientFixture.response(
+            statusCode,
+            headers: ["Retry-After": "120"],
+            body: "",
+        )))
+        let client = APIClientFixture.client(over: fake)
+
+        await #expect(throws: APIError.server(status: statusCode, retryAfter: nil)) {
             try await client.send(Endpoint<RemoteItem>(method: .get, path: "items/7"))
         }
     }

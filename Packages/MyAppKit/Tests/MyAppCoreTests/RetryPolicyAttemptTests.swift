@@ -17,7 +17,7 @@ struct RetryPolicyAttemptTests {
             answering: outcomes,
             waits: 3,
         )
-        #expect(run.error == .server(status: 504))
+        #expect(run.error == .server(status: 504, retryAfter: nil))
         #expect(run.requests.count == 4)
         #expect(run.sleeps == [.seconds(1), .seconds(2), .seconds(4)])
     }
@@ -61,7 +61,7 @@ struct RetryPolicyAttemptTests {
             waits: 0,
             policy: policy,
         )
-        #expect(run.error == .server(status: 503))
+        #expect(run.error == .server(status: 503, retryAfter: nil))
         #expect(run.requests.count == 1)
         #expect(run.sleeps.isEmpty)
     }
@@ -71,10 +71,10 @@ struct RetryPolicyAttemptTests {
     @Test(arguments: [
         (HTTPStubOutcome.fail(.timedOut), APIError.timedOut),
         (.fail(.notConnected), .offline),
-        (RetryPolicyFixture.status(500), .server(status: 500)),
-        (RetryPolicyFixture.status(502), .server(status: 502)),
-        (RetryPolicyFixture.status(503), .server(status: 503)),
-        (RetryPolicyFixture.status(504), .server(status: 504)),
+        (RetryPolicyFixture.status(500), .server(status: 500, retryAfter: nil)),
+        (RetryPolicyFixture.status(502), .server(status: 502, retryAfter: nil)),
+        (RetryPolicyFixture.status(503), .server(status: 503, retryAfter: nil)),
+        (RetryPolicyFixture.status(504), .server(status: 504, retryAfter: nil)),
         (RetryPolicyFixture.status(429), .rateLimited(retryAfter: nil)),
     ])
     func `a timeout, no connection, a 500, 502, 503, or 504, and a 429 are retried`(
@@ -102,9 +102,9 @@ struct RetryPolicyAttemptTests {
         (RetryPolicyFixture.status(403), .forbidden),
         (RetryPolicyFixture.status(404), .notFound),
         // A 5xx that says the server will never do this, not that it cannot right now.
-        (RetryPolicyFixture.status(501), .server(status: 501)),
-        (RetryPolicyFixture.status(505), .server(status: 505)),
-        (RetryPolicyFixture.status(599), .server(status: 599)),
+        (RetryPolicyFixture.status(501), .server(status: 501, retryAfter: nil)),
+        (RetryPolicyFixture.status(505), .server(status: 505, retryAfter: nil)),
+        (RetryPolicyFixture.status(599), .server(status: 599, retryAfter: nil)),
         // A 2xx whose (empty) body is not an item.
         (RetryPolicyFixture.status(200), .decoding),
     ])
@@ -137,7 +137,7 @@ struct RetryPolicyAttemptTests {
 
     // MARK: - Retry-After
 
-    @Test(arguments: [
+    @Test(arguments: [429, 503], [
         // Longer than the 1 s backoff, and honored.
         (["Retry-After": "3"], Duration.seconds(3)),
         // Exactly the policy's 5 s cap.
@@ -148,41 +148,61 @@ struct RetryPolicyAttemptTests {
         ([:], .seconds(1)),
         (["Retry-After": "soon"], .seconds(1)),
     ])
-    func `a 429 waits exactly as long as its Retry-After asks`(
-        headers: [String: String],
-        expected: Duration,
+    func `a 429 or a 503 waits exactly as long as its Retry-After asks`(
+        statusCode: Int,
+        retryAfter: (headers: [String: String], expected: Duration),
     ) async throws {
         let run = await RetryPolicyFixture.run(
             RetryPolicyFixture.getItem,
             answering: [
-                RetryPolicyFixture.status(429, headers: headers),
+                RetryPolicyFixture.status(statusCode, headers: retryAfter.headers),
                 .respond(RetryPolicyFixture.itemResponse),
             ],
             waits: 1,
         )
         #expect(try run.result.get() == RetryPolicyFixture.item)
-        #expect(run.sleeps == [expected])
+        #expect(run.sleeps == [retryAfter.expected])
     }
 
     @Test(arguments: [
+        (429, APIError.rateLimited(retryAfter: .seconds(120))),
+        (503, .server(status: 503, retryAfter: .seconds(120))),
+    ], [
         // 2 minutes, in either form the header allows, against a 5 s cap.
         ["retry-after": "120"],
         ["Retry-After": "Sun, 06 Nov 1994 08:51:37 GMT"],
     ])
-    func `a 429 whose Retry-After is longer than the cap is thrown at once, not retried early`(
+    func `a 429 or a 503 whose Retry-After is longer than the cap is thrown at once, not retried early`(
+        refusal: (statusCode: Int, expected: APIError),
         headers: [String: String],
     ) async {
         let run = await RetryPolicyFixture.run(
             RetryPolicyFixture.getItem,
             answering: [
-                RetryPolicyFixture.status(429, headers: headers),
+                RetryPolicyFixture.status(refusal.statusCode, headers: headers),
                 .respond(RetryPolicyFixture.itemResponse),
             ],
             waits: 0,
         )
-        #expect(run.error == .rateLimited(retryAfter: .seconds(120)))
+        #expect(run.error == refusal.expected)
         #expect(run.requests.count == 1)
         #expect(run.sleeps.isEmpty)
+    }
+
+    @Test(arguments: [500, 502, 504])
+    func `another transient 5xx ignores its Retry-After and backs off`(
+        statusCode: Int,
+    ) async throws {
+        let run = await RetryPolicyFixture.run(
+            RetryPolicyFixture.getItem,
+            answering: [
+                RetryPolicyFixture.status(statusCode, headers: ["Retry-After": "3"]),
+                .respond(RetryPolicyFixture.itemResponse),
+            ],
+            waits: 1,
+        )
+        #expect(try run.result.get() == RetryPolicyFixture.item)
+        #expect(run.sleeps == [.seconds(1)])
     }
 
     @Test

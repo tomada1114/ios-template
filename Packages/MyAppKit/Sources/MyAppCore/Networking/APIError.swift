@@ -42,8 +42,11 @@ public enum APIError: Error, Equatable, Sendable {
     case rateLimited(retryAfter: Duration?)
 
     /// The server answered with a 5xx: its own failure. `status` says which, for a log
-    /// or a decision (a 503 is often worth a retry; a 501 never is).
-    case server(status: Int)
+    /// or a decision (a 503 is often worth a retry; a 501 never is). `retryAfter` is how
+    /// long a 503's `Retry-After` header asked the client to wait — read as a 429's is,
+    /// never negative — and `nil` for any other 5xx, or for a 503 whose header was
+    /// missing or unreadable, in which case the caller picks its own backoff.
+    case server(status: Int, retryAfter: Duration?)
 
     /// The server went silent for longer than the request's idle timeout. Retry with a
     /// backoff (``RetryingAPIClient``), or show a "try again" state.
