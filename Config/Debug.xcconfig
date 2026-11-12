@@ -15,3 +15,11 @@
 // See docs/running-on-device.md.
 
 #include? "Local.xcconfig"
+
+// The API every networked feature calls, read by Core's AppConfiguration through the
+// APIBaseURL key project.yml's info.properties expands. Debug points at staging; the
+// `.invalid` host is a placeholder that never resolves (RFC 6761) until the app names
+// its own server. `//` starts an xcconfig comment, so the URL's `//` is written
+// `/$()/`: an empty expansion between the slashes. Never a secret here — this file is
+// committed and the value ships in Info.plist (AppConfiguration's doc says where one goes).
+API_BASE_URL = https:/$()/api.staging.invalid/v1

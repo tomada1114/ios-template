@@ -90,11 +90,14 @@ for the area you touched names its own check; the rest are here.
 ## Architecture
 
 ```
-Config/                     # Debug.xcconfig; optionally includes the gitignored
-                            #   Local.xcconfig holding DEVELOPMENT_TEAM (`just run-device`)
+Config/                     # Debug.xcconfig and Release.xcconfig: per-configuration
+                            #   build settings (API_BASE_URL). Debug alone optionally
+                            #   includes the gitignored Local.xcconfig holding
+                            #   DEVELOPMENT_TEAM (`just run-device`)
 App/                        # Thin shell: @main entry point + resources, NO logic.
                             #   The composition root: opens the SwiftData adapter and
-                            #   hands it, as a port, to Core's AppModel
+                            #   hands it, as a port, to Core's AppModel; reads
+                            #   Info.plist once into Core's AppConfiguration
 Packages/MyAppKit/
 ├── Sources/MyAppCore/      # Domain values, view models, ports (protocols), wording,
 │                           #   logging — no UI, persistence, or OS-integration import
@@ -120,6 +123,13 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   `PreferencesStoring`/`UserDefaultsPreferences`, and `SecureStoring`/`KeychainSecureStore`
   are the worked examples. A secret (a token, a key) goes through `SecureStoring`, never
   a preference: `UserDefaults` is unencrypted and backed up in plain text.
+- A value that differs per build configuration (the API base URL: staging in Debug,
+  production in Release) is a build setting in `Config/<Configuration>.xcconfig`,
+  expanded by `project.yml`'s `info.properties` into `Info.plist` under one key, which
+  `App/` reads once and Core's `AppConfiguration` parses; the steps are
+  `.claude/rules/project.md` › Per-configuration values. Never a secret: both files are
+  committed, and `Info.plist` ships readable in every copy of the app — a secret goes
+  through `SecureStoring`.
 - `MyAppCore` never imports SwiftUI, UIKit, AppKit, Cocoa, SwiftData, CoreData, CloudKit,
   UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, WidgetKit, or Security —
   in any spelling. Enforced twice: `.swiftlint.yml`'s `no_ui_import_in_core` and

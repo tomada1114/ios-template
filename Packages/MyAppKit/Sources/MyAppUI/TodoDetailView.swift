@@ -70,6 +70,8 @@ public struct TodoDetailView: View {
 
             LabeledContent {
                 Text(item.createdAt, format: .dateTime)
+                    // LaunchTests' accessibility audit names this element in an exception.
+                    .accessibilityIdentifier("createdDate")
             } label: {
                 Text(TodoDetailStrings.created)
             }

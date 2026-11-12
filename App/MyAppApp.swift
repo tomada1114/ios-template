@@ -27,7 +27,9 @@ private struct SceneRoot: View {
 /// `MyAppPlatform` adapters and hands them, as ports, to Core's `AppModel`, which builds
 /// every view model over them — so nothing below `App/` depends on which store answers,
 /// and `App/` decides nothing but which adapter each port gets
-/// (the `designing-core-logic` skill's `references/view-models.md`).
+/// (the `designing-core-logic` skill's `references/view-models.md`). It also reads this
+/// build's `AppConfiguration` from `Info.plist`, once, and builds the `APIClient` over
+/// `URLSessionHTTPClient` at the base URL that configuration names.
 @main
 struct MyAppApp: App {
     /// The launch argument `LaunchUITests` passes: an in-memory store and a scratch
@@ -52,6 +54,12 @@ struct MyAppApp: App {
         repository: Self.makeRepository(),
         preferences: Self.makePreferences(),
     )
+
+    /// The client every networked feature's Core service is built over. No feature calls
+    /// an API yet, so nothing reads it: the first one passes it to `AppModel` as a new
+    /// initializer parameter. It is a stored property, not a lazy `static`, so the
+    /// configuration is parsed at every launch and a misconfigured build fails there.
+    private let api = Self.makeAPIClient()
 
     var body: some Scene {
         WindowGroup {
@@ -80,6 +88,26 @@ struct MyAppApp: App {
             // `makeContainer` has logged the failure; the null object is the handling.
             return UnavailableTodoRepository()
         }
+    }
+
+    /// The API client at this build's base URL (`Config/Debug.xcconfig` or
+    /// `Config/Release.xcconfig`). A missing or malformed value is a build
+    /// misconfiguration no user can cause or recover from, so the launch stops on it
+    /// with the key that is wrong, rather than running against no server.
+    private static func makeAPIClient() -> APIClient {
+        let configuration: AppConfiguration
+        do {
+            configuration = try AppConfiguration(infoDictionary: Bundle.main.infoDictionary ?? [:])
+        } catch {
+            // The error names the key, never the value: a value is build input, and the
+            // key is all a reader needs to find the xcconfig line.
+            let key = AppConfiguration.apiBaseURLKey
+            AppLog.network.fault(
+                "Info.plist \(key, privacy: .public) is unusable: \(String(describing: error), privacy: .public)",
+            )
+            fatalError("The build's Info.plist has no usable API base URL: \(error)")
+        }
+        return APIClient(httpClient: URLSessionHTTPClient(), baseURL: configuration.apiBaseURL)
     }
 
     /// The preferences the app runs on: the standard defaults, or — under UI testing — a
