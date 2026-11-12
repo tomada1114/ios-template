@@ -102,10 +102,9 @@ bare client — `RetryingAPIClient(client: apiClient)` — and calls the same `s
 - **A wrapper over `APIClient`, not a decorator over the port.** Every fact a retry is
   decided on already exists one level up: `APIError` has sorted the failure, it carries
   the `Retry-After` wait already parsed, and the `Endpoint` says whether the call may be
-  repeated. A retrying `HTTPClient` would re-read statuses and headers, need a retry
-  flag on `HTTPRequest` (which describes only what the server receives), and break the
-  port's first promise: a 503 is returned as it arrived, which `HTTPClientContract`
-  checks.
+  repeated. A retrying `HTTPClient` would re-read statuses and headers the client reads
+  anyway, and need a retry flag on `HTTPRequest`, which describes only what the server
+  receives. The port stays one request in, one response out.
 - **What is retried.** `timedOut`, `offline`, `server(status:)`, and
   `rateLimited(retryAfter:)`: failures that describe the moment, not the request. Every
   other case is thrown at once; the switch over `APIError` is exhaustive, so a new case

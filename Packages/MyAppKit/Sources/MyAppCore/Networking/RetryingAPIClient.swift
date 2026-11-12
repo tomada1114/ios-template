@@ -8,9 +8,8 @@ import os
 /// ``APIError`` has sorted the failure into "worth another try" and "will fail again",
 /// it carries the `Retry-After` wait already parsed, and the ``Endpoint`` says whether
 /// the call may be repeated. A decorator would re-read status codes and headers the
-/// client reads anyway, need a retry flag on ``HTTPRequest`` — which describes only
-/// what the server receives — and break the port's promise that a 5xx is returned as it
-/// arrived.
+/// client reads anyway, and need a retry flag on ``HTTPRequest``, which describes only
+/// what the server receives.
 ///
 /// - **What is retried:** ``APIError/timedOut``, ``APIError/offline``,
 ///   ``APIError/server(status:)``, and ``APIError/rateLimited(retryAfter:)`` — failures
