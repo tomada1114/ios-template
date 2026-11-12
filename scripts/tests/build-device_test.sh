@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Tests for scripts/build-device.sh: the unsigned Release device build it asks
 # xcodebuild for, and the named failure for a failed build, a build that leaves no
-# linked executable, a stale bundle from an earlier run, and a bad argument.
+# linked executable or no privacy manifest, a stale bundle from an earlier run, and a
+# bad argument.
 #
 # No real build is ever run: `xcodebuild` and `xcbeautify` are stubbed in every case.
 # Each case copies build-device.sh into a fixture root's scripts/ and runs that copy
@@ -24,7 +25,9 @@ make_fixture_root() {
 }
 
 # stub_tools MODE — xcodebuild, run in the fixture root, writes the bundle's Info.plist
-# and then: `ok` links an executable, `noexe` stops there and exits 0, `fail` exits 65.
+# and then: `ok` links an executable and copies PrivacyInfo.xcprivacy, `nomanifest` links
+# the executable but copies no manifest (a project.yml that excludes it), `noexe` stops
+# after the Info.plist and exits 0, `fail` exits 65.
 # xcbeautify passes the build log through.
 stub_tools() {
     export STUB_MODE="$1" STUB_APP_DIR="${APP_DIR}"
@@ -32,7 +35,10 @@ stub_tools() {
     stub_command xcodebuild 'mkdir -p "${STUB_APP_DIR}"
 : >"${STUB_APP_DIR}/Info.plist"
 case "${STUB_MODE}" in
-    ok) printf "#!/bin/sh\n" >"${STUB_APP_DIR}/MyApp"; chmod +x "${STUB_APP_DIR}/MyApp" ;;
+    ok)
+        printf "#!/bin/sh\n" >"${STUB_APP_DIR}/MyApp"; chmod +x "${STUB_APP_DIR}/MyApp"
+        : >"${STUB_APP_DIR}/PrivacyInfo.xcprivacy" ;;
+    nomanifest) printf "#!/bin/sh\n" >"${STUB_APP_DIR}/MyApp"; chmod +x "${STUB_APP_DIR}/MyApp" ;;
     noexe) ;;
     fail) echo "error: stubbed compile failure"; exit 65 ;;
 esac'
@@ -104,6 +110,29 @@ case_stale_bundle_removed() {
     assert_first_stderr_line ERR_BUILD_DEVICE_NO_APP
 }
 
+case_no_privacy_manifest() {
+    local root
+    root=$(make_fixture_root)
+    stub_tools nomanifest
+    capture "${BASH}" "${root}/scripts/build-device.sh" --root "${root}"
+    assert_exit 1
+    assert_first_stderr_line ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST
+    assert_stderr_contains "App/PrivacyInfo.xcprivacy copied to ${APP_DIR}/PrivacyInfo.xcprivacy"
+    assert_stderr_contains "Next: "
+    assert_stdout_not_contains "BUILD-DEVICE OK"
+}
+
+case_stale_privacy_manifest_removed() {
+    local root
+    root=$(make_fixture_root)
+    mkdir -p "${root}/${APP_DIR}"
+    : >"${root}/${APP_DIR}/PrivacyInfo.xcprivacy"
+    stub_tools nomanifest
+    capture "${BASH}" "${root}/scripts/build-device.sh" --root "${root}"
+    assert_exit 1
+    assert_first_stderr_line ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST
+}
+
 case_unknown_argument() {
     local root
     root=$(make_fixture_root)
@@ -120,5 +149,7 @@ run_case "passes THROTTLE_JOBS to xcodebuild as -jobs" case_throttle_jobs
 run_case "a failed build fails ERR_BUILD_DEVICE_FAILED" case_build_failure
 run_case "a build that links no executable fails ERR_BUILD_DEVICE_NO_APP" case_no_executable
 run_case "an earlier run's executable cannot pass a build that links none" case_stale_bundle_removed
+run_case "a bundle without PrivacyInfo.xcprivacy fails ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST" case_no_privacy_manifest
+run_case "an earlier run's manifest cannot pass a build that copies none" case_stale_privacy_manifest_removed
 run_case "an unknown argument fails ERR_BUILD_DEVICE_USAGE" case_unknown_argument
 finish

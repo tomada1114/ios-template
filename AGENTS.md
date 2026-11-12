@@ -153,7 +153,8 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   iPad, no capability or entitlement, no permission prompt or usage-description key, and
   one required-reason declaration in `App/PrivacyInfo.xcprivacy`: `UserDefaults`, reason
   `CA92.1`, which `UserDefaultsPreferences` needs to keep settings such as Hide Completed
-  (no tracking, no collected data; `PrivacyManifestTests`). An app rewrites
+  (no tracking, no collected data; `PrivacyManifestTests`, with `RequiredReasonAPITests`
+  holding every required-reason API the code calls to a declared entry). An app rewrites
   this line when it decides its device family, capabilities, and permissions
   (`starting-an-app`, `integrating-system-apis`), naming the feature that forces each.
 

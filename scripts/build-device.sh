@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the Release app for the iOS device SDK (`iphoneos`), unsigned, and assert the
-# linked executable exists. What `just build-device` runs after regenerating the
+# linked executable and the privacy manifest are in the bundle. What `just build-device` runs after regenerating the
 # project, and what CI's `Test & Coverage Gate` runs through it.
 #
 #   scripts/build-device.sh [--root DIR]
@@ -16,6 +16,11 @@
 # linker writes last, not the Info.plist written early in the build, so a build that
 # stops short cannot pass on what is already there.
 #
+# The bundle must also hold PrivacyInfo.xcprivacy at its root: App Store Connect reads
+# the manifest from there, and PrivacyManifestTests and RequiredReasonAPITests read only
+# the source file, so a `project.yml` edit that drops App/PrivacyInfo.xcprivacy from the
+# app target would pass every other gate and ship an app without one.
+#
 # Tools: xcbeautify comes from the caller's PATH (`just build-device` runs this under
 # `mise exec --`); xcodebuild comes with Xcode.
 #
@@ -26,6 +31,7 @@
 #   ERR_BUILD_DEVICE_USAGE   unknown argument, or a --root DIR that does not exist
 #   ERR_BUILD_DEVICE_FAILED  the Release device build failed
 #   ERR_BUILD_DEVICE_NO_APP  the build exited 0 but left no linked executable
+#   ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST  the bundle holds no PrivacyInfo.xcprivacy
 set -euo pipefail
 
 APP_NAME="MyApp"
@@ -82,5 +88,11 @@ xcodebuild ${JOBS_ARGS[@]+"${JOBS_ARGS[@]}"} \
         "an executable at ${APP_BUNDLE}/${APP_NAME}" \
         "no executable there, though xcodebuild exited 0" \
         "check the scheme's product name in project.yml, then rerun \`just build-device\`"
+
+[ -f "${APP_BUNDLE}/PrivacyInfo.xcprivacy" ] ||
+    fail ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST "the Release device bundle holds no privacy manifest" \
+        "App/PrivacyInfo.xcprivacy copied to ${APP_BUNDLE}/PrivacyInfo.xcprivacy" \
+        "no PrivacyInfo.xcprivacy there" \
+        "keep App/PrivacyInfo.xcprivacy in the app target's sources in project.yml (not excluded), then rerun \`just build-device\`"
 
 echo "BUILD-DEVICE OK: ${APP_BUNDLE}"
