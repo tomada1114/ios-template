@@ -146,12 +146,16 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   `AppLog`, never `print`.
 - A new feature is, in order: domain values, a port only for storage or an OS service
   (with its fake and contract), a view model (`AppModel` builds it), the adapter, the
-  view, an `AppRoute` case with its branch in `RootView`, and `App/` wiring only for a new
-  port. A new remote API is `Endpoint` values sent through `APIClient`, never a new port;
-  a new stored model is a new schema version, never an edit to a shipped one.
+  view, an `AppRoute` case (or, for a sheet, an `AppSheet` case) with its branch in
+  `RootView`, and `App/` wiring only for a new port. A new remote API is `Endpoint`
+  values sent through `APIClient`, never a new port; a new stored model is a new schema
+  version, never an edit to a shipped one.
 - `MyApp.xcodeproj` is generated — edit `project.yml` instead.
 - **App shape:** iPhone and iPad (`TARGETED_DEVICE_FAMILY: "1,2"`), multiple windows on
-  iPad, no capability or entitlement, and no privacy-gated permission. An app rewrites
+  iPad, no capability or entitlement, no permission prompt or usage-description key, and
+  one required-reason declaration in `App/PrivacyInfo.xcprivacy`: `UserDefaults`, reason
+  `CA92.1`, which `UserDefaultsPreferences` needs to keep settings such as Hide Completed
+  (no tracking, no collected data; `PrivacyManifestTests`). An app rewrites
   this line when it decides its device family, capabilities, and permissions
   (`starting-an-app`, `integrating-system-apis`), naming the feature that forces each.
 

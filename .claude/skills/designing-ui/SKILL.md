@@ -6,10 +6,10 @@ description: >
   haptics, motion, copy style, app icon), the values of the DesignTokens scale,
   Liquid Glass and materials on the iOS 27 floor, researching the lock from
   the HIG and Apple's own apps, and why navigation is a Core AppRoute enum with a per-scene
-  NavigationModel and Core-parsed deep links. Use when writing or amending the design
-  lock, changing a DesignTokens value, touching AccentColor.colorset or
-  AppIcon.appiconset, adding custom glass or a material, comparing a screen against the
-  lock, or changing how navigation, tabs, or deep links are structured.
+  NavigationModel, AppSheet sheets, and Core-parsed deep links. Use when writing or
+  amending the design lock, changing a DesignTokens value, touching AccentColor.colorset
+  or AppIcon.appiconset, adding custom glass or a material, comparing a screen against
+  the lock, or changing how navigation, sheets, tabs, or deep links are structured.
 ---
 
 # Designing UI
@@ -25,8 +25,9 @@ any file under `MyAppUI/` or `App/`); the device family and scene model
 Apple's Human Interface Guidelines are the baseline and are not restated. The template's
 own research — every reference, the reference lock, the ledger, and why each token
 has its value — is `docs/design-system.md`, the record the lock's values came from.
-Why navigation is a Core route enum and a per-scene path, how deep links are parsed, and
-what tabs or a split view would change: [references/navigation.md](references/navigation.md).
+Why navigation is a Core route enum and a per-scene path, how sheets are presented, how
+deep links are parsed, and what tabs or a split view would change:
+[references/navigation.md](references/navigation.md).
 
 ## System first, custom by exception
 

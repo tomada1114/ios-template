@@ -215,11 +215,12 @@ A Release build is only launched, not exercised: `just smoke` asserts that it st
 stays alive for ten seconds on a simulator, and nothing more. The one XCUITest target,
 `LaunchUITests/LaunchTests.swift` (`just uitest`), holds two tests:
 `testLaunchedAppAddsOpensHidesAndDeletesAnItem` walks one launch through adding an item,
-opening its detail screen by tap and by deep link (and an unknown item's not-found
-state), completing and hiding it, showing it again, and deleting it in Edit mode, and
-runs Xcode's accessibility audit on the empty list, the list with an item, the detail
-screen, the not-found state, and the All Done state, in light appearance at the default
-text size; `testAFailedToggleOnTheDetailScreenPresentsTheFailureThere` asserts that a
+opening and closing the About sheet, opening the item's detail screen by tap and by deep
+link (and an unknown item's not-found state), completing and hiding it, showing it
+again, and deleting it in Edit mode, and runs Xcode's accessibility audit on the empty
+list, the list with an item, the About sheet, the detail screen, the not-found state,
+and the All Done state, in light appearance at the default text size;
+`testAFailedToggleOnTheDetailScreenPresentsTheFailureThere` asserts that a
 failed save presents its alert over the detail screen. They run on the one simulator
 runtime the pinned Xcode ships, and, like `just smoke`, only in local `just check`,
 never in CI. Dark mode, large text, and every other state go unaudited. Any other UI

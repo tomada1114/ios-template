@@ -66,6 +66,19 @@ struct RetryPolicyIdempotencyTests {
     }
 
     @Test
+    func `a DELETE declared with no body is retried and then returns the empty response`(
+    ) async throws {
+        let endpoint = Endpoint<EmptyResponse>(method: .delete, path: "items/1")
+        let run = await RetryPolicyFixture.run(
+            endpoint,
+            answering: [RetryPolicyFixture.status(503), RetryPolicyFixture.status(204)],
+            waits: 1,
+        )
+        #expect(try run.result.get() == EmptyResponse())
+        #expect(run.requests.map(\.method) == [.delete, .delete])
+    }
+
+    @Test
     func `an endpoint does not opt in unless it says so`() {
         #expect(!Endpoint<RemoteItem>(method: .post, path: "items").isSafeToRepeat)
     }

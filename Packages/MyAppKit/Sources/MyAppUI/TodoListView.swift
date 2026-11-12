@@ -40,6 +40,9 @@ private struct TodoRow: View {
 public struct TodoListView: View {
     @Bindable private var model: TodoListViewModel
     @FocusState private var isDraftFocused: Bool
+    /// What the About button does: `RootView` presents the About sheet through its
+    /// navigation model, which this view never holds.
+    private let showAbout: () -> Void
 
     public var body: some View {
         list
@@ -50,7 +53,8 @@ public struct TodoListView: View {
             .refreshable { await model.load() }
             .task {
                 // Only the first appearance loads; a return to this screen keeps what
-                // is shown, and pull-to-refresh is the explicit way to reload.
+                // is shown. Pull-to-refresh reloads, and so does Core when a window
+                // returns to the foreground (`SceneLifecycleModel`).
                 if model.phase == .idle {
                     await model.load()
                 }
@@ -60,7 +64,12 @@ public struct TodoListView: View {
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         // `.primaryAction` rather than an iOS-only placement: MyAppUI also compiles for
         // macOS.
-        ToolbarItem(placement: .primaryAction) { hideCompletedToggle }
+        // One group, so the two trailing items keep this order rather than whatever
+        // order SwiftUI merges separately declared items in.
+        ToolbarItemGroup(placement: .primaryAction) {
+            hideCompletedToggle
+            aboutButton
+        }
         #if os(iOS)
             // The non-gesture way to delete: Edit mode shows a delete control on every
             // row and reuses `.onDelete`, so a swipe is never the only way. The system
@@ -144,6 +153,19 @@ public struct TodoListView: View {
         .accessibilityIdentifier("hideCompletedToggle")
     }
 
+    /// The button that presents the About sheet. The toolbar shows the glyph alone; the
+    /// title is what VoiceOver reads.
+    private var aboutButton: some View {
+        Button(action: showAbout) {
+            Label {
+                Text(AboutStrings.show)
+            } icon: {
+                Image(systemName: "info.circle")
+            }
+        }
+        .accessibilityIdentifier("aboutButton")
+    }
+
     private var addBar: some View {
         HStack(spacing: DesignTokens.Spacing.medium) {
             TextField(
@@ -199,10 +221,12 @@ public struct TodoListView: View {
         )
     }
 
-    /// Creates the view over `model`, which the caller owns. The caller also provides the
-    /// navigation stack a row's link pushes onto (`RootView`).
-    public init(model: TodoListViewModel) {
+    /// Creates the view over `model`, which the caller owns, calling `showAbout` when the
+    /// About button is tapped. The caller also provides the navigation stack a row's link
+    /// pushes onto (`RootView`).
+    public init(model: TodoListViewModel, showAbout: @escaping () -> Void) {
         self.model = model
+        self.showAbout = showAbout
     }
 }
 
@@ -215,7 +239,11 @@ public struct TodoListView: View {
         preferences: PreviewPreferences,
     ) -> some View {
         NavigationStack {
-            TodoListView(model: TodoListViewModel(repository: repository, preferences: preferences))
+            TodoListView(
+                model: TodoListViewModel(repository: repository, preferences: preferences),
+            ) {
+                // Nothing to present: a preview has no navigation model.
+            }
         }
     }
 
