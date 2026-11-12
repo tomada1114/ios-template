@@ -19,9 +19,6 @@ final class LaunchTests: XCTestCase {
     /// with the scheme `project.yml` registers.
     private static let scheme = "my-app"
 
-    /// The prefix of a row toggle's identifier; the rest is the item's `UUID`.
-    private static let rowTogglePrefix = "toggle-"
-
     /// One launch walks every scenario in turn, because each relaunch costs tens of
     /// seconds on CI (#57). The steps are ordered so none undoes what a later one needs:
     /// audit the empty list, add, audit the list, open the About sheet, audit it and close
@@ -83,18 +80,22 @@ final class LaunchTests: XCTestCase {
             }
     }
 
-    /// A failure presents over whichever screen is on top (#78): a toggle that fails on
-    /// the pushed detail screen shows its alert there, and dismissing it leaves the
-    /// detail screen showing the item unchanged.
+    /// A failure presents over whichever screen is on top (#78), and over a sheet that is
+    /// up (#124): a toggle that fails on the pushed detail screen shows its alert there,
+    /// and dismissing it leaves the detail screen showing the item unchanged; a toggle on
+    /// the list whose failure arrives once the About sheet is up shows its alert over the
+    /// sheet, and dismissing it leaves the sheet up.
     ///
     /// A launch of its own, because `-failUpdates` (Debug-only, `App/MyAppApp.swift`)
     /// fails every toggle for the whole launch, and the walk above needs one to succeed.
+    /// `-delayFailedUpdates` makes each failure arrive seconds after the tap, the time the
+    /// sheet step needs to open the sheet over a save still in flight.
     @MainActor
-    func testAFailedToggleOnTheDetailScreenPresentsTheFailureThere() {
+    func testAFailedTogglePresentsTheFailureOverTheDetailScreenAndOverASheet() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = [
-            "-uiTesting", "-failUpdates",
+            "-uiTesting", "-failUpdates", "-delayFailedUpdates",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
@@ -102,6 +103,9 @@ final class LaunchTests: XCTestCase {
         XCTContext.runActivity(named: "Add an item") { _ in addAnItem(in: app) }
         XCTContext.runActivity(named: "Fail a toggle on the item's detail") { _ in
             failATogglePresentsTheFailureOnTheDetail(in: app)
+        }
+        XCTContext.runActivity(named: "Fail a toggle that lands while the About sheet is up") { _ in
+            failATogglePresentsTheFailureOverTheAboutSheet(in: app)
         }
     }
 
@@ -119,7 +123,7 @@ final class LaunchTests: XCTestCase {
 
         let alert = app.alerts["Something Went Wrong"]
         XCTAssertTrue(
-            alert.waitForExistence(timeout: Timeout.elementAppears),
+            alert.waitForExistence(timeout: Timeout.delayedFailure),
             "a toggle that fails on the detail screen should present the failure there",
         )
         XCTAssertTrue(
@@ -134,22 +138,10 @@ final class LaunchTests: XCTestCase {
             "Mark as Done",
             "the item should stay open after its save failed",
         )
-    }
-
-    @MainActor
-    private func addAnItem(in app: XCUIApplication) {
-        let item = app.staticTexts["Buy milk"]
-        let field = app.textFields["newItemField"]
+        app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(
-            field.waitForExistence(timeout: Timeout.launch),
-            "the list should show its new-item field",
-        )
-        focus(field)
-        field.typeText("Buy milk")
-        app.buttons["addButton"].tap()
-        XCTAssertTrue(
-            item.waitForExistence(timeout: Timeout.elementAppears),
-            "the added item should appear in the list",
+            app.textFields["newItemField"].waitForExistence(timeout: Timeout.elementAppears),
+            "the back button should return to the list",
         )
     }
 
@@ -356,5 +348,29 @@ extension LaunchTests {
             "Return on the empty field should dismiss the keyboard",
         )
         try auditAccessibility(of: app)
+    }
+}
+
+/// What both launches and the sheet steps (`LaunchTests+AboutSheet.swift`) share, outside
+/// the class body so they can be internal.
+extension LaunchTests {
+    /// The prefix of a row toggle's identifier; the rest is the item's `UUID`.
+    static let rowTogglePrefix = "toggle-"
+
+    @MainActor
+    func addAnItem(in app: XCUIApplication) {
+        let item = app.staticTexts["Buy milk"]
+        let field = app.textFields["newItemField"]
+        XCTAssertTrue(
+            field.waitForExistence(timeout: Timeout.launch),
+            "the list should show its new-item field",
+        )
+        focus(field)
+        field.typeText("Buy milk")
+        app.buttons["addButton"].tap()
+        XCTAssertTrue(
+            item.waitForExistence(timeout: Timeout.elementAppears),
+            "the added item should appear in the list",
+        )
     }
 }

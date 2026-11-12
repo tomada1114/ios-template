@@ -111,10 +111,12 @@ design-lock decision, never a per-screen one.
   `@State`. A sheet's own title bar and close button come from a plain
   `NavigationStack { … }` inside it (`AboutView`), which pushes nothing; its close
   button is the system's `Button(role: .close)`.
-- A failure is presented once, from `RootView`, outside the stack, with
-  `.failureAlert(_:dismiss:)`: an alert on a screen inside the stack does not present
-  while another screen is pushed over it (#78). A feature's failure type adopts Core's
-  `PresentableFailure`; a second feature adds one more `.failureAlert` in `RootView`.
+- A failure is presented from `RootView` only, with `.failureAlert(_:dismiss:)`: once
+  outside the stack, since an alert on a screen inside the stack does not present while
+  another screen is pushed over it (#78), and once on the `sheet(for:)` content, since
+  nothing presents from a view that is already presenting a sheet (#124). A feature's
+  failure type adopts Core's `PresentableFailure`; a second feature adds its
+  `.failureAlert` in both places in `RootView`.
 - Sheet sizing (`.presentationDetents`) only as the lock says.
 
 ## Size classes, Dynamic Type, safe areas, keyboard

@@ -46,6 +46,11 @@ struct MyAppApp: App {
         /// fails (`UpdateFailingTodoRepository`), so a failure alert can be seen and
         /// UI-tested. Release builds neither read the argument nor contain the type.
         private static let failUpdatesArgument = "-failUpdates"
+
+        /// With `-failUpdates`: each failure arrives this long after the save began, so
+        /// `LaunchUITests` can open a sheet over a save still in flight.
+        private static let delayFailedUpdatesArgument = "-delayFailedUpdates"
+        private static let failedUpdateDelaySeconds = 8
     #endif
 
     /// Owned here, in `@State`, so the model outlives any one scene's view tree and every
@@ -79,8 +84,13 @@ struct MyAppApp: App {
             let container = try PersistenceStore.makeContainer(storage: storage)
             let repository = SwiftDataTodoRepository(modelContainer: container)
             #if DEBUG
-                if ProcessInfo.processInfo.arguments.contains(failUpdatesArgument) {
-                    return UpdateFailingTodoRepository(wrapping: repository)
+                let arguments = ProcessInfo.processInfo.arguments
+                if arguments.contains(failUpdatesArgument) {
+                    let delays = arguments.contains(delayFailedUpdatesArgument)
+                    return UpdateFailingTodoRepository(
+                        wrapping: repository,
+                        failureDelay: delays ? .seconds(failedUpdateDelaySeconds) : .zero,
+                    )
                 }
             #endif
             return repository

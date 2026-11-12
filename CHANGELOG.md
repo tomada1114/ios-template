@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A failure that arrives while a sheet is up now presents over the sheet: `RootView`
+  attaches the same failure alert to the sheet's content, since SwiftUI presents no
+  alert from a view that is already presenting a sheet. Dismissing it leaves the sheet
+  up. The failure launch test opens the About sheet over a failing toggle still in
+  flight (a new Debug-only `-delayFailedUpdates` argument holds its failure back eight
+  seconds) and asserts the alert presents over the sheet.
 - The app now ships `App/PrivacyInfo.xcprivacy`, which declares the `UserDefaults`
   required-reason API (`NSPrivacyAccessedAPICategoryUserDefaults`, reason `CA92.1`)
   that `UserDefaultsPreferences` calls, with no tracking and no collected data, so an

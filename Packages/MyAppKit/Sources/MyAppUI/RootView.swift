@@ -3,7 +3,8 @@ import SwiftUI
 
 /// One window's navigation root: the stack every screen is pushed onto, its root screen,
 /// the one place a route becomes a screen, the one place a sheet is presented, and the
-/// one place a failure is presented (`failureAlert(_:dismiss:)`).
+/// one place a failure is presented (`failureAlert(_:dismiss:)`) — over the top screen,
+/// or over the sheet while one is up.
 ///
 /// The app's only `NavigationStack(path:)`, its only
 /// `navigationDestination(for: AppRoute.self)`, and its only `.sheet(item:)` live here, so
@@ -37,11 +38,17 @@ public struct RootView: View {
         // Outside the stack, like the alert below, so it presents whichever screen is on
         // top.
         .sheet(item: presentedSheet) { sheet in
+            // SwiftUI presents nothing from a view already presenting a sheet, so while
+            // one is up the failure presents from the sheet's content instead (#124).
             self.sheet(for: sheet)
+                .failureAlert(app.todoList.failure) { app.todoList.dismissFailure() }
         }
         // Outside the stack, so a failure presents over whichever screen is on top: a
         // toggle on the pushed detail screen is the list's, and fails as the list's.
-        .failureAlert(app.todoList.failure) { app.todoList.dismissFailure() }
+        // Withheld while a sheet is up, so one failure is never bound to two alerts.
+        .failureAlert(navigation.sheet == nil ? app.todoList.failure : nil) {
+            app.todoList.dismissFailure()
+        }
     }
 
     /// ``NavigationModel/sheet``, written back only through its action. SwiftUI writes

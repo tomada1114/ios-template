@@ -3,10 +3,12 @@ import SwiftUI
 
 /// Presents a ``MyAppCore/PresentableFailure`` as an alert while one is set.
 ///
-/// The app's only alert. `RootView` applies it once, outside its `NavigationStack`, so a
-/// failure presents over whichever screen is on top. Attached to the root screen inside
-/// the stack instead, a failure on a pushed screen showed nothing until the user went
-/// back (#78).
+/// The app's only alert. `RootView` applies it outside its `NavigationStack`, so a
+/// failure presents over whichever screen is on top, and on its sheet's content, so a
+/// failure presents over a sheet that is up. Attached to the root screen inside the stack
+/// instead, a failure on a pushed screen showed nothing until the user went back (#78);
+/// attached only outside the stack, a failure while a sheet was up did not show over it
+/// (#124).
 private struct FailureAlert<Failure: PresentableFailure>: ViewModifier {
     let failure: Failure?
     let dismiss: () -> Void
@@ -42,9 +44,9 @@ extension View {
     /// Presents `failure` as an alert while it is non-`nil`, and calls `dismiss` when the
     /// person dismisses it — the view model's action that clears the failure.
     ///
-    /// Apply it once per navigation root, outside the stack, never on a screen inside it:
-    /// an alert on a screen that is not on top does not present. Internal: `RootView` is
-    /// the one caller.
+    /// Apply it per navigation root, outside the stack and on the sheet's content, never on
+    /// a screen inside the stack: an alert on a screen that is not on top does not present.
+    /// Internal: `RootView` is the one caller.
     func failureAlert(
         _ failure: (some PresentableFailure)?,
         dismiss: @escaping () -> Void,

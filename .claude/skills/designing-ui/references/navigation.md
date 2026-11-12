@@ -70,6 +70,23 @@ dismisses the sheet: a write to `path` that changes it (its `didSet`), and the a
 person would close the sheet onto a stack they did not see move. A link `open(_:)`
 rejects leaves both the path and the sheet alone.
 
+A failure presents over a sheet that is up. SwiftUI presents nothing from a view that is
+already presenting a sheet, so `RootView`'s `.failureAlert` outside the stack cannot show
+while a sheet is up; the `sheet(for:)` content therefore carries the same
+`.failureAlert`, over the same view model's failure and its `dismissFailure()`, and the
+root's alert is handed no failure while a sheet is up, so one failure is never bound to
+two alerts at once. While a
+sheet is up the failure shows over it, at once, wherever the action that failed began —
+a save still in flight from the list when the sheet opened, or the first sheet whose own
+action can fail — and dismissing it leaves the sheet up; with no sheet up, the root's
+alert shows it. The failure is not deferred until the sheet closes: a sheet that edits
+something has to show its own failure while the person is still looking at it, and a
+failure held back would show over a screen that no longer explains it. Every sheet gets
+this from the one `sheet(for:)` call site, so a new sheet adds nothing for it.
+`LaunchTests` pins it: under `-failUpdates -delayFailedUpdates` (Debug-only,
+`App/MyAppApp.swift`) a toggle's failure arrives seconds after the tap, the test opens
+the About sheet over the save still in flight, and the alert presents over the sheet.
+
 Full-screen covers, popovers, and a sheet presented from inside a sheet are not modeled.
 
 ## Deep links are parsed in Core

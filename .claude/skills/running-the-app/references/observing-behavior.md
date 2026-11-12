@@ -92,8 +92,10 @@ SIMCTL_CHILD_PROBE_STATE=known-state \
   argument through `XCUIApplication.launchArguments`.
 - `-failUpdates` (Debug builds only) wraps the store so every save that replaces a
   stored item — a toggle — fails, while adds still succeed: add an item, toggle it, and
-  the failure alert shows over whichever screen is on top. `LaunchTests` uses it to
-  prove exactly that; a Release build ignores it.
+  the failure alert shows over whichever screen is on top. Add `-delayFailedUpdates`
+  and each failure arrives eight seconds after the tap, time enough to open the About
+  sheet over the save in flight and see the alert present over the sheet. `LaunchTests`
+  uses both to prove exactly that; a Release build ignores them.
 - An environment variable reaches the app only with the `SIMCTL_CHILD_` prefix, which
   `simctl` strips: the line above starts the app with `PROBE_STATE=known-state`, which
   `ProcessInfo` reads. Nothing in the template reads it; it proves the channel.

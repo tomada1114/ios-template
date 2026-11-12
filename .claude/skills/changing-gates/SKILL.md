@@ -203,8 +203,9 @@ link (and an unknown item's not-found state), completing and hiding it, showing 
 again, and deleting it in Edit mode, and runs Xcode's accessibility audit on the empty
 list, the list with an item, the About sheet, the detail screen, the not-found state,
 and the All Done state, in light appearance at the default text size;
-`testAFailedToggleOnTheDetailScreenPresentsTheFailureThere` asserts that a
-failed save presents its alert over the detail screen. They run on the one simulator
+`testAFailedTogglePresentsTheFailureOverTheDetailScreenAndOverASheet` asserts that a
+failed save presents its alert over the detail screen, and over the About sheet when the
+failure arrives while the sheet is up. They run on the one simulator
 runtime the pinned Xcode ships, and, like `just smoke`, only in local `just check`,
 never in CI. Dark mode, large text, and every other state go unaudited. Any other UI
 behavior, and every `MyAppUI` code path, is outside the coverage floor and asserted by
