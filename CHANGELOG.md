@@ -33,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plan's last schema. `StoreFiles` in `MyAppPlatformTests` writes a store with a given
   schema version to a temporary file and reopens it through the production container:
   the harness the first `AppSchemaV2`'s migration test is written in.
+- `RetryingAPIClient`, a Core service over `APIClient` that sends a failed call again:
+  only a timeout, no connection, a 500, 502, 503, or 504, or a 429; after a jittered
+  exponential backoff, or exactly the 429's `Retry-After` (a wait longer than the cap is
+  not retried at all); never a `POST` or `PATCH` unless its
+  `Endpoint` is declared `isSafeToRepeat`; and never after cancellation, which ends a
+  backoff wait at once. Its numbers are `Tuning.default.retry`, a `RetryPolicy` — the
+  first tunables in Core's one `Tuning` type. It waits on an injected
+  `any Clock<Duration>` and draws jitter from an injected generator, so the
+  `RetryPolicy` suites cover every wait with `ManualClock` and the seeded `SplitMix64`
+  (both new in `MyAppTestSupport`) and no real sleeping.
 - A `SecureStoring` port for secrets, with a Keychain adapter (`KeychainSecureStore`: a
   generic-password item per `SecureKeys` constant, the bundle identifier as its service,
   `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, no entitlement), the

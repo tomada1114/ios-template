@@ -100,5 +100,52 @@ func loadItem(using client: APIClient) async {
   throws `missing` or `malformed`, and `App/` stops the launch on either, since only a
   broken build produces one. How to write the value — the `//` escape, `.invalid`
   placeholders, no secrets — is `.claude/rules/project.md` › Per-configuration values.
-  Auth, retries, caching, and pagination are services or decisions over this one, not
-  options inside it.
+  Retries are `RetryingAPIClient`, below; auth, caching, and pagination are services or
+  decisions over this one, not options inside it.
+
+## Retrying a call
+
+`RetryingAPIClient` in `MyAppCore/Networking` sends an `Endpoint` through an `APIClient`
+and tries a failed call again. A feature that wants retries is handed one instead of the
+bare client — `RetryingAPIClient(client: apiClient)` — and calls the same `send(_:)`.
+
+- **A wrapper over `APIClient`, not a decorator over the port.** Every fact a retry is
+  decided on already exists one level up: `APIError` has sorted the failure, it carries
+  the `Retry-After` wait already parsed, and the `Endpoint` says whether the call may be
+  repeated. A retrying `HTTPClient` would re-read statuses and headers the client reads
+  anyway, and need a retry flag on `HTTPRequest`, which describes only what the server
+  receives. The port stays one request in, one response out.
+- **What is retried.** `timedOut`, `offline`, `rateLimited(retryAfter:)`, and
+  `server(status:)` for a 500, 502, 503, or 504: failures that describe the moment, not
+  the request. Every other case is thrown at once — a 501, a 505, and any other 5xx
+  included, since they say the server will not do this at all. The switch over
+  `APIError` is exhaustive, so a new case must be sorted before it compiles.
+- **How long it waits.** A 429's `Retry-After` exactly; otherwise `baseDelay`
+  multiplied once per earlier retry, held to `maxDelay`, then shortened by a random
+  share of `jitter`. Jitter only shortens, so the cap always holds. A `Retry-After`
+  longer than `maxDelay` is never shortened to fit — coming back early would only be
+  refused again — so that 429 is thrown at once and the feature shows the rate limit. A
+  5xx's `Retry-After` is not read: `APIError.server(status:)` carries no wait. A policy
+  with a negative delay, or a multiplier that is not a finite number of at least 1,
+  still waits within zero through `maxDelay`.
+- **A non-idempotent call is sent once.** `POST` and `PATCH`
+  (`HTTPRequest.Method.isIdempotent`) are not repeated — a timed-out `POST` may have
+  arrived — unless the endpoint is declared with `isSafeToRepeat: true`, which only the
+  feature that knows the server deduplicates it (an idempotency key) can say.
+- **A repeat can get a different answer.** Idempotent means the server ends in the same
+  state, not that it answers the same way. When a `DELETE` or a `PUT` arrived and only
+  its response was lost, the retry meets what the first attempt left: a repeated
+  `DELETE` can answer 404 (`notFound`), a repeated conditional or create-style `PUT` a
+  409 or 412 (`unexpectedStatus`). Neither is retried, so the feature sees it. A
+  feature that deletes through this client treats `notFound` as done, not as a failure,
+  and one that sends such a `PUT` re-reads the resource before reporting a conflict.
+- **Cancellation ends it.** `cancelled` is never retried, and a task cancelled during a
+  backoff wait gets `cancelled` at once rather than after the wait.
+- **What it logs.** One `.debug` line per retry under `AppLog.network`: the attempt, the
+  `APIError` case, and the wait, all `.public` — never a URL or a body.
+- **Tunables and tests.** The numbers are `Tuning.default.retry`, a `RetryPolicy`: three
+  attempts, from half a second, doubling, half jitter, a 30-second cap. The client takes
+  a `Tuning`, an `any Clock<Duration>`, and a generator, so the `RetryPolicy…Tests`
+  suites hand it `ManualClock` and `SplitMix64` (`Tests/MyAppTestSupport`) and assert
+  every wait without one passing (`.claude/rules/core.md` › Inject what Core would read
+  from the world).
