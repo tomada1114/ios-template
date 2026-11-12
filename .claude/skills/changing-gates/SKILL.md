@@ -35,7 +35,7 @@ own. `scripts/lint.sh` is the single lint script: `just lint`
 job all call it. A new check is therefore added to `scripts/lint.sh`, never inlined as a
 command into `justfile`, `.githooks/pre-commit`, or a workflow `run:` step. The same
 shape holds elsewhere: CI's `test` job calls `scripts/coverage.sh` (what `just test`
-runs) and then `just build`, and its `lint` job calls `scripts/tests/run.sh` and
+runs) and then `just build` and `just build-device`, and its `lint` job calls `scripts/tests/run.sh` and
 `scripts/checks/run-all.sh` (what `just test-scripts` and `just check-harness` run).
 The simulator recipes (`uitest-build`, `uitest-run`, `smoke`, `test-ios`) run only in
 local `just check`, when `scripts/simulator-relevant.sh` (also what CI's `changes` job
@@ -198,23 +198,26 @@ A Release build is only launched, not exercised: `just smoke` asserts that it st
 stays alive for ten seconds on a simulator, and nothing more. The one XCUITest target,
 `LaunchUITests/LaunchTests.swift` (`just uitest`), holds two tests:
 `testLaunchedAppAddsOpensHidesAndDeletesAnItem` walks one launch through adding an item,
-opening its detail screen by tap and by deep link (and an unknown item's not-found
-state), completing and hiding it, showing it again, and deleting it in Edit mode, and
-runs Xcode's accessibility audit on the empty list, the list with an item, the detail
-screen, the not-found state, and the All Done state, in light appearance at the default
-text size; `testAFailedToggleOnTheDetailScreenPresentsTheFailureThere` asserts that a
+opening and closing the About sheet, opening the item's detail screen by tap and by deep
+link (and an unknown item's not-found state), completing and hiding it, showing it
+again, and deleting it in Edit mode, and runs Xcode's accessibility audit on the empty
+list, the list with an item, the About sheet, the detail screen, the not-found state,
+and the All Done state, in light appearance at the default text size;
+`testAFailedToggleOnTheDetailScreenPresentsTheFailureThere` asserts that a
 failed save presents its alert over the detail screen. They run on the one simulator
 runtime the pinned Xcode ships, and, like `just smoke`, only in local `just check`,
 never in CI. Dark mode, large text, and every other state go unaudited. Any other UI
 behavior, and every `MyAppUI` code path, is outside the coverage floor and asserted by
 no gate. Code under `#if os(iOS)` in the Swift package is tested only by local `just
 test-ios` (inside `just check`) — `swift test` builds the package for the host Mac — and
-the coverage floor never sees it. CI records only coverage and the Debug compile: a pull
+the coverage floor never sees it. CI records only coverage, the Debug simulator compile,
+and the unsigned Release compile for the device SDK (`just build-device`): a pull
 request whose author skipped `just check` reaches review with no simulator evidence.
 Nothing re-verifies `main` on macOS after a merge, so two pull requests that pass
 separately can break `main` together. Nothing runs the app or the package tests on a
-physical device, or on any iOS release but the one the pinned Xcode ships: the local
-simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,
+physical device (`just build-device` only compiles and links Release for one, unsigned;
+nothing installs it), or on any iOS release but the one the pinned Xcode ships: the
+local simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,
 entitlements, and signing settings are unchecked. Each is a place a change can be wrong
 while every gate passes; a gate proposed to close one is a real gate change and belongs
 in the PR as one. What every local layer misses — a skipped hook, an edit on GitHub, a

@@ -58,8 +58,8 @@ to the null object when the container will not open (`persisting-data`), and bui
 `AppModel` in `@State`, handing it the adapters as ports through its initializer. Each
 scene's root (`SceneRoot`) owns that scene's `NavigationModel` and
 `SceneLifecycleModel`, forwards opened URLs to the first (`.onOpenURL`) and its scene
-phase to the second ("Lifecycle", below), and renders `MyAppUI`'s `RootView` over the app model and the
-navigation model. It also parses `Bundle.main.infoDictionary` once into Core's
+phase to the second ("Lifecycle", below), and renders `MyAppUI`'s `RootView` over the
+app model and the navigation model. It also parses `Bundle.main.infoDictionary` once into Core's
 `AppConfiguration` and builds the `APIClient` at its base URL (the
 `integrating-system-apis` skill's `references/http-client.md`): the parsing is Core's,
 so `App/` hands over a dictionary and decides nothing about it. `App/` chooses adapters
@@ -77,9 +77,9 @@ is shaped that way:
   fakes in `MyAppTestSupport` and the coverage floor sees the wiring. Factory closures
   assembled in `App/` were the alternative: they would leave the wiring where no
   coverage-gated test reaches it.
-- **It is app-level, never per scene.** Per-window state — the navigation path — stays
-  in the scene's own `NavigationModel` (the `designing-ui` skill's
-  `references/navigation.md`), and so does where the window stands in its lifecycle:
+- **It is app-level, never per scene.** Per-window state — the navigation path and the
+  presented sheet — stays in the scene's own `NavigationModel` (the `designing-ui`
+  skill's `references/navigation.md`), and so does where the window stands in its lifecycle:
   `AppModel` builds a scene's `SceneLifecycleModel` (`makeSceneLifecycleModel()`) over
   the shared list, and the scene keeps it ("Lifecycle", below).
 

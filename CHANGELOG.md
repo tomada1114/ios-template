@@ -19,6 +19,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and no other refresh is in flight, so a launch loads once and several windows
   returning together fetch once; it shows no progress, and a failed refresh keeps the
   items and shows no alert. Lifecycle decisions log under the new `lifecycle` category.
+- `just build-device`: an unsigned Release build for the iOS device SDK
+  (`generic/platform=iOS`, `CODE_SIGNING_ALLOWED=NO`) that asserts the `.app` exists,
+  so a device-only compile break or a Release device failure (asset catalog, linker)
+  no longer reaches `main` unseen. It runs in `just check`'s simulator-relevant tail and
+  as a step of CI's `Test & Coverage Gate`; nothing is signed, archived, or installed.
+- Sheets as Core state: an `AppSheet` enum and a read-only `NavigationModel.sheet` with
+  `present(_:)`, `dismissSheet()`, and `dismissSheet(_:)`, which dismisses only the sheet
+  it names. `RootView` presents it with its one `.sheet(item:)`, whose binding acts only
+  on a write of `nil`, and the list's toolbar gains an About button, after Hide
+  Completed, that presents the worked sheet, `AboutView` (Core wording and the system's
+  close button). Any change to the path, a push, returning to the root, or opening an
+  accepted deep link dismisses a sheet that is up; a rejected link leaves it.
+  The launch walk opens, audits, and closes the About sheet.
+- `EmptyResponse`, the response type of an `Endpoint` whose 2xx answer has no body (a
+  `204 No Content`, a bodiless `200` from a `DELETE` or `PUT`). `APIClient` returns it
+  on any 2xx without decoding, whatever the body, so a server that later adds one does
+  not break the call; through `RetryingAPIClient` too. For any other response type, a
+  2xx body that does not decode, an empty one included, still throws
+  `APIError.decoding`.
 - A per-configuration API base URL: `API_BASE_URL` in `Config/Debug.xcconfig` and a new
   `Config/Release.xcconfig` (placeholder `.invalid` hosts, the `//` written `/$()/`),
   expanded into `Info.plist` under `APIBaseURL` and parsed by Core's `AppConfiguration`,

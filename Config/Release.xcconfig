@@ -1,8 +1,10 @@
 // Release build settings for the MyApp target, wired in by project.yml's configFiles.
 //
 // It never includes Config/Local.xcconfig: that file holds one person's development
-// team for `just run-device`, which builds Debug, and no Release route to a device
-// exists (Config/Debug.xcconfig). An app that adds distribution revisits this.
+// team for `just run-device`, which builds Debug. The one Release device build,
+// `just build-device`, compiles and links for the iOS device SDK with
+// CODE_SIGNING_ALLOWED=NO, so it takes no team and is never signed or installed: no
+// signed Release route to a device exists. An app that adds distribution revisits this.
 
 // The production API, read by Core's AppConfiguration under the APIBaseURL key. The
 // `.invalid` host is a placeholder that never resolves (RFC 6761) until the app names
