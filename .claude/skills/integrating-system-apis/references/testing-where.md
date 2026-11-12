@@ -27,6 +27,12 @@ states the four kinds; this is the same split applied to a system API.
   `bundleProxyForCurrentProcess is nil` without an app bundle (checked 2026-09-30).
   When a host test crashes like that, the test moves behind `#if os(iOS)`; it is never
   disabled (`AGENTS.md` › "Security and human approval").
+- **`just test-ios` has no app around it either.** It runs the package's tests in a
+  bare runner on the Simulator, so a framework that wants an app's identity refuses it
+  as the host does: every `SecItem` call answers `errSecMissingEntitlement` there. For
+  such an adapter — `KeychainSecureStore` is the shipped one — `just test` holds what
+  needs no framework (its status mapping, the contract against the fake) and the rest is
+  the bottom row: the adapter called from `App/`, observed in the running app.
 - **The Simulator answers more than it seems.** `xcrun simctl privacy` grants or revokes
   the services its help lists, `xcrun simctl push` delivers a notification payload, and
   `xcrun simctl openurl` opens a link — so a permission's denied path and a

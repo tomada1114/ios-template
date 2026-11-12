@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A `SecureStoring` port for secrets, with a Keychain adapter (`KeychainSecureStore`: a
+  generic-password item per `SecureKeys` constant, the bundle identifier as its service,
+  `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, no entitlement), the
+  `InMemorySecureStore` fake, and `SecureStoringContract`. The contract runs against the
+  fake under `just test`; no gate runs it against the Keychain, which refuses a test
+  runner on the host and on the Simulator, so the adapter is verified in the running
+  app. `MyAppCore` may no longer import `Security` or call `SecItem*`.
+
 ### Changed
 
 - The repository no longer depends on the owner's user-level skills. `designing-ui`

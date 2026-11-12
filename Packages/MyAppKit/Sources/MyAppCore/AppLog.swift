@@ -42,6 +42,11 @@ public enum AppLog {
     /// itself is never logged.
     public static let preferences = Logger(subsystem: subsystem, category: "preferences")
 
+    /// The secure-storage concern: the ``SecureStoring`` adapter's failed Keychain calls.
+    /// The operation, the key's name, and the status code are `.public`; a secret is
+    /// never logged, at any privacy level.
+    public static let secureStorage = Logger(subsystem: subsystem, category: "secureStorage")
+
     /// The navigation concern: ``NavigationModel`` rejecting a deep link. A link's scheme
     /// and host are `.public`; its path and query are never logged, since a URL can carry
     /// user data.

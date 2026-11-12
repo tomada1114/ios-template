@@ -25,8 +25,10 @@ Four kinds of test, split by what is under test:
    `Tests/MyAppPlatformTests`.** `swift test` builds the package for macOS, where that
    test compiles away; `just test-ios` runs it on the iOS Simulator (inside local `just check`; no CI
    job runs it). What only a real permission prompt, a
-   device, or push delivery shows is not a test at all: the pull request carries the
-   evidence (a screenshot, the log lines from `just logs`).
+   device, push delivery, or an app process shows is not a test at all: the pull request
+   carries the evidence (a screenshot, the log lines from `just logs`). The Keychain is
+   the shipped case of the last — it refuses a test runner on the host and on the
+   Simulator — so `KeychainSecureStoreTests` holds only the adapter's status mapping.
 4. **What only the assembled app shows → `LaunchUITests`.** The one XCTest target holds
    the launch guarantee: the app starts on the iOS Simulator, shows its list, and the
    core interaction — adding an item — round-trips through `App/`'s real wiring
@@ -117,6 +119,9 @@ protocol, not over either implementation, and every clause it checks is one the 
 - `MyAppPlatformTests/SwiftDataTodoRepositoryTests.swift` runs the same function against
   `SwiftDataTodoRepository` with an in-memory store, beside the adapter-only cases, under
   `just test` and in CI.
+- One adapter cannot take its contract run: `KeychainSecureStore`, whose framework
+  refuses every test runner. `SecureStoringContract` still runs against the fake and
+  its broken implementations; the adapter's evidence is the running app's.
 
 ## Edge Cases (always consider these)
 

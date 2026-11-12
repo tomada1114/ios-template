@@ -84,6 +84,7 @@ for the area you touched names its own check; the rest are here.
 | A workflow under `.github/workflows/` | `just lint` (actionlint), then `just check-harness` |
 | Markdown, including a rule under `.claude/rules/` | `just lint` (its `typos` spell-check) |
 | `.github/labels.yml`, or an issue form under `.github/ISSUE_TEMPLATE/` | `just lint` (its `typos` spell-check), then `just check-harness` (every applied label declared, once); `scripts/tests/sync-labels_test.sh` for `scripts/sync-labels.sh` itself |
+| `KeychainSecureStore`, or anything else that stores a Keychain item | `just test` for the fake's `SecureStoringContract` run and the adapter's status mapping; then `just run` with the adapter called from `App/` — no gate stores a Keychain item, because the Keychain answers `errSecMissingEntitlement` to a test runner with no app around it, on the host and under `just test-ios` alike, so the PR carries the log evidence (`persisting-data`'s `references/secure-storage.md`) |
 | `.github/rulesets/main.json`, or `scripts/apply-ruleset.sh` | `scripts/tests/apply-ruleset_test.sh`; `just check-harness` for `main.json` (`scripts/checks/ruleset-contexts.sh` reads it) |
 
 ## Architecture
@@ -100,8 +101,9 @@ Packages/MyAppKit/
 │                           #   (enforced by lint and test); coverage-gated
 ├── Sources/MyAppUI/        # SwiftUI views — thin, render Core view models; shared
 │                           #   presentation values in `DesignSystem/DesignTokens.swift`
-├── Sources/MyAppPlatform/  # Adapters behind Core ports (SwiftData, URLSession, UserDefaults) — translation
-│                           #   only, no domain logic, outside the coverage floor
+├── Sources/MyAppPlatform/  # Adapters behind Core ports (SwiftData, URLSession, UserDefaults,
+│                           #   the Keychain) — translation only, no domain logic, outside
+│                           #   the coverage floor
 ├── Tests/MyAppTestSupport/ # Each port's fake and contract function — test code no
 │                           #   shipped module imports (enforced by test)
 ├── Tests/MyAppCoreTests/   # Swift Testing suites — coverage-gated
@@ -114,12 +116,16 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   `MyAppUI` and `MyAppPlatform` are siblings and never import each other.
 - Storage and OS services go in `MyAppPlatform` as an adapter behind a `Sendable` port
   Core declares, with one fake and one contract function in `Tests/MyAppTestSupport`:
-  `TodoRepository`/`SwiftDataTodoRepository`, `HTTPClient`/`URLSessionHTTPClient`, and
-  `PreferencesStoring`/`UserDefaultsPreferences` are the worked examples.
+  `TodoRepository`/`SwiftDataTodoRepository`, `HTTPClient`/`URLSessionHTTPClient`,
+  `PreferencesStoring`/`UserDefaultsPreferences`, and `SecureStoring`/`KeychainSecureStore`
+  are the worked examples. A secret (a token, a key) goes through `SecureStoring`, never
+  a preference: `UserDefaults` is unencrypted and backed up in plain text.
 - `MyAppCore` never imports SwiftUI, UIKit, AppKit, Cocoa, SwiftData, CoreData, CloudKit,
-  UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, or WidgetKit — in any
-  spelling. Enforced twice: `.swiftlint.yml`'s `no_ui_import_in_core` and
-  `ArchitectureBoundaryTests`; their module lists change together.
+  UserNotifications, CoreLocation, Photos, PhotosUI, StoreKit, WidgetKit, or Security —
+  in any spelling. Enforced twice: `.swiftlint.yml`'s `no_ui_import_in_core` and
+  `ArchitectureBoundaryTests`; their module lists change together. Foundation re-exports
+  the Keychain calls (`SecItemAdd` and its siblings), so `ArchitectureBoundaryTests` also
+  scans Core for those names.
 - The package also builds for macOS so `swift test` runs it on the host in seconds — the
   only way `scripts/coverage.sh` reads coverage — so every target compiles for macOS too
   (`.claude/rules/swift.md`); the app itself is iOS-only. Shipped code logs through
@@ -148,6 +154,7 @@ layout, test helpers, log messages.
 | **The bundle identifier** (`PRODUCT_BUNDLE_IDENTIFIER` in `project.yml`) | The app's data container and Keychain items on every device, App Store Connect, push and other capabilities, `AppLog.subsystem`, `just run`/`just logs` | Fixed once a build has left your machine: a new identifier is a new app, and the user's data stays behind. `project.yml` and `AppLog.subsystem` change together (`AppLogTests`) |
 | **The stored schema** (`AppSchemaV1` and its successors) | Every store already on a user's device | A new `VersionedSchema` plus an `AppMigrationPlan` stage, with a test that opens a store written by the previous version. Never edit a shipped schema version (`persisting-data`) |
 | **The URL scheme** (`DeepLink.scheme`, registered in `project.yml`) | Links to the app in messages, notes, and other apps | Fixed once a build has left your machine: a renamed scheme breaks every link in the wild. `project.yml` and `DeepLink.scheme` change together (`DeepLinkTests`); a new link shape is a new `DeepLink` case with its tests, and an old shape keeps parsing |
+| **Keychain items** (`SecureKeys` names, under the bundle identifier as the service) | Secrets on a user's device — which survive the app's deletion, so a reinstall finds what an earlier install wrote | Read the old key, write the new one, and delete the old, in Core, with a test that starts from the old key; a renamed key otherwise signs every user out and strands the old secret. Every key is a `SecureKeys` constant, pinned by `SecureKeysTests`. The accessibility (`AfterFirstUnlockThisDeviceOnly`) and the default access group are the design in `persisting-data`; a shared access group is an entitlement |
 | **`UserDefaults` keys and file formats** | Saved preferences and files on a user's device | Read the old key or format and migrate it in Core, with a test that starts from the old value. Every key is a `PreferenceKeys` constant, pinned by `PreferenceKeysTests` |
 
 ## Before changing the architecture
@@ -166,7 +173,8 @@ place of the sentences it replaces, never as a dated entry beside them:
 - a capability or entitlement — Push Notifications, iCloud/CloudKit, App Groups,
   Background Modes, Associated Domains, Sign in with Apple, HealthKit, or any other;
 - persistence — where and in what format state is kept: the SwiftData schema and
-  migration plan, CloudKit sync, `UserDefaults` keys, files;
+  migration plan, CloudKit sync, `UserDefaults` keys, Keychain items and their
+  accessibility, files;
 - a new dependency;
 - distribution — App Store, TestFlight (internal or external), or another channel;
 - `deploymentTarget` in `project.yml`, with `platforms:` in `Package.swift`;

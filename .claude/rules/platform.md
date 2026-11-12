@@ -57,6 +57,12 @@ app does about it is Core's (`core.md` › Errors). Convert at the call site.
   to `notConnected`, `.timedOut` to `timedOut`, and every other code to
   `transport(code:)`. A `CancellationError` also maps to `cancelled`, the one failure the
   adapter does not log.
+- **Security (`OSStatus`):** `KeychainSecureStore.storeError(for:)` maps
+  `errSecInteractionNotAllowed` to `deviceLocked` and every other status to
+  `storageFailure(status:)`. `errSecItemNotFound` is not an error at the call site: a
+  read answers `nil`, a delete succeeds, and a write falls through to `SecItemAdd`. The
+  log line carries the operation, the key's name, and the status, all `.public` — never
+  the value, at any privacy level.
 - An SDK-owned enum (an `NSError` code, an imported C enum) is the one place a `switch`
   takes `default:` or `@unknown default:`; the unknown case is logged and never answers
   the permissive case.
@@ -67,4 +73,7 @@ app does about it is Core's (`core.md` › Errors). Convert at the call site.
 in-memory store does; `SwiftDataTodoRepositoryTests` asserts `.corruptedRecord` for a
 record that breaks the title invariant) and the contracts against both the fake and the
 adapter. `just test-ios` runs what sits behind `#if os(iOS)`; `just build` when `App/`
-wires the adapter.
+wires the adapter. `KeychainSecureStore` is the exception to "against both": no test
+runner may store a Keychain item, so `just test` checks only its status mapping, and a
+change to it is shown in the running app (the `persisting-data` skill's
+`references/secure-storage.md`).
