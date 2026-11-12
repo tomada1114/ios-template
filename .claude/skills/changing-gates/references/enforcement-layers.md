@@ -44,7 +44,8 @@ and what it cannot see.
   agree.
 - `skills-frontmatter.sh` and `skills-descriptions.sh`: every skill's frontmatter is
   exactly a matching `name` and a `description`; no `SKILL.md` sits below a skill's top
-  directory; every `description` is printable ASCII and at most 1,024 characters.
+  directory; every `description` is printable ASCII, at most 1,024 characters, and names
+  no placeholder `scripts/bootstrap.sh` rewrites, so a rename cannot lengthen it.
 - `ruleset-contexts.sh`: every required status-check context in
   `.github/rulesets/main.json` matches a job `name:` (or id) in a workflow triggered on
   `pull_request`.

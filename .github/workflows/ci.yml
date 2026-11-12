@@ -312,8 +312,9 @@ jobs:
         if: needs.changes.outputs.simulator != 'false'
         run: |
           cd "$RUNNER_TEMP/bootstrap-smoke"
-          # The rename lengthens every description that names the app, so one within the
-          # 1,024-character limit on the template can pass it in the app cut from it.
+          # skills-descriptions.sh already runs on every pull request and refuses a
+          # description that names a placeholder, so the rename cannot lengthen one; this
+          # re-runs it on the renamed tree in case a placeholder slips past that rule.
           bash scripts/checks/skills-descriptions.sh
 
       - name: Test the renamed package
