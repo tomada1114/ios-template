@@ -92,6 +92,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `RetryingAPIClient` honors a 503's `Retry-After` as it does a 429's: it waits exactly
+  that long, falls back to its backoff when the header is missing or unreadable, and
+  throws a wait longer than `RetryPolicy.maxDelay` at once instead of retrying early (a
+  maintenance window's `Retry-After: 3600` included). `APIError.server` now carries the
+  wait, as `server(status:retryAfter:)`: `APIClient` reports the header for any 5xx, and
+  only a 503's is honored. Match a 5xx by pattern (`case .server(503, _)`) or with the
+  new `APIError.isServerError(_:)`, not with `==`, which stops matching once a server
+  sends a wait.
 - The repository no longer depends on the owner's user-level skills. `designing-ui`
   researches the design lock from the HIG and Apple's own apps
   (`references/research-workflow.md`, formerly `refero-workflow.md`) instead of
