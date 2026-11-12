@@ -44,8 +44,10 @@
             let stored = try await base.fetchAll()
             if stored.contains(where: { $0.id == item.id }) {
                 if failureDelay > .zero {
-                    // A cancelled wait fails the save just the same: there is nothing
-                    // else for it to report.
+                    // `throws(TodoRepositoryError)` has no way to throw
+                    // `CancellationError`, and the port has no `.cancelled` case (`core.md`
+                    // › Cancellation: the awaiting action reads `Task.isCancelled`), so a
+                    // cancelled wait ends early and the save fails as it would have.
                     try? await clock.sleep(for: failureDelay)
                 }
                 throw .storageFailure

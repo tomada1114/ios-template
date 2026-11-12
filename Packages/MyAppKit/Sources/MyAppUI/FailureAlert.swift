@@ -3,9 +3,9 @@ import SwiftUI
 
 /// Presents a ``MyAppCore/PresentableFailure`` as an alert while one is set.
 ///
-/// The app's only alert. `RootView` applies it outside its `NavigationStack`, so a
-/// failure presents over whichever screen is on top, and on its sheet's content, so a
-/// failure presents over a sheet that is up. Attached to the root screen inside the stack
+/// The app's only alert. `RootView` applies it to each presentation layer — outside its
+/// `NavigationStack`, and on its sheet's content — and hands the failure only to the
+/// topmost (`failureAlerts(on:isTopmost:)`). Attached to the root screen inside the stack
 /// instead, a failure on a pushed screen showed nothing until the user went back (#78);
 /// attached only outside the stack, a failure while a sheet was up did not show over it
 /// (#124).
@@ -13,15 +13,15 @@ private struct FailureAlert<Failure: PresentableFailure>: ViewModifier {
     let failure: Failure?
     let dismiss: () -> Void
 
-    /// Derived from `failure`, so a new failure presents the alert, and every way it is
-    /// dismissed — the button, or the system — goes through `dismiss`.
+    /// Derived from `failure`, so a new failure presents the alert. Only the alert's button
+    /// clears the failure: SwiftUI also writes `false` when it tears the presentation down
+    /// — the sheet under the alert closed by code, or the failure handed to another layer —
+    /// and the failure must survive that to present again where it is handed next.
     private var isPresented: Binding<Bool> {
         Binding(
             get: { failure != nil },
-            set: { isPresented in
-                if !isPresented {
-                    dismiss()
-                }
+            set: { _ in
+                // Not a dismissal by the person: theirs is the button's `dismiss`.
             },
         )
     }
@@ -42,11 +42,11 @@ private struct FailureAlert<Failure: PresentableFailure>: ViewModifier {
 
 extension View {
     /// Presents `failure` as an alert while it is non-`nil`, and calls `dismiss` when the
-    /// person dismisses it — the view model's action that clears the failure.
+    /// person taps its button — the view model's action that clears the failure.
     ///
-    /// Apply it per navigation root, outside the stack and on the sheet's content, never on
-    /// a screen inside the stack: an alert on a screen that is not on top does not present.
-    /// Internal: `RootView` is the one caller.
+    /// Applied only by `RootView`'s `failureAlerts(on:isTopmost:)`, to each presentation
+    /// layer, never to a screen inside the stack: an alert on a screen that is not on top
+    /// does not present. Internal: `RootView` is the one caller.
     func failureAlert(
         _ failure: (some PresentableFailure)?,
         dismiss: @escaping () -> Void,

@@ -3,8 +3,8 @@ import SwiftUI
 
 /// One window's navigation root: the stack every screen is pushed onto, its root screen,
 /// the one place a route becomes a screen, the one place a sheet is presented, and the
-/// one place a failure is presented (`failureAlert(_:dismiss:)`) — over the top screen,
-/// or over the sheet while one is up.
+/// one place a failure is presented (``failureAlerts(on:isTopmost:)``) — over the top
+/// screen, or over the sheet while one is on screen.
 ///
 /// The app's only `NavigationStack(path:)`, its only
 /// `navigationDestination(for: AppRoute.self)`, and its only `.sheet(item:)` live here, so
@@ -25,7 +25,17 @@ public struct RootView: View {
     private let app: AppModel
     @Bindable private var navigation: NavigationModel
 
+    /// Whether a sheet is on screen, which ``NavigationModel/sheet`` alone does not say:
+    /// set as soon as one is asked for, and cleared only by the sheet's `onDismiss`, once
+    /// it has finished leaving — after its slide-out, whether a swipe, its close button, or
+    /// a deep link dismissed it. Until then UIKit presents nothing from the stack.
+    @State private var isSheetOnScreen = false
+
     public var body: some View {
+        failureAlerts(on: stackAndSheet, isTopmost: !isSheetOnScreen)
+    }
+
+    private var stackAndSheet: some View {
         NavigationStack(path: $navigation.path) {
             TodoListView(model: app.todoList) { navigation.present(.about) }
                 .navigationDestination(for: AppRoute.self) { route in
@@ -35,19 +45,15 @@ public struct RootView: View {
                     destination(for: route).id(route)
                 }
         }
-        // Outside the stack, like the alert below, so it presents whichever screen is on
-        // top.
-        .sheet(item: presentedSheet) { sheet in
-            // SwiftUI presents nothing from a view already presenting a sheet, so while
-            // one is up the failure presents from the sheet's content instead (#124).
-            self.sheet(for: sheet)
-                .failureAlert(app.todoList.failure) { app.todoList.dismissFailure() }
+        // Outside the stack, like the failure alerts, so it presents whichever screen is
+        // on top.
+        .sheet(item: presentedSheet, onDismiss: sheetDidLeave) { sheet in
+            failureAlerts(on: self.sheet(for: sheet), isTopmost: true)
         }
-        // Outside the stack, so a failure presents over whichever screen is on top: a
-        // toggle on the pushed detail screen is the list's, and fails as the list's.
-        // Withheld while a sheet is up, so one failure is never bound to two alerts.
-        .failureAlert(navigation.sheet == nil ? app.todoList.failure : nil) {
-            app.todoList.dismissFailure()
+        .onChange(of: navigation.sheet != nil, initial: true) { _, isAskedFor in
+            if isAskedFor {
+                isSheetOnScreen = true
+            }
         }
     }
 
@@ -73,6 +79,24 @@ public struct RootView: View {
     public init(app: AppModel, navigation: NavigationModel) {
         self.app = app
         self.navigation = navigation
+    }
+
+    /// Every feature's failure alert, attached to one presentation layer: the stack, or
+    /// the sheet over it. SwiftUI presents nothing from a view that is already presenting
+    /// a sheet (#124), so only the topmost layer is handed the failures, and one failure is
+    /// never bound to two alerts. Outside the stack, so a failure presents over whichever
+    /// screen is pushed: a toggle on the detail screen is the list's, and fails as the
+    /// list's (#78). A new feature adds its `.failureAlert` here, once.
+    private func failureAlerts(on layer: some View, isTopmost: Bool) -> some View {
+        layer.failureAlert(isTopmost ? app.todoList.failure : nil) {
+            app.todoList.dismissFailure()
+        }
+    }
+
+    /// Hands the failures back to the stack once the sheet has gone — unless another sheet
+    /// was asked for meanwhile, which replaces it rather than uncovering the stack.
+    private func sheetDidLeave() {
+        isSheetOnScreen = navigation.sheet != nil
     }
 
     /// The screen `route` names. A model built here is handed to a screen that keeps the
