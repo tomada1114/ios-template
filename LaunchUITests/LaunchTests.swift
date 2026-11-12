@@ -3,55 +3,30 @@ import XCTest
 /// The template's launch guarantee: the app starts on a simulator, shows its list, and
 /// the core interaction — adding an item — reaches the screen. Hiding completed items
 /// proves the preferences wiring in `App/` reaches the view model, and opening an item
-/// proves the navigation model reaches the stack. Deleting in Edit mode proves a swipe
-/// is not the only way to delete.
+/// proves the navigation model reaches the stack; opening it by a deep link proves the
+/// registered scheme and `App/`'s URL handling reach that model. Deleting in Edit mode
+/// proves a swipe is not the only way to delete.
 ///
 /// XCTest by necessity — Apple has not ported UI automation to Swift Testing.
 /// All other tests use Swift Testing in Packages/MyAppKit.
 final class LaunchTests: XCTestCase {
-    private enum Timeout {
-        static let launch: TimeInterval = 20
-        static let elementAppears: TimeInterval = 5
-        static let keyboardFocus: TimeInterval = 3
-    }
+    /// The app's URL scheme, `DeepLink.scheme` in Core, which this target cannot import.
+    /// One unsplit literal, so `scripts/bootstrap.sh` renames it with that constant and
+    /// with the scheme `project.yml` registers.
+    private static let scheme = "my-app"
 
-    /// Taps `field` until it holds keyboard focus, then asserts that it does.
-    ///
-    /// On a loaded CI runner the first tap can land before SwiftUI makes the field
-    /// first responder, and `typeText` then fails with "Neither element nor any
-    /// descendant has keyboard focus" (#32). Re-tapping retries the input, not the
-    /// assertion: the test still fails if the field never takes focus.
-    @MainActor
-    private func focus(_ field: XCUIElement, attempts: Int = 3) {
-        let focused = NSPredicate(format: "hasKeyboardFocus == true")
-        for _ in 0 ..< attempts {
-            field.tap()
-            let expectation = XCTNSPredicateExpectation(predicate: focused, object: field)
-            if XCTWaiter().wait(for: [expectation], timeout: Timeout.keyboardFocus) == .completed {
-                return
-            }
-        }
-        XCTFail("newItemField never took keyboard focus after \(attempts) taps")
-    }
-
-    /// Waits until `element` no longer exists, and reports whether it went.
-    @MainActor
-    private func waitForDisappearance(of element: XCUIElement) -> Bool {
-        let gone = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == false"),
-            object: element,
-        )
-        return XCTWaiter().wait(for: [gone], timeout: Timeout.elementAppears) == .completed
-    }
+    /// The prefix of a row toggle's identifier; the rest is the item's `UUID`.
+    private static let rowTogglePrefix = "toggle-"
 
     /// One launch walks every scenario in turn, because each relaunch costs tens of
     /// seconds on CI (#57). The steps are ordered so none undoes what a later one needs:
-    /// add, open the detail and come back, complete and hide the item, show it again,
-    /// then delete it in Edit mode. Each step runs as a named activity with its own
-    /// assertion message, so a failure still names the broken behavior — but a failure
-    /// stops the walk, so the steps after it go unreported until it is fixed.
+    /// add, open the detail and come back, open it and an unknown item by deep link and
+    /// come back, complete and hide the item, show it again, then delete it in Edit mode.
+    /// Each step runs as a named activity with its own assertion message, so a failure
+    /// still names the broken behavior — but a failure stops the walk, so the steps after
+    /// it go unreported until it is fixed.
     @MainActor
-    func testLaunchedAppAddsOpensHidesAndDeletesAnItem() {
+    func testLaunchedAppAddsOpensHidesAndDeletesAnItem() throws {
         // A failed assertion should end the test immediately instead of cascading
         // through the remaining waits against a dead app or a wrong screen.
         continueAfterFailure = false
@@ -66,6 +41,10 @@ final class LaunchTests: XCTestCase {
         XCTContext
             .runActivity(named: "Open the item's detail, then go back") { _ in
                 openTheDetailAndGoBack(in: app)
+            }
+        try XCTContext
+            .runActivity(named: "Open the item, then an unknown item, by deep link") { _ in
+                try openTheItemThenAnUnknownItemByDeepLink(in: app)
             }
         XCTContext
             .runActivity(named: "Complete the item and hide completed items") { _ in
@@ -172,11 +151,101 @@ final class LaunchTests: XCTestCase {
         )
     }
 
+    /// A link reaches the app through `App/`'s `.onOpenURL`, and Core's `DeepLink` and
+    /// `NavigationModel` push the detail screen for the item it names, or the not-found
+    /// state for an identifier no item has.
+    @MainActor
+    private func openTheItemThenAnUnknownItemByDeepLink(in app: XCUIApplication) throws {
+        // The item's identifier, read from its row toggle rather than hard-coded: the
+        // walk created the item, so only the running app knows it.
+        let toggle = app.buttons
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", Self.rowTogglePrefix))
+            .firstMatch
+        XCTAssertTrue(
+            toggle.waitForExistence(timeout: Timeout.elementAppears),
+            "the list should show the item's row toggle",
+        )
+        let id = try XCTUnwrap(
+            UUID(uuidString: String(toggle.identifier.dropFirst(Self.rowTogglePrefix.count))),
+            "the row toggle's identifier should end in the item's UUID",
+        )
+
+        // The found state's identifier lands on its Form, a collection view to XCUITest.
+        let detail = app.collectionViews["todoDetail"]
+        XCTAssertTrue(
+            openFromTheSystem(link(toItemWithID: id), expecting: detail),
+            "a link to an item should push that item's detail screen",
+        )
+        XCTAssertTrue(
+            detail.staticTexts["Buy milk"].exists,
+            "the detail screen a link opened should show the item it names",
+        )
+
+        XCTAssertTrue(
+            openFromTheSystem(
+                link(toItemWithID: UUID()),
+                expecting: app.staticTexts["Item Not Found"],
+            ),
+            "a link to an unknown item should show the detail screen's not-found state",
+        )
+        // The found screen it replaced may still be animating out.
+        XCTAssertTrue(
+            waitForDisappearance(of: app.buttons["detailToggle"]),
+            "the not-found state should show no item",
+        )
+
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(
+            app.textFields["newItemField"].waitForExistence(timeout: Timeout.elementAppears),
+            "the back button should return from a linked screen to the list",
+        )
+    }
+
+    /// Opens `url` as a tap on a link elsewhere would: the system resolves the scheme to
+    /// the app the build registered it for and hands the link to the running app.
+    /// `XCUIApplication.open(_:)` would relaunch the app instead, emptying its in-memory
+    /// store. The first link of the scheme on a simulator asks "Open in …?" over the app;
+    /// later ones open directly. So it waits for whichever comes first, `target` or the
+    /// prompt, and answers the prompt only when it shows — with its last button, the
+    /// confirming one after Cancel, because its labels follow the simulator's language.
+    ///
+    /// - Returns: whether `target` appeared within `Timeout.elementAppears` of the link
+    ///   opening (or of the prompt being answered).
+    @MainActor
+    private func openFromTheSystem(_ url: URL, expecting target: XCUIElement) -> Bool {
+        XCUIDevice.shared.system.open(url)
+        let prompt = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        var deadline = Date.now.addingTimeInterval(Timeout.elementAppears)
+        while Date.now < deadline {
+            if target.waitForExistence(timeout: Timeout.poll) {
+                return true
+            }
+            if prompt.exists {
+                let buttons = prompt.buttons
+                buttons.element(boundBy: buttons.count - 1).tap()
+                deadline = Date.now.addingTimeInterval(Timeout.elementAppears)
+            }
+        }
+        return target.exists
+    }
+
+    /// The link that opens the item with `id`: the one shape `DeepLink` accepts.
+    private func link(toItemWithID id: UUID) -> URL {
+        var components = URLComponents()
+        components.scheme = Self.scheme
+        components.host = "todo"
+        components.path = "/\(id.uuidString)"
+        guard let url = components.url else {
+            preconditionFailure("could not form a link to item \(id)")
+        }
+        return url
+    }
+
     @MainActor
     private func completeAndHideTheItem(in app: XCUIApplication) {
         let item = app.staticTexts["Buy milk"]
         let hideCompleted = app.buttons["hideCompletedToggle"]
-        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'toggle-'"))
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", Self.rowTogglePrefix))
             .firstMatch.tap()
         XCTAssertTrue(
             hideCompleted.waitForExistence(timeout: Timeout.elementAppears),

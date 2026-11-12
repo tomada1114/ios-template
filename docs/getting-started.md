@@ -150,7 +150,8 @@ once it has run).
       the `todo` host `Packages/MyAppKit/Sources/MyAppCore/Navigation/DeepLink.swift`
       parses, and the cases that use them in
       `Packages/MyAppKit/Tests/MyAppCoreTests/DeepLinkTests.swift` and
-      `Packages/MyAppKit/Tests/MyAppCoreTests/NavigationModelTests.swift`
+      `Packages/MyAppKit/Tests/MyAppCoreTests/NavigationModelTests.swift`, and the
+      deep-link step that opens one in `LaunchUITests/LaunchTests.swift`
 
 **Preferences:**
 
@@ -186,7 +187,8 @@ once it has run).
    `LaunchUITests/LaunchTests.swift` at it (`just uitest`).
 3. Delete the UI files and the previews' repository.
 4. Replace `AppRoute.todoDetail` and the `todo` deep link with a route of your own,
-   updating `DeepLinkTests` and `NavigationModelTests` in the same step, and replace
+   updating `DeepLinkTests`, `NavigationModelTests`, and `LaunchTests`' deep-link step
+   in the same step, and replace
    `AppModel.makeTodoDetailViewModel(id:)` and `RootView`'s `.todoDetail` branch with
    your route's factory and screen.
 5. Delete `TodoListViewModel` and `TodoDetailViewModel` with their tests (the four
