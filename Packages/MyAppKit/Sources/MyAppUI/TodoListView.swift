@@ -53,7 +53,8 @@ public struct TodoListView: View {
             .refreshable { await model.load() }
             .task {
                 // Only the first appearance loads; a return to this screen keeps what
-                // is shown, and pull-to-refresh is the explicit way to reload.
+                // is shown. Pull-to-refresh reloads, and so does Core when a window
+                // returns to the foreground (`SceneLifecycleModel`).
                 if model.phase == .idle {
                     await model.load()
                 }
