@@ -129,7 +129,7 @@ case_binary_file_scanned() {
 }
 
 case_swift_source_clean() {
-    expect_nothing "${REPO_ROOT}/Packages/MyAppKit/Sources/MyAppCore/TodoListViewModel.swift"
+    expect_nothing "${REPO_ROOT}/Packages/MyAppKit/Sources/MyAppCore/AppModel.swift"
     expect_nothing "$(write_file View.swift 'struct KeyView { let apiKeyName = "GITHUB_TOKEN"; let pem = "-----BEGIN CERTIFICATE-----" }')"
 }
 
