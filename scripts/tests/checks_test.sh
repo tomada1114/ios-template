@@ -22,6 +22,8 @@ BT='`'
 # literal whose absence tells that check the rename has happened.
 PH_NAME='My''App'
 BOUNDARY_TESTS="Packages/MyAppKit/Tests/MyAppCoreTests/ArchitectureBoundaryTests.swift"
+REASON_SCAN="Packages/MyAppKit/Tests/MyAppCoreTests/RequiredReasonAPIScan.swift"
+MANIFEST_TESTS="Packages/MyAppKit/Tests/MyAppCoreTests/PrivacyManifestTests.swift"
 
 if ! command -v just >/dev/null 2>&1; then
     echo "ERR_TESTS_TOOL_MISSING: 'just' is not on PATH" >&2
@@ -308,6 +310,37 @@ struct ArchitectureBoundaryTests {
     static let otherModules = ["Combine"]
 }
 EOF
+    # The two required-reason tables, with the near misses the check must not misread:
+    # a `let name: String` declaration, a category reached through PrivacyManifestTests,
+    # a category listed on two rows, and a `"` that closes no table.
+    mkdir -p "${root}/scripts"
+    cat >"${root}/scripts/build-device.sh" <<'EOF'
+#!/usr/bin/env bash
+NOTE="unrelated"
+REQUIRED_REASON_APIS="
+SystemBootTime|import|_mach_absolute_time
+SystemBootTime|selector|systemUptime
+UserDefaults|import|_OBJC_CLASS_\$_NSUserDefaults
+"
+EOF
+    cat >"${root}/${REASON_SCAN}" <<'EOF'
+enum RequiredReasonAPIScan {
+    struct Category { let name: String }
+    static let systemBootTime = "NSPrivacyAccessedAPICategorySystemBootTime"
+    static let userDefaults = PrivacyManifestTests.userDefaultsCategory
+    static let categories = [
+        Category(name: systemBootTime),
+        Category(
+            name: userDefaults,
+        ),
+    ]
+}
+EOF
+    cat >"${root}/${MANIFEST_TESTS}" <<'EOF'
+struct PrivacyManifestTests {
+    static let userDefaultsCategory = "NSPrivacyAccessedAPICategoryUserDefaults"
+}
+EOF
     write_labels "${root}" bug enhancement "priority: P1" dependencies ci
     mkdir -p "${root}/.github/ISSUE_TEMPLATE"
     printf 'name: Bug\nlabels: ["bug", "priority: P1"]\nbody: []\n' >"${root}/.github/ISSUE_TEMPLATE/bug.yml"
@@ -403,7 +436,7 @@ case_run_all_passes() {
     root=$(make_fixture)
     capture "${BASH}" "${CHECKS}/run-all.sh" --root "${root}"
     assert_exit 0
-    assert_stdout_contains "harness checks: 11 check(s) passed"
+    assert_stdout_contains "harness checks: 12 check(s) passed"
 }
 
 case_run_all_reports_every_failure() {
@@ -416,7 +449,7 @@ case_run_all_reports_every_failure() {
     assert_exit 1
     assert_stderr_contains "ERR_CHECK_RECIPE_MISSING"
     assert_stderr_contains "ERR_CHECK_WORKFLOW_PERMISSIONS"
-    assert_stderr_contains "ERR_CHECKS_FAILED: 2 of 11 harness check(s) failed: just-recipes-exist.sh workflow-pins-and-permissions.sh"
+    assert_stderr_contains "ERR_CHECKS_FAILED: 2 of 12 harness check(s) failed: just-recipes-exist.sh workflow-pins-and-permissions.sh"
     assert_stderr_not_contains "skills-frontmatter.sh" "a passing check named as failed"
     assert_stderr_not_contains "labels-declared.sh" "a passing check named as failed"
     assert_stdout_contains "==> scripts/checks/labels-declared.sh"
@@ -998,6 +1031,67 @@ case_ban_missing_tests_file() {
     root=$(make_fixture)
     mv "${root}/${BOUNDARY_TESTS}" "${CASE_DIR}/moved.swift"
     capture "${BASH}" "${CHECKS}/core-ban-lists-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_INPUT_MISSING
+}
+
+# --- required-reason-tables-agree.sh -------------------------------------------
+
+case_reasons_pass() {
+    local root
+    root=$(make_fixture)
+    capture "${BASH}" "${CHECKS}/required-reason-tables-agree.sh" --root "${root}"
+    assert_exit 0
+    assert_stdout_contains "required-reason-tables-agree: scripts/build-device.sh and RequiredReasonAPIScan name the same required-reason categories."
+}
+
+case_reasons_script_has_extra() {
+    local root
+    root=$(make_fixture)
+    replace_in "${root}" scripts/build-device.sh "^SystemBootTime|selector|systemUptime$" "ActiveKeyboards|selector|activeInputModes"
+    capture "${BASH}" "${CHECKS}/required-reason-tables-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_REQUIRED_REASON_DIVERGED
+    assert_stderr_contains "${BT}NSPrivacyAccessedAPICategoryActiveKeyboards${BT} is in scripts/build-device.sh's REQUIRED_REASON_APIS but not in RequiredReasonAPIScan.categories"
+    assert_stderr_not_contains "${BT}NSPrivacyAccessedAPICategorySystemBootTime${BT}" "a category in both tables reported"
+}
+
+case_reasons_scan_has_extra() {
+    local root
+    root=$(make_fixture)
+    replace_in "${root}" scripts/build-device.sh "^UserDefaults|import|.*$" ""
+    capture "${BASH}" "${CHECKS}/required-reason-tables-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_REQUIRED_REASON_DIVERGED
+    assert_stderr_contains "${BT}NSPrivacyAccessedAPICategoryUserDefaults${BT} is in RequiredReasonAPIScan.categories (${REASON_SCAN}) but not in scripts/build-device.sh's REQUIRED_REASON_APIS"
+}
+
+case_reasons_unresolved_name() {
+    local root
+    root=$(make_fixture)
+    replace_in "${root}" "${REASON_SCAN}" "name: systemBootTime" "name: bootTime"
+    capture "${BASH}" "${CHECKS}/required-reason-tables-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_REQUIRED_REASON_UNPARSED
+    assert_stderr_contains "${REASON_SCAN}: ${BT}name: bootTime${BT} resolves to no"
+}
+
+case_reasons_script_table_unparsed() {
+    local root
+    root=$(make_fixture)
+    replace_in "${root}" scripts/build-device.sh '^REQUIRED_REASON_APIS="$' 'APIS="'
+    capture "${BASH}" "${CHECKS}/required-reason-tables-agree.sh" --root "${root}"
+    assert_exit 1
+    assert_contract ERR_CHECK_REQUIRED_REASON_UNPARSED
+    assert_stderr_contains "scripts/build-device.sh: no CATEGORY|KIND|VALUE line"
+    assert_stderr_not_contains "ERR_CHECK_REQUIRED_REASON_DIVERGED" "an unreadable table compared as empty"
+}
+
+case_reasons_missing_scan() {
+    local root
+    root=$(make_fixture)
+    mv "${root}/${REASON_SCAN}" "${CASE_DIR}/moved.swift"
+    capture "${BASH}" "${CHECKS}/required-reason-tables-agree.sh" --root "${root}"
     assert_exit 1
     assert_contract ERR_CHECK_INPUT_MISSING
 }
@@ -1866,6 +1960,12 @@ run_case "contexts: a context matching no job fails" case_contexts_missing_job
 run_case "contexts: a job only in a push workflow does not count" case_contexts_push_only_workflow
 run_case "contexts: a pull_request_target workflow does not count" case_contexts_pull_request_target_does_not_count
 run_case "contexts: a missing main.json fails" case_contexts_missing_ruleset
+run_case "reasons: passes, through PrivacyManifestTests and past a name declaration" case_reasons_pass
+run_case "reasons: a category only in build-device.sh fails" case_reasons_script_has_extra
+run_case "reasons: a category only in RequiredReasonAPIScan fails" case_reasons_scan_has_extra
+run_case "reasons: a name resolving to no category fails" case_reasons_unresolved_name
+run_case "reasons: an unreadable build-device.sh table fails" case_reasons_script_table_unparsed
+run_case "reasons: a missing RequiredReasonAPIScan.swift fails" case_reasons_missing_scan
 run_case "ban: passes, ignoring a later rule's group and quoted modules in comments" case_ban_pass
 run_case "ban: passes on a one-line literal with a repeated module" case_ban_pass_single_line_literal
 run_case "ban: a module only in the lint rule fails" case_ban_lint_has_extra

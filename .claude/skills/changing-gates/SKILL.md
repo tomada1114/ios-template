@@ -251,12 +251,19 @@ Nothing re-verifies `main` on macOS after a merge until someone runs `just
 check-release` there, so two pull requests that pass separately can break `main`
 together. Nothing runs the app or the package tests on a
 physical device (`just build-device` only compiles and links Release for one, unsigned,
-and checks the bundle holds `PrivacyInfo.xcprivacy`; nothing installs it), or on any iOS release but the one the pinned Xcode ships: the
+and checks the bundle holds `PrivacyInfo.xcprivacy` declaring every required-reason API
+the linked executable uses; nothing installs it), or on any iOS release but the one the pinned Xcode ships: the
 local simulators run the Xcode-pinned runtime only. Info.plist usage-description strings,
-entitlements, and signing settings are unchecked, and the privacy manifest is held to the
-code only by a textual scan of the shipped sources (`RequiredReasonAPITests`): a
-required-reason call inside a binary dependency, and whether a declared reason is the
-right one, are unchecked. Each is a place a change can be wrong
+entitlements, and signing settings are unchecked. The privacy manifest is held to the
+code twice: by a textual scan of the shipped sources on every pull request
+(`RequiredReasonAPITests`, the fast signal) and by the linked binary's imports and
+selectors at `just build-device` (the authority: no pull-request gate runs it,
+`just check-release` does, and an author who adds a required-reason call or edits
+`App/PrivacyInfo.xcprivacy` runs `just build-device` directly) —
+why both, and what each misses, is
+[references/enforcement-layers.md](references/enforcement-layers.md) › Gaps. A
+required-reason call inside an embedded framework or reached through `dlsym`, and
+whether a declared reason is the right one, are unchecked. Each is a place a change can be wrong
 while every gate passes; a gate proposed to close one is a real gate change and belongs
 in the PR as one. What every local layer misses — a skipped hook, an edit on GitHub, a
 tool other than Claude Code — is listed in

@@ -175,6 +175,9 @@ Concurrency). The actual fix, in this order:
       request rewrites the present-state description of the permission or capability
       (`AGENTS.md` › Architecture).
 - [ ] iOS-only code and its test sit behind `#if os(iOS)`; `just test-ios` passes.
+- [ ] A call to a required-reason API has its `PrivacyInfo.xcprivacy` entry and reason;
+      `just test` and `just build-device` pass (the source scan and the linked binary's
+      check, `references/permissions.md` › The privacy manifest).
 - [ ] The pull request carries what no test can: the real prompt, the delivered
       notification, or the device run (`running-the-app`).
 - [ ] No new `@unchecked Sendable`, `nonisolated(unsafe)`, or `try!`.
