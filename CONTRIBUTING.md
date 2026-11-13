@@ -156,6 +156,7 @@ xcodebuild build-for-testing -project MyApp.xcodeproj -scheme MyApp -destination
 rm -rf build/LaunchUITests.xcresult
 xcrun simctl bootstatus "$(scripts/simulator-destination.sh --udid)" -b
 scripts/wait-simulator-settled.sh "$(scripts/simulator-destination.sh --udid)"
+xcrun simctl spawn "$(scripts/simulator-destination.sh --udid)" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false
 xcodebuild test-without-building -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult   # just uitest-run (just uitest runs both)
 (cd Packages/MyAppKit && xcodebuild test -scheme MyAppKit-Package -destination "$(../../scripts/simulator-destination.sh)" -derivedDataPath ../../build/ios-test-derived-data -resultBundlePath ../../build/MyAppKitTests-iOS.xcresult)   # just test-ios
 mise exec -- scripts/smoke_launch.sh  # just smoke
