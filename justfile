@@ -117,9 +117,18 @@ reset-permissions:
     scripts/reset-permissions.sh
 
 # Run the XCUITest launch test on an iOS Simulator (scripts/simulator-destination.sh
-# picks the device; SIMULATOR_DEVICE overrides it): uitest-build, then uitest-run
+# picks the device — an iPhone, or an iPad under SIMULATOR_FAMILY=ipad;
+# SIMULATOR_DEVICE overrides it): uitest-build, then uitest-run
 [doc("Run the XCUITest launch test on an iOS Simulator")]
 uitest: uitest-build uitest-run
+
+# Run the launch UI test on an available iPad (uitest-build and uitest-run under
+# SIMULATOR_FAMILY=ipad; SIMULATOR_IPAD_DEVICE picks one, SIMULATOR_DEVICE is ignored),
+# then shut that iPad down if this run booted it; skipped with a one-line notice when
+# the app the test runs in resolves to TARGETED_DEVICE_FAMILY "1". scripts/uitest-ipad.sh
+[doc("Run the launch UI test on an iPad simulator, then shut it down (skipped for an iPhone-only app)")]
+uitest-ipad:
+    mise exec -- scripts/uitest-ipad.sh
 
 # Compile the app (Debug) and the launch UI test for the simulator uitest runs on,
 # without running it. It is the one Debug compile in CI's app job and in `just check` (#58).
@@ -128,10 +137,15 @@ uitest-build:
     mise exec -- xcodegen generate
     set -o pipefail && scripts/run-throttled.sh --lock -- xcodebuild build-for-testing -jobs "$(scripts/run-throttled.sh --print-jobs)" -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data | mise exec -- xcbeautify
 
+# Where uitest-run writes its result bundle: its own path on an iPad
+# (SIMULATOR_FAMILY=ipad, as `just uitest-ipad` runs it), so check-release keeps the
+# iPhone run's bundle beside the iPad one.
+uitest_result := if env_var_or_default("SIMULATOR_FAMILY", "") == "ipad" { "build/LaunchUITests-ipad.xcresult" } else { "build/LaunchUITests.xcresult" }
+
 # Run the launch UI test that uitest-build compiled, without building it again
 [doc("Run the launch UI test uitest-build compiled, without rebuilding")]
 uitest-run:
-    rm -rf build/LaunchUITests.xcresult
+    rm -rf {{uitest_result}}
     # Everything that touches the device runs inside one --lock, so a parallel run in
     # another worktree cannot boot, load, or measure it in the middle of this one; the
     # UDID is resolved once, and xcodebuild's own output alone goes to xcbeautify.
@@ -146,7 +160,7 @@ uitest-run:
     # keyboard shrinks it to a bar of no height, and the launch test waits for the full
     # one (#137). The setting persists on the device, so without this each run inherits
     # the last.
-    set -o pipefail && scripts/run-throttled.sh --lock -- sh -c 'udid="$(scripts/simulator-destination.sh --udid)" && scripts/wait-simulator-settled.sh "$udid" >&2 && xcrun simctl spawn "$udid" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false >&2 && exec xcodebuild test-without-building -jobs "$THROTTLE_JOBS" -parallel-testing-enabled NO -project MyApp.xcodeproj -scheme MyApp -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult' | mise exec -- xcbeautify
+    set -o pipefail && scripts/run-throttled.sh --lock -- sh -c 'udid="$(scripts/simulator-destination.sh --udid)" && scripts/wait-simulator-settled.sh "$udid" >&2 && xcrun simctl spawn "$udid" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false >&2 && exec xcodebuild test-without-building -jobs "$THROTTLE_JOBS" -parallel-testing-enabled NO -project MyApp.xcodeproj -scheme MyApp -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build/dev-derived-data -resultBundlePath {{uitest_result}}' | mise exec -- xcbeautify
 
 # Run every MyAppKit test suite on an iOS Simulator, with no coverage floor (`just test`
 # holds the floor on the host). Exercises code behind `#if os(iOS)` and the iOS runtime.
@@ -173,14 +187,18 @@ check: verify-hooks fmt lint test-scripts check-harness test
     @if [ "$(scripts/simulator-relevant.sh --check test-ios)" != false ]; then just test-ios; else echo "Skipped test-ios (CHECK_ALL=1 runs it)"; fi
 
 # Run everything, on the commit a release is cut from: `just check` with every simulator
-# check forced, then the checks no pull request runs — the Release launch, the Release
-# device-SDK build, and the analyzer rules. Long by design (several clean builds); what
-# it finds was merged earlier, so run it on main before tagging a release, and after a
-# batch of merges.
-[doc("Run every check, the release-only ones included: check (all simulator checks), smoke, build-device, analyze")]
+# check forced (the launch UI test on an iPhone), then the checks no pull request runs —
+# the launch UI test on an iPad (skipped for an iPhone-only app), the Release launch,
+# the Release device-SDK build, and the analyzer rules. Long by design (several clean
+# builds); what it finds was merged earlier, so run it on main before tagging a
+# release, and after a batch of merges.
+# The iPhone legs pin SIMULATOR_FAMILY=iphone, so a SIMULATOR_DEVICE naming an iPad
+# fails them instead of running the "iPhone" test on an iPad.
+[doc("Run every check, the release-only ones included: check (all simulator checks), uitest-ipad, smoke, build-device, analyze")]
 check-release:
-    CHECK_ALL=1 just check
-    just smoke
+    CHECK_ALL=1 SIMULATOR_FAMILY=iphone just check
+    just uitest-ipad
+    SIMULATOR_FAMILY=iphone just smoke
     just build-device
     just analyze
 

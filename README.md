@@ -70,7 +70,7 @@ run each without Just.
 | `just run-device` | Build, then launch on your connected iPhone |
 | `just uitest` | The XCUITest launch test on an iOS Simulator |
 | `just check` | The pull-request checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run, when the UI or app paths changed) → (test-ios, when the platform-adapter paths changed) |
-| `just check-release` | Everything, on `main` before a release tag: `CHECK_ALL=1 just check` → smoke → build-device → analyze |
+| `just check-release` | Everything, on `main` before a release tag: `CHECK_ALL=1 SIMULATOR_FAMILY=iphone just check` → uitest-ipad → smoke → build-device → analyze |
 
 ## Documentation
 

@@ -11,6 +11,7 @@ Architecture section (`SKILL.md` › "Recording both decisions").
 | Orientation keys in `project.yml` | `…_iPhone` and `…_iPad` | `…_iPhone` only |
 | Multiple windows | on (the generated scene manifest) | not applicable |
 | `just uitest` | the first available iPhone; an iPad on request | the first available iPhone |
+| `just check-release` | the launch test on an iPhone, then on an iPad (`just uitest-ipad`) | the iPhone run; the iPad run skips with a one-line notice |
 
 Everything else is identical: the layers and the one-way dependency direction, ports
 and adapters, the coverage floor, signing, and every gate.
@@ -84,18 +85,26 @@ and no such question.
 
 `just uitest` runs `LaunchUITests` on the device `scripts/simulator-destination.sh`
 chooses: the first available iPhone on the newest installed iOS runtime, unless
-`SIMULATOR_DEVICE` names a device. For an app that keeps iPad, run the launch test on
-an iPad too before merging a layout change:
+`SIMULATOR_DEVICE` names a device, or the first available iPad under
+`SIMULATOR_FAMILY=ipad`. For an app that keeps iPad, run the launch test on an iPad too
+before merging a layout change:
 
 ```bash
-xcrun simctl list devices available | grep iPad   # pick a name from this list
+just uitest-ipad                                   # the first available iPad, shut down after if it booted it
+SIMULATOR_FAMILY=ipad just uitest                  # the same run, the iPad left booted
+xcrun simctl list devices available | grep iPad    # or pick a name from this list
 SIMULATOR_DEVICE="iPad (A16)" just uitest
 ```
 
 Device names change with each Xcode's runtimes, which is why nothing pins one. `just
-uitest` runs the iPhone destination only, and no CI job runs it, so an iPad layout is asserted by no gate
-unless the app adds a step for it — a gate change (`changing-gates`). The launch test
-itself needs no edit for either family: it finds its elements by accessibility
+check` runs the iPhone destination only, and no CI job runs either, so an iPad layout is
+asserted only by `just check-release`, which runs `just uitest-ipad` after the iPhone
+run. `scripts/uitest-ipad.sh` reads, after `xcodegen generate`, the resolved
+`TARGETED_DEVICE_FAMILY` of the app the launch test runs in: an iPhone-only app (`"1"`)
+skips the iPad run with a one-line notice, so choosing iPhone only needs no gate change.
+`SIMULATOR_IPAD_DEVICE` names the iPad it uses; `SIMULATOR_DEVICE` is left to the
+iPhone legs. The launch
+test itself needs no edit for either family: it finds its elements by accessibility
 identifier and label, not by position.
 
 ## Not this reference's subject

@@ -41,9 +41,19 @@ The simulator recipes run only locally. `just check` runs `uitest-build` and
 `uitest-run` when `scripts/simulator-relevant.sh --check uitest` says the change touches
 the UI or app paths, and `test-ios` when `--check test-ios` says it touches the
 platform-adapter paths; without `--check` the same script decides whether CI's `test`
-job has macOS work. `smoke`, `build-device`, and `analyze` run in neither `just check`
-nor CI: `just check-release` runs them, after `CHECK_ALL=1 just check`, on `main` before
-a release tag and after a batch of merges; why they wait for it, and what that leaves
+job has macOS work. `just check` runs the launch UI test on an iPhone only. `uitest-ipad`,
+`smoke`, `build-device`, and `analyze` run in neither `just check` nor CI:
+`just check-release` runs them, after `CHECK_ALL=1 SIMULATOR_FAMILY=iphone just check`
+(its iPhone legs pin the family, so a `SIMULATOR_DEVICE` naming an iPad fails them), on
+`main` before a release tag and after a batch of merges. `uitest-ipad`
+(`scripts/uitest-ipad.sh`) first runs `xcodegen generate` and reads the resolved
+`TARGETED_DEVICE_FAMILY` of the app the launch UI test runs in (`xcodebuild
+-showBuildSettings`, under the lock): exactly `"1"` skips with a one-line notice, a value
+it cannot read fails the run, never skips it. Otherwise it runs `uitest-build` and
+`uitest-run` under `SIMULATOR_FAMILY=ipad` on an iPad `scripts/simulator-destination.sh`
+resolves at run time (`SIMULATOR_IPAD_DEVICE` picks one; `SIMULATOR_DEVICE` is ignored),
+into `build/LaunchUITests-ipad.xcresult`, and shuts that iPad down after only if this
+run booted it; why they wait for it, and what that leaves
 unseen, is [references/enforcement-layers.md](references/enforcement-layers.md) › Gaps.
 `scripts/checks/just-check-matches-ci.sh` holds `just check` and CI to the same set of
 gates, in both directions, apart from its reasoned exception list.
@@ -235,8 +245,10 @@ and the All Done state, in light appearance at the default text size;
 failed save presents its alert over the detail screen, over the About sheet when the
 failure arrives while the sheet is up, and again over the stack when a deep link closes
 the sheet under the alert. They run on the one simulator
-runtime the pinned Xcode ships, only locally — in `just check` when the change touches
-the UI or app paths, and in `just check-release` — never in CI. Dark mode, large text, and every other state go unaudited. Any other UI
+runtime the pinned Xcode ships, only locally — on an iPhone in `just check` when the
+change touches the UI or app paths, and on an iPhone and an iPad in `just check-release`
+(the iPad run skipped for an iPhone-only app) — never in CI. A regular-width iPad layout
+is therefore seen only at `just check-release`, and multiple windows by no UI test. Dark mode, large text, and every other state go unaudited. Any other UI
 behavior, and every `MyAppUI` code path, is outside the coverage floor and asserted by
 no gate. Code under `#if os(iOS)` in the Swift package is tested only by local `just
 test-ios` (inside `just check` when the change touches the platform-adapter paths, and

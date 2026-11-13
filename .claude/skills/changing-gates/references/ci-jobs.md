@@ -24,7 +24,8 @@ they run in full on macOS; a job skipped outright would report as passing). The 
 test, the iOS Simulator package tests, the Release smoke launch, the Release device
 build, and the analyzer rules have no CI job, to keep a pull request's macOS minutes to
 one `swift test`: the first two run in local `just check` when the change touches their
-paths, and all five in `just check-release` before a release. A pull request
+paths, and all five in `just check-release` before a release, which also runs the UI
+test on an iPad (`just uitest-ipad`). A pull request
 also fires on `ready_for_review`, so marking a draft ready starts the run that does the
 macOS work. and `zizmor` (ubuntu: the required `Workflow Security Lint`, zizmor's audit of
 every workflow, configured by `.github/zizmor.yml`). Beside it run `check-pr-title.yml`
