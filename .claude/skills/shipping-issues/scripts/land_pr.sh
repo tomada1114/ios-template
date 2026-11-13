@@ -98,7 +98,7 @@ if [[ -n "$ISSUE" && $LINK_CHECK -eq 1 && "$state" == "OPEN" ]]; then
     exit 1
   elif [[ $link_rc -ne 0 ]]; then
     echo "result: NOT_LINKED"
-    echo "detail: merging now would leave issue #$ISSUE open -- fix the link (or pass --no-link-check) and retry"
+    echo "detail: merging now would leave issue #$ISSUE open -- fix the link and retry (a PR that must leave the issue open: rerun without --issue)"
     exit 1
   fi
 fi

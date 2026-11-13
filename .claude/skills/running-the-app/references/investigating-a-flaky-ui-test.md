@@ -10,9 +10,10 @@ changes them.
 
 ## Keep the failing bundle
 
-`just uitest-run` deletes `build/LaunchUITests.xcresult` (and the iPad leg
-`build/LaunchUITests-ipad.xcresult`) before it runs, so the next run destroys the only
-evidence of the last failure. Move a failing bundle out of `build/` the moment it fails,
+Each device family's run deletes its own bundle before it runs —
+`build/LaunchUITests.xcresult` for an iPhone, `build/LaunchUITests-ipad.xcresult` for
+the iPad leg — so the next run of the same family destroys the only evidence of the
+last failure. Move a failing bundle out of `build/` the moment it fails,
 to a directory outside the checkout that outlives the worktree (a worktree's gitignored
 files go with it), under a name that says which run it was. Keep the passing bundles of
 the same series too: the comparison below needs them.
@@ -56,7 +57,7 @@ A UI test's waits are wall-clock, so what else the Mac runs changes the result:
   no `xcodebuild`). A series run under someone else's load proves nothing either way.
 - One simulator at a time; shut down every simulator you booted when you are done.
 - A cold-booted simulator spends one to three minutes on its own post-boot work
-  (wallpaper and widget extensions, scoring daemons), each process at 50-117% CPU,
+  (wallpaper and widget extensions, scoring daemons), at 50-100% CPU or more per process,
   during which an XCUITest snapshot takes seconds and the test's waits time out.
   `just uitest-run` waits it out (`scripts/wait-simulator-settled.sh`); a test you run
   with `xcodebuild` directly does not. After a host reboot, Spotlight indexing and

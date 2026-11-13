@@ -155,8 +155,8 @@ git -C <runstate>/worktrees/<m> push
 ```
 
 After the merge, run in that worktree the narrowest check that covers what it brought
-in (AGENTS.md's "Validating a change" table) -- `just uitest` when it touches the UI or
-app paths -- per [the UI gate](pr-ci-merge.md#the-ui-gate); a merge whose only change,
+in (AGENTS.md's "Validating a change" table) -- `just uitest` and/or `just test-ios` for
+the paths [the simulator gate](pr-ci-merge.md#the-simulator-gate) maps to them; a merge whose only change,
 or only resolved conflict, is in `CHANGELOG.md` needs nothing.
 
 **Merge, not rebase** -- step 3 already pushed these branches, so a rebase would

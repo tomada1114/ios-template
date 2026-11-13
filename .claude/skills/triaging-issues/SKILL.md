@@ -107,9 +107,9 @@ the run that failed, because the next run cannot reproduce it on demand:
 - the device's name and simulator udid (kept, unlike in a pull request's evidence: a
   flake is often tied to one device's state), and whether it was cold-booted or
   already booted;
-- the machine's load before and after, noting that the host load average lags and
-  names no process (`running-the-app`'s `references/investigating-a-flaky-ui-test.md`
-  says what to measure instead);
+- the machine's load before and after, measured as `running-the-app`'s
+  `references/investigating-a-flaky-ui-test.md` › Measure the machine the run shares
+  says;
 - where the failing `.xcresult` is kept, outside `build/` (the same reference says
   why).
 
