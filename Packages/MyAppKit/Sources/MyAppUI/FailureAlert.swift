@@ -16,9 +16,10 @@ private struct FailureAlert<Failure: PresentableFailure>: ViewModifier {
 
     /// Derived from `failure`, so a new failure presents the alert. Only the alert's button
     /// clears the failure: SwiftUI also writes `false` when it tears the presentation down
-    /// — the sheet under the alert closed by code, or the failure handed to another layer
-    /// or another window — and the failure must survive that to present again where it is
-    /// handed next.
+    /// — the sheet under the alert was already leaving when the failure arrived, or the
+    /// failure was handed to another layer or another window — and the failure must
+    /// survive that to present again where it is handed next. A deep link no longer
+    /// closes a sheet under its alert: it waits for the alert's answer (#140).
     private var isPresented: Binding<Bool> {
         Binding(
             get: { failure != nil },

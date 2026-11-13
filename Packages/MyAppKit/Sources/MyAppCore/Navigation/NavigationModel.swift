@@ -20,24 +20,54 @@ import Observation
 /// ``open(_:)`` accepts. The screen asked for would otherwise change out of sight, under
 /// the sheet.
 ///
+/// A link is the one change that can arrive while something covers the stack — the
+/// system delivers it whenever it likes — and UIKit drops a change to a stack while a
+/// presentation over it is in flight, leaving the path naming a screen that never showed
+/// (#140). So a link that arrives while a sheet is on screen (``isSheetOnScreen``) or
+/// while this window presents a failure alert is kept, the newest only, and the path
+/// moves when the view reports the stack uncovered: ``sheetDidLeave()`` and
+/// ``failureAlertDidLeave()``. Until then ``path`` stays what the screen shows. A link
+/// whose alert goes away unanswered (``failureAlertsDidChange()``), or that the person
+/// navigates past, is dropped rather than left to surface later.
+///
 /// Owned per scene, in `@State` on `App/`'s scene root, and handed to the root view: the
 /// app supports multiple windows, and each navigates on its own. The shared view models
 /// it routes between stay app-level, in ``AppModel`` — which is why this model never
-/// moves there.
+/// moves there. ``AppModel/makeNavigationModel(for:)`` builds it, over the window whose
+/// failure alerts it waits on.
 @MainActor
 @Observable
 public final class NavigationModel {
+    /// A link held back while something covers the stack.
+    private struct WaitingLink {
+        /// The route the link asked for.
+        let route: AppRoute
+        /// Whether it waits for the answer to a failure alert, which only that alert's
+        /// button gives: a link whose alert goes away unanswered is dropped.
+        var awaitsAlertAnswer: Bool
+    }
+
+    /// Why a waiting link never showed its screen, as the log words it.
+    private enum DropReason: String {
+        case replacedByNewerLink = "a newer link replaced it"
+        case pathMoved = "the path moved first"
+        case alertLeftUnanswered = "its alert left unanswered"
+    }
+
     /// The pushed routes, root first. Settable because `NavigationStack(path:)` writes it
     /// back when the user goes back; every other change goes through an action below.
     ///
     /// A write that changes it dismisses any sheet, as the actions do, so no path of
-    /// change leaves a sheet over a stack that moved under it. A write of the same routes
-    /// (a binding writing back what it read) keeps the sheet.
+    /// change leaves a sheet over a stack that moved under it, and drops a link that
+    /// still waits: the person went somewhere since, and a screen arriving later would
+    /// replace the one they chose. A write of the same routes (a binding writing back
+    /// what it read) keeps both.
     public var path: [AppRoute] = [] {
         didSet {
             if path != oldValue {
                 sheet = nil
                 awaitsRestoration = false
+                dropWaitingLink(because: .pathMoved)
             }
         }
     }
@@ -47,6 +77,30 @@ public final class NavigationModel {
     /// sheet's system close button (`Button(role: .close)`) both go through the action,
     /// and ``path`` stays the one property a view writes.
     public private(set) var sheet: AppSheet?
+
+    /// Whether a sheet is on screen, which ``sheet`` alone does not say: from the moment
+    /// the root view starts presenting one (``sheetDidStartPresenting()``) until it has
+    /// finished leaving (``sheetDidLeave()``) — after its slide-out, whether a swipe, its
+    /// close button, or a link dismissed it. Until then UIKit presents nothing from the
+    /// stack and drops a change to it, so the root view hands failures to the sheet, and
+    /// a link waits.
+    public private(set) var isSheetOnScreen = false
+
+    /// Whether a link is held back, waiting for the stack to be uncovered. Nothing in
+    /// the shipped UI shows it — by design nothing moves under an alert — so it is what
+    /// a UI test waits on to know its link arrived before it answers the alert
+    /// (`App/`'s Debug-only marker).
+    public var hasWaitingLink: Bool {
+        waitingLink != nil
+    }
+
+    /// The newest link that arrived while something covered the stack, until the stack
+    /// is uncovered. Never stored (``encodedPath``): it is not a screen the person saw.
+    private var waitingLink: WaitingLink?
+
+    /// Whether this window presents a failure alert, or is about to: asked when a link
+    /// arrives and when the view reports a presentation gone or changed, never observed.
+    @ObservationIgnored private let presentsFailureAlert: @MainActor () -> Bool
 
     /// Whether ``restore(from:)`` may still set the path: only until the path first
     /// changes, whoever changes it.
@@ -63,10 +117,17 @@ public final class NavigationModel {
         StoredNavigationPath.data(for: path)
     }
 
-    /// Creates a model at the root, with nothing pushed.
+    /// Creates a model at the root, with nothing pushed, for a window that presents no
+    /// failure alert: a preview's, or a test's. A scene's model comes from
+    /// ``AppModel/makeNavigationModel(for:)``.
     public init() {
-        // Nothing to set up: `path` starts empty, no sheet is up, and nothing is read
-        // until a route arrives.
+        presentsFailureAlert = { false }
+    }
+
+    /// Creates a model at the root for a window, with nothing pushed.
+    /// `presentsFailureAlert` answers whether that window presents a failure alert now.
+    init(presentsFailureAlert: @escaping @MainActor () -> Bool) {
+        self.presentsFailureAlert = presentsFailureAlert
     }
 
     /// Pushes `route` on top of whatever is pushed, dismissing any sheet so the pushed
@@ -107,8 +168,17 @@ public final class NavigationModel {
     /// is pushed and dismissing any sheet, so the link lands on its screen one step from
     /// the root rather than on top of an unrelated stack or under a sheet.
     ///
-    /// A link the app does not understand leaves the path and the sheet alone and is
-    /// logged with its scheme and host only: its path and query can carry anything.
+    /// At once when nothing covers the stack. Under a failure alert in this window nothing
+    /// moves, a sheet included, until the person answers the alert
+    /// (``failureAlertDidLeave()``); under a sheet on screen the sheet is dismissed and
+    /// the path moves once it has left (``sheetDidLeave()``). A link that arrives while
+    /// one waits replaces it. A link is newer than a stored path either way, so
+    /// ``restore(from:)`` does nothing after one. A link that never shows its screen is
+    /// logged with the reason, never with what it named.
+    ///
+    /// A link the app does not understand leaves the path and the sheet alone, and a
+    /// waiting link waiting, and is logged with its scheme and host only: its path and
+    /// query can carry anything.
     ///
     /// - Returns: whether the link named a route.
     @discardableResult
@@ -121,9 +191,107 @@ public final class NavigationModel {
             )
             return false
         }
-        sheet = nil
-        path = [route]
+        awaitsRestoration = false
+        dropWaitingLink(because: .replacedByNewerLink)
+        let isUnderAlert = presentsFailureAlert()
+        waitingLink = WaitingLink(route: route, awaitsAlertAnswer: isUnderAlert)
+        if !isUnderAlert {
+            sheet = nil
+            showWaitingLinkIfNoSheetIsOnScreen()
+        }
         return true
+    }
+
+    /// Records that the root view has started presenting a sheet: one is on screen from
+    /// now until ``sheetDidLeave()``. The view's to report, not ``present(_:)``'s to
+    /// assume: a sheet asked for and dismissed before the view rendered it is never
+    /// presented, and so never leaves.
+    public func sheetDidStartPresenting() {
+        isSheetOnScreen = true
+    }
+
+    /// Records that a sheet has finished leaving the screen — unless another was asked
+    /// for meanwhile, which replaces it rather than uncovering the stack — and shows a
+    /// waiting link's screen if the stack is now uncovered.
+    ///
+    /// It never dismisses a sheet itself. One asked for since the link arrived is newer
+    /// than the link, which goes on waiting until that sheet has left too; and clearing
+    /// a sheet the view has not presented yet would leave ``isSheetOnScreen`` set with no
+    /// sheet ever leaving to clear it.
+    ///
+    /// If a failure arrived while the sheet was leaving, its alert presents over the
+    /// stack now, and the link waits for its answer instead: a push must not land on an
+    /// alert that is coming up. A link that was already waiting for an answer, whose
+    /// alert is gone without one, is dropped.
+    public func sheetDidLeave() {
+        isSheetOnScreen = sheet != nil
+        guard let link = waitingLink else {
+            return
+        }
+        if presentsFailureAlert() {
+            waitingLink?.awaitsAlertAnswer = true
+        } else if link.awaitsAlertAnswer {
+            dropWaitingLink(because: .alertLeftUnanswered)
+        } else {
+            showWaitingLinkIfNoSheetIsOnScreen()
+        }
+    }
+
+    /// Records that the person answered a failure alert in this window, and moves on
+    /// with a link that waited for the answer: its sheet is dismissed, and its screen
+    /// shows once no sheet is on screen. If another alert is up by now, the link waits
+    /// for that one's answer.
+    ///
+    /// Called from the alert button's action, and the path may move in the same turn:
+    /// UIKit has finished taking an alert down when it runs a button's action. SwiftUI
+    /// reports no later moment, and the five prototype runs of #140 that pushed straight
+    /// from this call pushed without UIKit's "navigation stack will not be updated".
+    public func failureAlertDidLeave() {
+        guard waitingLink != nil, !presentsFailureAlert() else {
+            return
+        }
+        waitingLink?.awaitsAlertAnswer = false
+        sheet = nil
+        showWaitingLinkIfNoSheetIsOnScreen()
+    }
+
+    /// Records that the failure alerts this window presents changed. A link waiting for
+    /// an alert's answer is dropped if the window now presents none: its alert was taken
+    /// down by code — the failure went to another window, or was cleared — and no button
+    /// was tapped.
+    ///
+    /// Dropped, not shown: the alert is still on its way out when this is called, SwiftUI
+    /// does not say when it has gone, and a push into a presentation in flight is what
+    /// UIKit drops (#140). Kept for some later moment instead, the link would replace
+    /// whatever the person was looking at by then. ``failureAlertDidLeave()`` runs first
+    /// when a button caused the change, so an answered alert's link is never dropped.
+    public func failureAlertsDidChange() {
+        guard let link = waitingLink, link.awaitsAlertAnswer, !presentsFailureAlert() else {
+            return
+        }
+        dropWaitingLink(because: .alertLeftUnanswered)
+    }
+
+    /// Shows the waiting link's screen unless a sheet is still on screen, whose leaving
+    /// (``sheetDidLeave()``) comes back here.
+    private func showWaitingLinkIfNoSheetIsOnScreen() {
+        guard let link = waitingLink, !isSheetOnScreen else {
+            return
+        }
+        waitingLink = nil
+        path = [link.route]
+    }
+
+    /// Forgets the waiting link, if there is one, and logs why: a link the person opened
+    /// that never showed its screen should not vanish without a trace. Only the reason is
+    /// logged, never the route.
+    private func dropWaitingLink(because reason: DropReason) {
+        guard waitingLink != nil else {
+            return
+        }
+        waitingLink = nil
+        let why = reason.rawValue
+        AppLog.navigation.notice("open: waiting link dropped: \(why, privacy: .public)")
     }
 
     /// Puts back the path a previous process stored (``encodedPath``), once, and only if

@@ -51,10 +51,12 @@ private struct PathRestoration: ViewModifier {
 /// The path outlives the window's process (`PathRestoration`).
 private struct SceneRoot: View {
     let app: AppModel
-    /// Whether this window stores and restores its path: off under UI testing, where
-    /// each launch must start at the root whatever the last one left pushed.
-    let restoresPath: Bool
-    @State private var navigation = NavigationModel()
+    /// Whether `LaunchUITests` launched the app. The window then neither stores nor
+    /// restores its path — each launch must start at the root whatever the last one left
+    /// pushed — and, in a Debug build, marks a link its navigation model holds back, which
+    /// nothing on screen shows (`WaitingLinkMarker`).
+    let isUITesting: Bool
+    @State private var navigation: NavigationModel
     @State private var lifecycle: SceneLifecycleModel
     @Environment(\.scenePhase)
     private var scenePhase
@@ -75,24 +77,32 @@ private struct SceneRoot: View {
             .onDisappear { lifecycle.sceneDidClose() }
     }
 
-    /// The root view, with path restoration unless this launch opts out. The one place
-    /// the opt-out is read: without the modifier nothing is stored, read, or encoded.
-    /// `restoresPath` never changes while the process lives, so the branch never flips.
+    /// The root view: with path restoration, or under UI testing without it and with the
+    /// waiting-link marker. The one place the opt-out is read: without the modifier
+    /// nothing is stored, read, or encoded. `isUITesting` never changes while the process
+    /// lives, so the branch never flips.
     @ViewBuilder private var root: some View {
         let rootView = RootView(app: app, navigation: navigation, lifecycle: lifecycle)
-        if restoresPath {
-            rootView.modifier(PathRestoration(navigation: navigation))
+        if isUITesting {
+            #if DEBUG
+                rootView.modifier(WaitingLinkMarker(navigation: navigation))
+            #else
+                rootView
+            #endif
         } else {
-            rootView
+            rootView.modifier(PathRestoration(navigation: navigation))
         }
     }
 
-    init(app: AppModel, restoresPath: Bool) {
+    init(app: AppModel, isUITesting: Bool) {
         self.app = app
-        self.restoresPath = restoresPath
-        // A re-render builds a spare model, which `@State` discards: building one has no
-        // side effects.
-        _lifecycle = State(initialValue: app.makeSceneLifecycleModel())
+        self.isUITesting = isUITesting
+        // A re-render builds a spare pair of models, which `@State` discards: building
+        // one has no side effects. The navigation model is built over this window's
+        // lifecycle model, whose failure alerts a link waits on.
+        let sceneLifecycle = app.makeSceneLifecycleModel()
+        _lifecycle = State(initialValue: sceneLifecycle)
+        _navigation = State(initialValue: app.makeNavigationModel(for: sceneLifecycle))
     }
 
     /// SwiftUI's phase as Core's. A phase a later SDK adds is `background`: nothing says
@@ -160,7 +170,7 @@ struct MyAppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            SceneRoot(app: app, restoresPath: !Self.isUITesting)
+            SceneRoot(app: app, isUITesting: Self.isUITesting)
         }
     }
 

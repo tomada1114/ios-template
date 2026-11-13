@@ -32,6 +32,14 @@ public final class SceneLifecycleModel {
     private let list: TodoListViewModel
     private let openScenes: OpenScenes
 
+    /// Whether this window presents a failure of any shared model: ``presented(_:)``
+    /// answers for one of them. What the window's ``NavigationModel`` holds a deep link
+    /// back on, asked of the open windows' claims rather than of each model, so a model
+    /// added later cannot be left out of it.
+    public var presentsFailure: Bool {
+        openScenes.presentsAnyFailure(id)
+    }
+
     /// Creates the model for a scene that has reported nothing yet, and so is not among
     /// `openScenes` yet: a spare model a re-render builds and discards never is.
     init(list: TodoListViewModel, openScenes: OpenScenes) {

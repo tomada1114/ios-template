@@ -80,6 +80,22 @@ extension XCTestCase {
         )
     }
 
+    /// Waits until `element` exists, and reports whether it came, asking again as soon as
+    /// each answer is in: `waitForExistence(timeout:)` asks about once a second, so what a
+    /// test does next lands up to a second after the element appeared. For a step whose
+    /// next action must land while the element is still arriving — a link opened as an
+    /// alert presents (#140). Each question is a round trip to the app, never a spin.
+    @MainActor
+    func waitForExistenceWithoutDelay(of element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let deadline = Date.now.addingTimeInterval(timeout)
+        while Date.now < deadline {
+            if element.exists {
+                return true
+            }
+        }
+        return false
+    }
+
     /// Waits until `element` no longer exists, and reports whether it went.
     @MainActor
     func waitForDisappearance(of element: XCUIElement) -> Bool {
