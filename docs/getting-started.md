@@ -70,10 +70,11 @@ covers the setup, the bundle identifier, and a free Personal Team's limits.
 The to-do list is an illustration for a new app to replace — example code in a skill
 or a doc is likewise a sketch of the pattern, never something the app must keep. Work
 through this list after `scripts/bootstrap.sh` (the paths below carry your app's name
-once it has run, and every one is under `Packages/MyAppKit/`).
+once it has run).
 
 The example's own files sit in one `Todos/` folder per module
-(`AGENTS.md` › Architecture), so most of the removal is four folder deletes:
+(`AGENTS.md` › Architecture), so most of the removal is four folder deletes, all under
+`Packages/MyAppKit/`:
 
 - `MyAppCore/Todos/` under `Sources/` — the domain value `TodoItem`, the port
   `TodoRepository` with its error type and its null object `UnavailableTodoRepository`,
@@ -214,7 +215,7 @@ order at the end keeps `just check` green while the folders go.
    removal is a migration for any app already installed, so do it before you ship.
 7. Delete the Platform persistence files and their test, then what is left of the
    `Todos/` folders — `MyAppTestSupport/Todos/`, `MyAppCoreTests/Todos/`, and
-   `MyAppCore/Todos/` (the port, its null object, and `TodoItem`) — and `AppLog.todos`.
+   whatever is left of `MyAppCore/Todos/` — and `AppLog.todos`.
 
 `rg -i 'todo'` then lists anything left — including the mentions in `AGENTS.md`,
 `.claude/rules/`, and the skills that cite the to-do list as the worked example — among

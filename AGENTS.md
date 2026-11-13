@@ -128,9 +128,9 @@ Packages/MyAppKit/
 │   └── Resources/          # The one String Catalog
 ├── Sources/MyAppUI/        # SwiftUI views — thin, render Core view models. RootView alone
 │                           #   at the root; every other file in the folder named for the
-│                           #   Core folder it renders (Todos/, About/, Failures/,
-│                           #   Navigation/, Preferences/), and shared presentation values
-│                           #   in `DesignSystem/DesignTokens.swift`
+│                           #   Core folder it renders or stands in for (Todos/, About/,
+│                           #   Failures/, Navigation/, Preferences/), and shared
+│                           #   presentation values in `DesignSystem/DesignTokens.swift`
 ├── Sources/MyAppPlatform/  # Adapters behind Core ports (SwiftData, URLSession, UserDefaults,
 │                           #   the Keychain), one folder per framework (Persistence/,
 │                           #   Networking/, Preferences/, SecureStorage/) — translation
@@ -147,8 +147,8 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
 ```
 
 - New logic goes in `MyAppCore` with tests; views only render Core state.
-- Each module is grouped the same way: one folder per feature (`Todos/`), named after
-  the feature, holding everything only that feature uses; shared infrastructure in a
+- `MyAppCore`, `MyAppUI`, `MyAppCoreTests`, and `MyAppTestSupport` are grouped the same
+  way: one folder per feature (`Todos/`), named after the feature, holding everything only that feature uses; shared infrastructure in a
   folder named for its concern (`Failures/`, `Scenes/`, `Configuration/`, `Navigation/`,
   `Networking/`, `Preferences/`, `SecureStorage/`); and at Core's root only `AppLog.swift`
   and `AppModel.swift`, which every feature touches (`RootView.swift` at UI's). A file
@@ -158,8 +158,10 @@ LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity
   `MyAppCoreTests/Todos/`, `MyAppTestSupport/Todos/` — and removing it deletes those
   folders plus its lines in the shared files that name it (`AppModel`, `RootView`,
   `AppRoute`, the catalog; `docs/getting-started.md` lists them). Folders are not
-  targets: a feature still compiles into `MyAppCore` and `MyAppUI`, and its adapter stays
-  in the Platform folder of its framework (`Persistence/SwiftDataTodoRepository.swift`).
+  targets: a feature still compiles into `MyAppCore` and `MyAppUI`. `MyAppPlatform` is
+  grouped by the framework an adapter wraps instead, so a feature's adapter sits in its
+  framework's folder (`Persistence/SwiftDataTodoRepository.swift`), and
+  `MyAppPlatformTests` stays flat.
 - The dependency direction is one-way: Core ← UI and Core ← Platform, both ← App.
   `MyAppUI` and `MyAppPlatform` are siblings and never import each other.
 - Storage and OS services go in `MyAppPlatform` as an adapter behind a `Sendable` port
