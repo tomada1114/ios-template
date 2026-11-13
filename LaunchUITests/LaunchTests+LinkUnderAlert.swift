@@ -38,19 +38,10 @@ extension LaunchTests {
             "a toggle that fails on the list should present the failure there",
         )
         XCUIDevice.shared.system.open(link(toItemWithID: id))
-        XCTAssertTrue(alert.exists, "a link should leave the alert it arrived under up")
+        waitForTheLinkToWait(under: alert, in: app)
 
         alert.buttons["OK"].tap()
-        XCTAssertTrue(
-            app.collectionViews["todoDetail"].waitForExistence(timeout: Timeout.elementAppears),
-            "the link should push its detail screen once the alert is answered",
-        )
-        XCTAssertFalse(alert.exists, "the failure answered over the list should not present again")
-        XCTAssertEqual(
-            app.buttons["detailToggle"].label,
-            "Mark as Done",
-            "the item should stay open after its save failed",
-        )
+        waitForTheLinkedDetail(in: app, uncoveredBy: alert)
         app.navigationBars.buttons["BackButton"].tap()
         XCTAssertTrue(
             app.textFields["newItemField"].waitForExistence(timeout: Timeout.elementAppears),
@@ -73,7 +64,7 @@ extension LaunchTests {
             "a failure that arrives while the About sheet is up should present over it",
         )
         XCUIDevice.shared.system.open(link(toItemWithID: id))
-        XCTAssertTrue(alert.exists, "a link should leave the alert it arrived under up")
+        waitForTheLinkToWait(under: alert, in: app)
         XCTAssertTrue(sheet.exists, "a link should leave the sheet up while its alert is")
 
         alert.buttons["OK"].tap()
@@ -81,22 +72,64 @@ extension LaunchTests {
             waitForDisappearance(of: sheet),
             "the link should close the sheet once the alert is answered",
         )
-        let detail = app.collectionViews["todoDetail"]
+        waitForTheLinkedDetail(in: app, uncoveredBy: alert)
+    }
+
+    /// Waits until the app holds the link back, and asserts it moved nothing: the app
+    /// says so through an invisible element it adds only under `-uiTesting`
+    /// (`MyAppUI`'s `WaitingLinkMarker`), because by design nothing a person can see
+    /// changes under the alert. Without it, a link still on its way and a link that is
+    /// waiting look the same, and OK tapped before the link arrived would show the same
+    /// detail screen through the path that never waits.
+    @MainActor
+    private func waitForTheLinkToWait(under alert: XCUIElement, in app: XCUIApplication) {
+        let marker = app.descendants(matching: .any)
+            .matching(identifier: "waitingLinkMarker")
+            .firstMatch
         XCTAssertTrue(
-            detail.waitForExistence(timeout: Timeout.elementAppears),
-            "the link should push its detail screen once the sheet has left",
+            marker.waitForExistence(timeout: Timeout.elementAppears),
+            "a link that arrives under an alert should wait for the alert's answer",
         )
-        XCTAssertFalse(alert.exists, "the failure answered over the sheet should not present again")
+        XCTAssertTrue(alert.exists, "a link should leave the alert it arrived under up")
+        XCTAssertFalse(
+            app.collectionViews["todoDetail"].exists,
+            "a link should push nothing while the alert it arrived under is up",
+        )
+    }
+
+    /// Waits for the link's detail screen, then for its toggle to be hittable: nothing
+    /// covers the screen, so the failure `alert` showed did not present again over it —
+    /// an alert coming back would be up by the time the push has finished, and nothing
+    /// under an alert is hittable.
+    @MainActor
+    private func waitForTheLinkedDetail(in app: XCUIApplication, uncoveredBy alert: XCUIElement) {
+        XCTAssertTrue(
+            app.collectionViews["todoDetail"].waitForExistence(timeout: Timeout.elementAppears),
+            "the link should push its detail screen once the alert is answered",
+        )
+        let toggle = app.buttons["detailToggle"]
+        let uncovered = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND hittable == true"),
+            object: toggle,
+        )
         XCTAssertEqual(
-            app.buttons["detailToggle"].label,
+            XCTWaiter().wait(for: [uncovered], timeout: Timeout.elementAppears),
+            .completed,
+            "nothing should cover the linked screen once its push has finished",
+        )
+        XCTAssertFalse(alert.exists, "a failure that was answered should not present again")
+        XCTAssertEqual(
+            toggle.label,
             "Mark as Done",
             "the item should stay open after its save failed",
         )
     }
 
-    /// The list's row toggle, and the item it toggles, read from the toggle's identifier.
+    /// The list's row toggle, and the item it toggles, read from the toggle's identifier
+    /// rather than hard-coded: the test created the item, so only the running app knows
+    /// it.
     @MainActor
-    private func theRowToggleAndItsItem(in app: XCUIApplication) throws -> (XCUIElement, UUID) {
+    func theRowToggleAndItsItem(in app: XCUIApplication) throws -> (XCUIElement, UUID) {
         let toggle = app.buttons
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", Self.rowTogglePrefix))
             .firstMatch

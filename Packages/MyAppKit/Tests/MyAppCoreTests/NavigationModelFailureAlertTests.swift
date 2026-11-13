@@ -123,6 +123,105 @@ struct NavigationModelFailureAlertTests {
     }
 
     @Test
+    func `a window presents a failure exactly where presented(_:) answers`() async throws {
+        let fixture = try await FailurePresentationFixture()
+        let first = fixture.scene(.active)
+        let second = fixture.scene(.active)
+        let unopened = fixture.app.makeSceneLifecycleModel()
+        #expect([first, second, unopened].map(\.presentsFailure) == [false, false, false])
+        await fixture.failAToggle(from: second)
+        #expect(fixture.presenters(among: [first, second, unopened]) == [1])
+        #expect([first, second, unopened].map(\.presentsFailure) == [false, true, false])
+        fixture.list.dismissFailure()
+        #expect([first, second, unopened].map(\.presentsFailure) == [false, false, false])
+    }
+
+    @Test
+    func `a link is dropped when its alert moves to another window unanswered`() async throws {
+        let fixture = try await FailurePresentationFixture()
+        let scene = fixture.scene(.active)
+        let other = fixture.scene(.active)
+        let navigation = fixture.app.makeNavigationModel(for: scene)
+        await fixture.failAToggle(from: scene)
+        try navigation.open(Self.link())
+        // A newer failure, caused in the other window, replaces this one and presents
+        // there: this window's alert is taken down with no answer.
+        await fixture.failAToggle(from: other)
+        #expect(fixture.presenters(among: [scene, other]) == [1])
+        navigation.failureAlertsDidChange()
+        #expect(!navigation.hasWaitingLink)
+
+        // Nothing that happens later in this window brings the link back.
+        navigation.present(.about)
+        navigation.sheetDidStartPresenting()
+        navigation.dismissSheet(.about)
+        navigation.sheetDidLeave()
+        navigation.failureAlertDidLeave()
+        #expect(navigation.path.isEmpty)
+    }
+
+    @Test
+    func `a link is dropped when its window goes to the background under its alert`() async throws {
+        let fixture = try await FailurePresentationFixture()
+        let scene = fixture.scene(.active)
+        let other = fixture.scene(.active)
+        let navigation = fixture.app.makeNavigationModel(for: scene)
+        await fixture.failAToggle(from: scene)
+        try navigation.open(Self.link())
+        scene.sceneDidEnter(.background)
+        #expect(fixture.presenters(among: [scene, other]) == [1])
+        navigation.failureAlertsDidChange()
+        #expect(!navigation.hasWaitingLink)
+        scene.sceneDidEnter(.active)
+        navigation.failureAlertDidLeave()
+        #expect(navigation.path.isEmpty)
+    }
+
+    @Test
+    func `a link whose alert left unanswered is dropped when its sheet leaves`() async throws {
+        let fixture = try await FailurePresentationFixture()
+        let scene = fixture.scene(.active)
+        let navigation = fixture.app.makeNavigationModel(for: scene)
+        navigation.present(.about)
+        navigation.sheetDidStartPresenting()
+        await fixture.failAToggle(from: scene)
+        try navigation.open(Self.link())
+        // Cleared by code, not by the alert's button, and before any view reported it.
+        fixture.list.dismissFailure()
+        navigation.dismissSheet(.about)
+        navigation.sheetDidLeave()
+        #expect(!navigation.hasWaitingLink)
+        #expect(navigation.path.isEmpty)
+    }
+
+    @Test
+    func `a change among the alerts while this window still presents one keeps the link`(
+    ) async throws {
+        let fixture = try await FailurePresentationFixture()
+        let scene = fixture.scene(.active)
+        let navigation = fixture.app.makeNavigationModel(for: scene)
+        await fixture.failAToggle(from: scene)
+        try navigation.open(Self.link())
+        navigation.failureAlertsDidChange()
+        #expect(navigation.hasWaitingLink)
+        Self.answerTheAlert(in: fixture, of: navigation)
+        #expect(navigation.path == [.todoDetail(Self.linked)])
+    }
+
+    @Test
+    func `a link held under a sheet is not dropped by a change among the alerts`() async throws {
+        let fixture = try await FailurePresentationFixture()
+        let scene = fixture.scene(.active)
+        let navigation = fixture.app.makeNavigationModel(for: scene)
+        navigation.present(.about)
+        navigation.sheetDidStartPresenting()
+        try navigation.open(Self.link())
+        navigation.failureAlertsDidChange()
+        navigation.sheetDidLeave()
+        #expect(navigation.path == [.todoDetail(Self.linked)])
+    }
+
+    @Test
     func `a model built without a window waits on no alert`() async throws {
         let fixture = try await FailurePresentationFixture()
         let scene = fixture.scene(.active)

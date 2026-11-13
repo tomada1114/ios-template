@@ -16,10 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now waits for OK, and one that arrives under a sheet closes the sheet and shows its
   screen once the sheet has gone. `NavigationModel` holds the link meanwhile, and its
   `path` stays the screen on show; `AppModel.makeNavigationModel(for:)` builds it for a
-  scene, and `RootView` reports a sheet presenting or gone and an alert answered
-  (`sheetDidStartPresenting()`, `sheetDidLeave()`, `failureAlertDidLeave()`). A link
-  under an alert over a sheet used to close the sheet at once and bring the alert back
-  over the linked screen; it now leaves both up until the alert is answered. (#140)
+  scene, and `RootView` reports a sheet presenting or gone, an alert answered, and the
+  window's alerts changing (`sheetDidStartPresenting()`, `sheetDidLeave()`,
+  `failureAlertDidLeave()`, `failureAlertsDidChange()`). A link under an alert over a
+  sheet leaves both up until the alert is answered. A waiting link is dropped, and
+  logged, if a newer link arrives, if the person navigates first, or if its alert goes
+  away unanswered (the failure moved to another window). (#140)
 - With two windows open on iPad, a failure now presents in one window instead of both,
   and OK in one window no longer pulls the alert out from under the other. The window
   whose action failed presents it if it is in the foreground; otherwise the window that
@@ -39,10 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   alert from a view that is already presenting a sheet. Dismissing it leaves the sheet
   up. The failure launch test opens the About sheet over a failing toggle still in
   flight (a new Debug-only `-delayFailedUpdates <seconds>` argument holds its failure
-  back) and asserts the alert presents over the sheet, that OK leaves the sheet up, and
-  that a deep link closing the sheet under the alert brings the alert back over the
-  screen it pushed. Only an alert's button clears its failure now, so a sheet closed by
-  code no longer discards a failure the person never saw dismissed.
+  back) and asserts the alert presents over the sheet and that OK leaves the sheet up.
+  Only an alert's button clears its failure now, so an alert torn down by code no
+  longer discards a failure the person never saw dismissed.
 - The app now ships `App/PrivacyInfo.xcprivacy`, which declares the `UserDefaults`
   required-reason API (`NSPrivacyAccessedAPICategoryUserDefaults`, reason `CA92.1`)
   that `UserDefaultsPreferences` calls, with no tracking and no collected data, so an

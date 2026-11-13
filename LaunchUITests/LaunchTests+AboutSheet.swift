@@ -33,14 +33,8 @@ extension LaunchTests {
     /// its failure back for seconds, and the step proves the alert is not up yet once the
     /// sheet has settled, so the alert that follows arrived under the sheet.
     @MainActor
-    func failATogglePresentsTheFailureOverTheAboutSheet(in app: XCUIApplication) {
-        let toggle = app.buttons
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", Self.rowTogglePrefix))
-            .firstMatch
-        XCTAssertTrue(
-            toggle.waitForExistence(timeout: Timeout.elementAppears),
-            "the list should show the item's row toggle",
-        )
+    func failATogglePresentsTheFailureOverTheAboutSheet(in app: XCUIApplication) throws {
+        let (toggle, _) = try theRowToggleAndItsItem(in: app)
         toggle.tap()
         app.buttons["aboutButton"].tap()
         let sheet = waitForTheAboutSheetToSettle(in: app)

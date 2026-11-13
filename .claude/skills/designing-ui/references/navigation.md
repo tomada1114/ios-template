@@ -124,35 +124,58 @@ is lost, and the same link again changes nothing, because the path already equal
 time is enough.
 
 So `open(_:)` moves the path only when nothing covers the stack, and otherwise keeps
-the link — the newest only — until the view reports the stack clear:
+the link — the newest only — until the view reports the stack uncovered:
 
 - **Under a failure alert in this window, nothing moves**, a sheet under the alert
   included. When the person answers the alert, its button calls
-  `failureAlertDidLeave()` after dismissing the failure; UIKit has taken the alert down
-  by the time a button's action runs. The model then goes on: it dismisses the sheet if
-  one is up, and moves the path once none is on screen.
+  `failureAlertDidLeave()` after dismissing the failure. The model then goes on: it
+  dismisses the sheet if one is up, and moves the path once none is on screen. The path
+  may move in that same turn because UIKit has taken an alert down by the time it runs a
+  button's action; SwiftUI reports no later moment, and the #140 prototype runs that
+  pushed straight from the button did so without UIKit's refusal.
 - **Under a sheet on screen, the link dismisses the sheet at once** and the path moves
   in `sheetDidLeave()`, after the slide-out. If a failure arrives while the sheet is
   leaving, its alert presents over the stack first and the link waits for its answer:
-  the push never lands on an alert that is coming up.
+  the push never lands on an alert that is coming up. `sheetDidLeave()` never dismisses
+  a sheet itself: one asked for since the link arrived is newer than the link, which
+  waits for that sheet to leave too — and clearing a sheet the view has not presented
+  yet would leave `isSheetOnScreen` set with no sheet ever leaving to clear it.
 - **With nothing over the stack, the link acts at once.** So does a link that arrives
   after a sheet was asked for but before `RootView` started presenting it: clearing the
   request means no sheet is ever presented.
+
+A waiting link is dropped, never left to surface later over whatever the person is
+looking at by then, and each drop is logged in the `navigation` category with its
+reason only:
+
+- **A newer link replaces it.**
+- **The path moved first.** Any write that changes `path` — a row's link or the back
+  button through the stack's binding, `show(_:)`, `popToRoot()` — means the person went
+  somewhere since. A write of the same path keeps it.
+- **Its alert left unanswered.** A failure can leave a window with no button tapped: it
+  is handed to another window (a newer failure caused there, or this window going to
+  the background), or cleared by code. `RootView` forwards every change of
+  `SceneLifecycleModel.presentsFailure` as `failureAlertsDidChange()`, and a link that
+  was waiting for an answer is dropped when the window presents no failure any more;
+  `sheetDidLeave()` drops it the same way if it comes first. Dropped rather than shown:
+  the alert is still on its way out at that moment, SwiftUI does not say when it has
+  gone, and a push into a presentation in flight is exactly what UIKit refuses. A newer
+  failure presented in the same window keeps the link waiting, for that alert's answer.
 
 While a link waits, `path` is still the screen the person sees, and so is `encodedPath`:
 a waiting link is never stored, and a process that ends before the alert is answered
 loses it rather than restoring a screen nobody saw. A link is newer than a stored path
 whether it has been applied or still waits, so `restore(from:)` does nothing after one.
-A second link replaces the one waiting, and so does `show(_:)` or `popToRoot()`, which
-move at once: they are for a screen's own controls, which nothing covers when tapped.
 
 The model learns of its window's alerts from Core, not from the view: `AppModel` builds
-it over a closure that asks the scene's `SceneLifecycleModel` whether it presents each
-shared model's failure, so the answer is right in the same turn of the run loop in
-which a failure is reported, before any view has rendered it. A second shared model
-adds its failure to that closure, beside its `.failureAlert` line in `RootView`. The
-two signals that only the screen has — an alert answered, a sheet gone — are the view's
-to forward, and it decides nothing with them.
+it (`makeNavigationModel(for:)`) over the scene's `SceneLifecycleModel.presentsFailure`,
+which asks `OpenScenes` whether the window holds any failure's claim. The answer is
+right in the same turn of the run loop in which a failure is reported, before any view
+has rendered it, and it covers every shared model without naming one: a failure reaches
+a window only through a `FailureSlot`'s claim, so a model added later is waited on with
+no second list to keep in step with `RootView`'s `.failureAlert` lines. The signals only
+the screen has — a sheet presenting or gone, an alert answered, the window's alerts
+changed — are the view's to forward, and it decides nothing with them.
 
 Waiting for the person's answer, rather than for the alert to finish presenting, is
 forced: SwiftUI reports nothing when an alert has finished coming up, so Core cannot
@@ -166,8 +189,13 @@ of how SwiftUI hosts its stack.
 `NavigationModelWaitingLinkTests` and `NavigationModelFailureAlertTests` pin every rule
 above. The failure launch test opens a link the moment an alert exists — over the list,
 and over the About sheet — without the second's grace `waitForExistence` gives, so the
-link lands while the alert is still presenting, and the link's screen shows once OK is
-tapped. Not covered: a failure reported while a push is still animating, the reverse
+link lands while the alert is still presenting. It then waits until the app holds the
+link, which nothing on screen shows: `NavigationModel.hasWaitingLink` drives an
+invisible accessibility element (`MyAppUI`'s Debug-only `WaitingLinkMarker`) that
+`App/`'s scene root adds only under `-uiTesting`. With the link known to be waiting,
+the test asserts nothing was pushed and the sheet is still up, taps OK, and waits for
+the linked screen's toggle to be hittable, which an alert presenting again would
+prevent. Not covered: a failure reported while a push is still animating, the reverse
 order, where the alert presents over a stack in transition.
 
 ## A failure presents in one window

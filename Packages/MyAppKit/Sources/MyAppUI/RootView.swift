@@ -32,6 +32,11 @@ public struct RootView: View {
 
     public var body: some View {
         failureAlerts(on: stackAndSheet, isTopmost: !navigation.isSheetOnScreen)
+            // Whichever model's failure it is: an alert taken down by code, with no button
+            // tapped, strands a link that was waiting for its answer, and Core drops it.
+            .onChange(of: lifecycle.presentsFailure) {
+                navigation.failureAlertsDidChange()
+            }
     }
 
     private var stackAndSheet: some View {
@@ -95,8 +100,12 @@ public struct RootView: View {
     /// The list is shared by every window, so its failure is read through this window's
     /// lifecycle model: Core hands it to exactly one window, and the button dismisses the
     /// failure it was shown for, so only that window's button can (#133). The button then
-    /// tells the navigation model the alert has gone, which is when a link that arrived
-    /// under it may move the stack (#140).
+    /// tells the navigation model the alert was answered, which is when a link that
+    /// arrived under it may move the stack (#140): UIKit has taken an alert down by the
+    /// time it runs a button's action, and SwiftUI reports no later moment. Whether the
+    /// window presents a failure at all, the navigation model asks Core
+    /// (`SceneLifecycleModel.presentsFailure`), not this list, so an alert added here is
+    /// waited on without a second line anywhere.
     private func failureAlerts(on layer: some View, isTopmost: Bool) -> some View {
         let shown = isTopmost ? lifecycle.presented(app.todoList.reportedFailure) : nil
         return layer.failureAlert(shown?.failure) {

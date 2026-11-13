@@ -109,9 +109,10 @@ final class LaunchTests: XCTestCase {
         XCTContext.runActivity(named: "Fail a toggle on the item's detail") { _ in
             failATogglePresentsTheFailureOnTheDetail(in: app)
         }
-        XCTContext.runActivity(named: "Fail a toggle that lands while the About sheet is up") { _ in
-            failATogglePresentsTheFailureOverTheAboutSheet(in: app)
-        }
+        try XCTContext
+            .runActivity(named: "Fail a toggle that lands while the About sheet is up") { _ in
+                try failATogglePresentsTheFailureOverTheAboutSheet(in: app)
+            }
         try XCTContext
             .runActivity(named: "Open a link as an alert comes up over the list") { _ in
                 try aLinkUnderAnAlertOverTheListWaitsForItsAnswer(in: app)
@@ -186,19 +187,7 @@ final class LaunchTests: XCTestCase {
     /// state for an identifier no item has.
     @MainActor
     private func openTheItemThenAnUnknownItemByDeepLink(in app: XCUIApplication) throws {
-        // The item's identifier, read from its row toggle rather than hard-coded: the
-        // walk created the item, so only the running app knows it.
-        let toggle = app.buttons
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", Self.rowTogglePrefix))
-            .firstMatch
-        XCTAssertTrue(
-            toggle.waitForExistence(timeout: Timeout.elementAppears),
-            "the list should show the item's row toggle",
-        )
-        let id = try XCTUnwrap(
-            UUID(uuidString: String(toggle.identifier.dropFirst(Self.rowTogglePrefix.count))),
-            "the row toggle's identifier should end in the item's UUID",
-        )
+        let (_, id) = try theRowToggleAndItsItem(in: app)
 
         // The found state's identifier lands on its Form, a collection view to XCUITest.
         let detail = app.collectionViews["todoDetail"]

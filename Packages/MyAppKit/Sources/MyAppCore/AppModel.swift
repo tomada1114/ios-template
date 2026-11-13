@@ -68,12 +68,10 @@ public final class AppModel {
     ///
     /// Built here because it waits on that window's failure alerts: a link that arrives
     /// while the window presents one moves nothing until the alert is answered
-    /// (``NavigationModel/open(_:)``). Every shared model whose failure `RootView`
-    /// presents is asked here, so a new one adds its line.
+    /// (``NavigationModel/open(_:)``). It asks ``SceneLifecycleModel/presentsFailure``,
+    /// which answers for every shared model's failure, so nothing here names one.
     public func makeNavigationModel(for lifecycle: SceneLifecycleModel) -> NavigationModel {
-        NavigationModel { [todoList] in
-            lifecycle.presented(todoList.reportedFailure) != nil
-        }
+        NavigationModel { lifecycle.presentsFailure }
     }
 
     /// The view model of the screen ``AppRoute/todoDetail(_:)`` pushes for `id`, in the

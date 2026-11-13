@@ -155,11 +155,15 @@ design-lock decision, never a per-screen one.
 - `RootView` tells the `NavigationModel` what only the screen knows — a sheet started
   presenting (`sheetDidStartPresenting()`), a sheet finished leaving
   (`sheetDidLeave()`, from `onDismiss`), a failure alert's button was tapped
-  (`failureAlertDidLeave()`, after `dismissFailure(_:)`) — and decides nothing with it:
-  Core holds a deep link back while a sheet or an alert covers the stack, because UIKit
-  drops a push that lands on a presentation in flight (#140; the `designing-ui` skill's
-  `references/navigation.md` › A link waits until nothing covers the stack). A new
-  alert or sheet modifier reports the same way.
+  (`failureAlertDidLeave()`, after `dismissFailure(_:)`), the window's alerts changed
+  (`failureAlertsDidChange()`, on `lifecycle.presentsFailure`) — and decides nothing
+  with it: Core holds a deep link back while a sheet or an alert covers the stack,
+  because UIKit drops a push that lands on a presentation in flight (#140; the
+  `designing-ui` skill's `references/navigation.md` › A link waits until nothing covers
+  the stack). A new alert or sheet modifier reports the same way.
+- `WaitingLinkMarker` is the one view that exists for `LaunchUITests`: Debug-only,
+  applied by `SceneRoot` only under `-uiTesting`, an invisible accessibility element
+  while a link waits, since nothing a person sees says so.
 - Sheet sizing (`.presentationDetents`) only as the lock says.
 
 ## Size classes, Dynamic Type, safe areas, keyboard

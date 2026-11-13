@@ -122,15 +122,48 @@ struct NavigationModelWaitingLinkTests {
     }
 
     @Test
-    func `a sheet asked for while a link waits is closed by the link`() throws {
+    func `a sheet asked for while a link waits stays up, and the link shows once it left`() throws {
         let navigation = Self.navigationWithASheetOnScreen()
         try navigation.open(Self.link(to: Self.linked))
         navigation.present(.about)
         navigation.sheetDidLeave()
-        #expect(navigation.sheet == nil)
+        #expect(navigation.sheet == .about)
+        #expect(navigation.isSheetOnScreen)
         #expect(navigation.path.isEmpty)
+
+        navigation.dismissSheet(.about)
         navigation.sheetDidLeave()
+        #expect(!navigation.isSheetOnScreen)
         #expect(navigation.path == [.todoDetail(Self.linked)])
+    }
+
+    @Test
+    func `after a link waited out two sheets, a later link under no sheet shows at once`() throws {
+        let navigation = Self.navigationWithASheetOnScreen()
+        try navigation.open(Self.link(to: Self.linked))
+        navigation.present(.about)
+        navigation.sheetDidLeave()
+        navigation.dismissSheet(.about)
+        navigation.sheetDidLeave()
+        try navigation.open(Self.link(to: Self.other))
+        #expect(navigation.path == [.todoDetail(Self.other)])
+    }
+
+    @Test
+    func `a link waits from the time it is held until its screen shows`() throws {
+        let navigation = Self.navigationWithASheetOnScreen()
+        #expect(!navigation.hasWaitingLink)
+        try navigation.open(Self.link(to: Self.linked))
+        #expect(navigation.hasWaitingLink)
+        navigation.sheetDidLeave()
+        #expect(!navigation.hasWaitingLink)
+    }
+
+    @Test
+    func `a link that shows at once never waits`() throws {
+        let navigation = NavigationModel()
+        try navigation.open(Self.link(to: Self.linked))
+        #expect(!navigation.hasWaitingLink)
     }
 
     @Test
@@ -153,6 +186,29 @@ struct NavigationModelWaitingLinkTests {
     }
 
     @Test
+    func `a write that changes the path while a link waits drops the link`() throws {
+        let navigation = Self.navigationWithASheetOnScreen()
+        try navigation.open(Self.link(to: Self.linked))
+        // What `NavigationStack(path:)` writes for a tapped row, or the back button.
+        navigation.path = [Self.first]
+        #expect(!navigation.hasWaitingLink)
+        navigation.sheetDidLeave()
+        #expect(navigation.path == [Self.first])
+    }
+
+    @Test
+    func `a write of the same path while a link waits keeps it waiting`() throws {
+        let navigation = NavigationModel()
+        navigation.show(Self.first)
+        navigation.present(.about)
+        navigation.sheetDidStartPresenting()
+        try navigation.open(Self.link(to: Self.linked))
+        navigation.path = [Self.first]
+        navigation.sheetDidLeave()
+        #expect(navigation.path == [.todoDetail(Self.linked)])
+    }
+
+    @Test
     func `a push while a link waits drops the link`() throws {
         let navigation = Self.navigationWithASheetOnScreen()
         try navigation.open(Self.link(to: Self.linked))
@@ -162,8 +218,11 @@ struct NavigationModelWaitingLinkTests {
     }
 
     @Test
-    func `popToRoot while a link waits drops the link`() throws {
-        let navigation = Self.navigationWithASheetOnScreen()
+    func `popToRoot from a pushed screen while a link waits drops the link`() throws {
+        let navigation = NavigationModel()
+        navigation.show(Self.first)
+        navigation.present(.about)
+        navigation.sheetDidStartPresenting()
         try navigation.open(Self.link(to: Self.linked))
         navigation.popToRoot()
         navigation.sheetDidLeave()
@@ -177,6 +236,7 @@ struct NavigationModelWaitingLinkTests {
         navigation.present(.about)
         navigation.sheetDidStartPresenting()
         navigation.failureAlertDidLeave()
+        navigation.failureAlertsDidChange()
         #expect(navigation.sheet == .about)
         navigation.dismissSheet(.about)
         navigation.sheetDidLeave()
