@@ -5,13 +5,10 @@ import Foundation
 enum Timeout {
     static let launch: TimeInterval = 20
     static let elementAppears: TimeInterval = 5
-    /// How long a failed save waits before it reports, passed to the app as
-    /// `-delayFailedUpdates`' value. Longer than every wait between the tap that starts the
-    /// save and the check that its failure has not arrived yet: the About sheet appearing
-    /// and then settling (one `elementAppears` each), plus one more for the About tap.
-    static let failedUpdateDelay: TimeInterval = elementAppears + elementAppears + elementAppears
-    /// How long a failure takes to appear under `-delayFailedUpdates`.
-    static let delayedFailure: TimeInterval = failedUpdateDelay + elementAppears
+    /// How long a held failure takes to appear once the test releases it
+    /// (`HeldFailure.release()`): the app's answer to the release, then the alert's
+    /// presentation, which is an element appearing.
+    static let releasedFailureAppears: TimeInterval = elementAppears
     static let keyboardFocus: TimeInterval = 3
     /// How long the keyboard may take to present once a field holds focus. As long as a
     /// launch, because on a cold-booted simulator its first presentation is one: the

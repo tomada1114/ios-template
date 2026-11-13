@@ -93,10 +93,11 @@ SIMCTL_CHILD_PROBE_STATE=known-state \
 - `-failUpdates` (Debug builds only) wraps the store so every save that replaces a
   stored item — a toggle — fails, while adds still succeed: add an item, toggle it, and
   the failure alert shows over whichever screen is on top. Add
-  `-delayFailedUpdates <seconds>` and each failure arrives that many seconds after the
-  tap, time enough to open the About sheet over the save in flight and see the alert
-  present over the sheet. `LaunchTests` uses both to prove exactly that; a Release build
-  ignores them.
+  `-holdFailedUpdates <name>` and each failure is held until the Darwin notification
+  `<name>` is posted, once per failure — `xcrun simctl spawn booted notifyutil -p <name>`
+  — time enough to open the About sheet over the save in flight and see the alert
+  present over the sheet. `LaunchTests` uses both to prove exactly that, posting the
+  notification itself; a Release build ignores them.
 - An environment variable reaches the app only with the `SIMCTL_CHILD_` prefix, which
   `simctl` strips: the line above starts the app with `PROBE_STATE=known-state`, which
   `ProcessInfo` reads. Nothing in the template reads it; it proves the channel.

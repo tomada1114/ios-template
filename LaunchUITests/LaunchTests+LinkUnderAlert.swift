@@ -32,9 +32,10 @@ extension LaunchTests {
     func aLinkUnderAnAlertOverTheListWaitsForItsAnswer(in app: XCUIApplication) throws {
         let (toggle, id) = try theRowToggleAndItsItem(in: app)
         toggle.tap()
+        HeldFailure.release()
         let alert = app.alerts["Something Went Wrong"]
         XCTAssertTrue(
-            waitForExistenceWithoutDelay(of: alert, timeout: Timeout.delayedFailure),
+            waitForExistenceWithoutDelay(of: alert, timeout: Timeout.releasedFailureAppears),
             "a toggle that fails on the list should present the failure there",
         )
         XCUIDevice.shared.system.open(link(toItemWithID: id))
@@ -58,9 +59,10 @@ extension LaunchTests {
         toggle.tap()
         app.buttons["aboutButton"].tap()
         let sheet = waitForTheAboutSheetToSettle(in: app)
+        HeldFailure.release()
         let alert = app.alerts["Something Went Wrong"]
         XCTAssertTrue(
-            waitForExistenceWithoutDelay(of: alert, timeout: Timeout.delayedFailure),
+            waitForExistenceWithoutDelay(of: alert, timeout: Timeout.releasedFailureAppears),
             "a failure that arrives while the About sheet is up should present over it",
         )
         XCUIDevice.shared.system.open(link(toItemWithID: id))
