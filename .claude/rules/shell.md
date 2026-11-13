@@ -62,9 +62,10 @@ states which of these it does:
   `scripts/checks/` checks read files under a `--root` that defaults to the checkout
   holding the script (the flag is what lets tests point them at a fixture tree);
   `scripts/simulator-destination.sh`, `scripts/run-throttled.sh`, and
-  `scripts/wait-simulator-settled.sh` read nothing from the tree. `scripts/simulator-relevant.sh` is the fail-safe case: outside a checkout, or on
-  any git failure, it prints `true` with a one-line notice, because running the
-  simulator checks needlessly is safe and skipping them is not.
+  `scripts/wait-simulator-settled.sh` read nothing from the tree.
+  `scripts/simulator-relevant.sh` is the fail-safe case: outside a checkout, or on any
+  git failure, it prints `true` with a one-line notice, because running the simulator
+  checks needlessly is safe and skipping them is not.
 
 Git exports `GIT_DIR` to every hook, and `git commit -- <path>` also exports a temporary
 `GIT_INDEX_FILE`. An inherited `GIT_DIR` outranks the current directory and `git -C`,
