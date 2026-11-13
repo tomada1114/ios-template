@@ -1,6 +1,9 @@
 import MyAppCore
 import MyAppPlatform
 import MyAppUI
+#if DEBUG
+    import notify
+#endif
 import SwiftUI
 
 /// Keeps one window's navigation path across launches: `@SceneStorage` holds the model's
@@ -155,10 +158,13 @@ struct MyAppApp: App {
         /// UI-tested. Release builds neither read the argument nor contain the type.
         private static let failUpdatesArgument = "-failUpdates"
 
-        /// With `-failUpdates`, followed by a whole number of seconds: each failure arrives
-        /// that long after the save began, so `LaunchUITests` — which passes the value — can
-        /// open a sheet over a save still in flight. Missing or malformed, no delay.
-        private static let delayFailedUpdatesArgument = "-delayFailedUpdates"
+        /// With `-failUpdates`, followed by the name of a Darwin notification: each failure
+        /// is held until that notification is posted, once per failure
+        /// (`FailedUpdateGate`), so `LaunchUITests` — which names it and posts it — can open
+        /// a sheet over a save still in flight and let the failure arrive only once it has
+        /// seen the sheet settle. A person posts it with `xcrun simctl spawn booted
+        /// notifyutil -p <name>`. Missing, the failures arrive at once.
+        private static let holdFailedUpdatesArgument = "-holdFailedUpdates"
     #endif
 
     /// Owned here, in `@State`, so the model outlives any one scene's view tree and every
@@ -199,7 +205,7 @@ struct MyAppApp: App {
                 if arguments.contains(failUpdatesArgument) {
                     return UpdateFailingTodoRepository(
                         wrapping: repository,
-                        failureDelay: failedUpdateDelay(in: arguments),
+                        holdingFailuresAt: failedUpdateGate(in: arguments),
                     )
                 }
             #endif
@@ -211,16 +217,34 @@ struct MyAppApp: App {
     }
 
     #if DEBUG
-        /// The seconds that follow `-delayFailedUpdates`, or no delay when they are missing
-        /// or not a whole number.
-        private static func failedUpdateDelay(in arguments: [String]) -> Duration {
-            guard let index = arguments.firstIndex(of: delayFailedUpdatesArgument),
+        /// A gate released by each post of the Darwin notification named after
+        /// `-holdFailedUpdates`, or none when the name is missing, is another argument, or
+        /// cannot be observed. A Darwin notification because it is the one channel a UI
+        /// test runner and the app share on the simulator with nothing to set up; the
+        /// registration lasts as long as the app.
+        private static func failedUpdateGate(in arguments: [String]) -> FailedUpdateGate? {
+            guard let index = arguments.firstIndex(of: holdFailedUpdatesArgument),
                   arguments.indices.contains(index + 1),
-                  let seconds = Int(arguments[index + 1])
+                  !arguments[index + 1].hasPrefix("-")
             else {
-                return .zero
+                return nil
             }
-            return .seconds(seconds)
+            let name = arguments[index + 1]
+            let gate = FailedUpdateGate()
+            var token: Int32 = 0
+            let status = notify_register_dispatch(name, &token, .main) { _ in
+                Task { await gate.release() }
+            }
+            // A gate nothing can release would hold every failing save for the life of
+            // the app, so without the registration the failures arrive at once.
+            guard status == NOTIFY_STATUS_OK else {
+                AppLog.todos
+                    .fault(
+                        "Cannot observe the failed-update release: status \(status, privacy: .public)",
+                    )
+                return nil
+            }
+            return gate
         }
     #endif
 

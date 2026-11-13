@@ -40,8 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attaches the same failure alert to the sheet's content, since SwiftUI presents no
   alert from a view that is already presenting a sheet. Dismissing it leaves the sheet
   up. The failure launch test opens the About sheet over a failing toggle still in
-  flight (a new Debug-only `-delayFailedUpdates <seconds>` argument holds its failure
-  back) and asserts the alert presents over the sheet and that OK leaves the sheet up.
+  flight (a new Debug-only `-holdFailedUpdates <name>` argument holds its failure
+  until the test posts the Darwin notification `<name>`) and asserts the alert presents
+  over the sheet and that OK leaves the sheet up.
   Only an alert's button clears its failure now, so an alert torn down by code no
   longer discards a failure the person never saw dismissed.
 - The app now ships `App/PrivacyInfo.xcprivacy`, which declares the `UserDefaults`

@@ -104,10 +104,11 @@ save still in flight from the list when the sheet opened, or the first sheet who
 action can fail — and dismissing it leaves the sheet up. It is not deferred until the
 sheet closes: a sheet that edits something has to show its own failure while the person
 is still looking at it, and a failure held back would show over a screen that no longer
-explains it. `LaunchTests` pins both halves: under `-failUpdates -delayFailedUpdates
-<seconds>` (Debug-only, `App/MyAppApp.swift`) a toggle's failure arrives that long after
-the tap, so the test opens the About sheet over the save still in flight; the alert
-presents over the sheet, and OK leaves the sheet up.
+explains it. `LaunchTests` pins both halves: under `-failUpdates -holdFailedUpdates
+<name>` (Debug-only, `App/MyAppApp.swift`) a toggle's failure is held until the test
+posts the Darwin notification `<name>`, so the test opens the About sheet over the save
+still in flight and releases the failure once the sheet has settled; the alert presents
+over the sheet, and OK leaves the sheet up.
 
 Full-screen covers, popovers, and a sheet presented from inside a sheet are not modeled.
 

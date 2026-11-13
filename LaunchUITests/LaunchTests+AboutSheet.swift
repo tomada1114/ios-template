@@ -29,9 +29,9 @@ extension LaunchTests {
 
     /// A failure that arrives while a sheet is up presents over the sheet, from the
     /// sheet's own `failureAlert` (`RootView`), and dismissing it leaves the sheet up. The
-    /// toggle's save is still in flight when the sheet opens: `-delayFailedUpdates` holds
-    /// its failure back for seconds, and the step proves the alert is not up yet once the
-    /// sheet has settled, so the alert that follows arrived under the sheet.
+    /// toggle's save is still in flight when the sheet opens: `-holdFailedUpdates` holds
+    /// its failure until the step releases it, which it does only once it has seen the
+    /// sheet settle with no alert up, so the alert that follows arrived under the sheet.
     @MainActor
     func failATogglePresentsTheFailureOverTheAboutSheet(in app: XCUIApplication) throws {
         let (toggle, _) = try theRowToggleAndItsItem(in: app)
@@ -44,8 +44,9 @@ extension LaunchTests {
             "the toggle's failure should still be in flight once the sheet has settled",
         )
 
+        HeldFailure.release()
         XCTAssertTrue(
-            alert.waitForExistence(timeout: Timeout.delayedFailure),
+            alert.waitForExistence(timeout: Timeout.releasedFailureAppears),
             "a failure that arrives while the About sheet is up should present over it",
         )
         XCTAssertTrue(

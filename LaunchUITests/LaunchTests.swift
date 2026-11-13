@@ -89,15 +89,17 @@ final class LaunchTests: XCTestCase {
     ///
     /// A launch of its own, because `-failUpdates` (Debug-only, `App/MyAppApp.swift`)
     /// fails every toggle for the whole launch, and the walk above needs one to succeed.
-    /// `-delayFailedUpdates` makes each failure arrive `Timeout.failedUpdateDelay` after
-    /// the tap, the time the sheet steps need to open the sheet over a save in flight.
+    /// `-holdFailedUpdates` holds each failure until the step releases it
+    /// (`HeldFailure`), so the sheet steps open the sheet over a save in flight and let
+    /// the failure arrive only once they have seen the sheet settle, however long that
+    /// took.
     @MainActor
     func testAFailedTogglePresentsTheFailureOverTheDetailScreenAndOverASheet() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = [
             "-uiTesting", "-failUpdates",
-            "-delayFailedUpdates", String(Int(Timeout.failedUpdateDelay)),
+            "-holdFailedUpdates", HeldFailure.releaseNotification,
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
@@ -134,10 +136,11 @@ final class LaunchTests: XCTestCase {
         let toggle = app.buttons["detailToggle"]
         XCTAssertEqual(toggle.label, "Mark as Done", "the item should start open")
         toggle.tap()
+        HeldFailure.release()
 
         let alert = app.alerts["Something Went Wrong"]
         XCTAssertTrue(
-            alert.waitForExistence(timeout: Timeout.delayedFailure),
+            alert.waitForExistence(timeout: Timeout.releasedFailureAppears),
             "a toggle that fails on the detail screen should present the failure there",
         )
         XCTAssertTrue(
