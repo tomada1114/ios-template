@@ -155,7 +155,8 @@ branch. Revert what it got wrong. Read the findings it would *not* apply (`skipp
 `--fix`, `REJECTED` from the sub-agent) -- neither is clean; real-but-out-of-scope goes
 to step 8. Only if something actually changed, run **in `<workdir>`** the narrowest
 check that covers what the fix touched (the touched area's `.claude/rules/` file, else
-AGENTS.md's "Validating a change" table) -- not the full verification command, which
+AGENTS.md's "Validating a change" table; `just uitest` and/or `just test-ios` for the
+paths [the simulator gate](pr-ci-merge.md#the-simulator-gate) maps to them) -- not the full verification command, which
 ran once after implementation -- then push.
 
 Record, per branch: `--event review --field issue=<n> --field

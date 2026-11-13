@@ -8,11 +8,12 @@ description: >
   Type content sizes and a clean status bar with simctl ui and simctl status_bar, deep
   links with simctl openurl, simulated pushes with simctl push, launch arguments such as
   -uiTesting, a throwaway XCUITest under just uitest, answering a permission prompt with
-  simctl privacy or just reset-permissions, and an iOS Simulator control tool when the
-  host has one. Use when asked to run, launch, or screenshot the app, when a change has
-  to be verified in the real app rather than in tests, when the app must be observed
-  with no human at the keyboard, or when deciding what evidence a pull request carries
-  for behavior no CI job can assert.
+  simctl privacy or just reset-permissions, a Simulator control tool if the host has
+  one, and reading a flaky test's .xcresult. Use when asked to run, launch,
+  or screenshot the app, when a change has to be verified in the real app rather than
+  in tests, when the app must be observed with no human at the keyboard, when a UI test
+  flakes, or when deciding what evidence a pull request carries for behavior no CI
+  job can assert.
 ---
 
 # Running the App
@@ -103,6 +104,14 @@ recipes: `xcrun simctl io booted screenshot`, dark appearance, Dynamic Type size
 clean status bar, deep links and simulated pushes, launch arguments and environment
 variables for a known state, a throwaway XCUITest that drives a flow, and an iOS
 Simulator control tool if your host has one.
+
+## When a UI test fails some runs and passes others
+
+[references/investigating-a-flaky-ui-test.md](references/investigating-a-flaky-ui-test.md):
+keep the failing `.xcresult` before the next `just uitest-run` deletes it, read each
+test's result, timeline, attachments, and the app's own output from the bundle with
+`xcrun xcresulttool`, measure the load the run shared the Mac with, and turn a
+suspected race into a deterministic repro before fixing it.
 
 ## Where a human is unavoidable
 

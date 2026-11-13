@@ -100,6 +100,19 @@ Two things belong in the body because nothing else can recover them later:
   correctly", "is cleaned up"). A closing condition that cannot be checked mechanically
   cannot be verified by anyone but the filer.
 
+An issue for a flaky test — one that fails some runs and passes others — also records
+the run that failed, because the next run cannot reproduce it on demand:
+
+- the commit, the exact command, and which step of the test failed;
+- the device's name and simulator udid (kept, unlike in a pull request's evidence: a
+  flake is often tied to one device's state), and whether it was cold-booted or
+  already booted;
+- the machine's load before and after, measured as `running-the-app`'s
+  `references/investigating-a-flaky-ui-test.md` › Measure the machine the run shares
+  says;
+- where the failing `.xcresult` is kept, outside `build/` (the same reference says
+  why).
+
 ## Ordering constraints
 
 Write an ordering constraint as `Depends on #12`, one per line under a

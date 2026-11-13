@@ -14,6 +14,7 @@ save one file read on a few of them.
 - [`/code-review` cannot be launched](#code-review-cannot-be-launched)
 - [CI reports the previous commit](#ci-reports-the-previous-commit)
 - [CI fails](#ci-fails)
+- [A flaky UI test](#a-flaky-ui-test)
 - [`NO_CHECKS`, `ERROR`, `TIMEOUT`, and other non-verdicts](#no_checks-error-timeout-and-other-non-verdicts)
 - [Bringing the rest of a parallel batch up to date](#bringing-the-rest-of-a-parallel-batch-up-to-date)
 - [A merge conflict](#a-merge-conflict)
@@ -105,6 +106,25 @@ while it is reachable, with the new log path and what its push did not fix.
 A test deleted, skipped, or weakened to pass, or a "flaky" re-run without a
 diagnosis, is a **failed outcome**, not a green one.
 
+## A flaky UI test
+
+A UI test that fails some runs and passes others, in the verification command or in an
+issue about the flake itself. How to keep and read its evidence and measure the
+machine is `running-the-app`'s `references/investigating-a-flaky-ui-test.md`; what its
+issue records is `triaging-issues`. What changes for this run:
+
+- **Nothing runs beside a timing-sensitive run.** No implementation, review, or design
+  agent in flight and no other worktree's `just check`: wait for them to finish, or hold
+  the timing runs until they have.
+- **The failing bundle goes to `<runstate>`**, which outlives `build/` and the
+  worktree. An investigation that pauses leaves its bundles and notes there, and names
+  that path on the issue.
+- **A failure outside the step under test goes to the owner.** A failure at a step
+  other than the one the issue is about is not a reason for another series: put it to
+  the owner as a
+  question — land with that criterion reported unmet, or hold — and file it as its own
+  issue once its bundle says what it is.
+
 ## `NO_CHECKS`, `ERROR`, `TIMEOUT`, and other non-verdicts
 
 - `NO_CHECKS` -> run the project's own verification command locally (the plan's
@@ -134,9 +154,10 @@ git -C <runstate>/worktrees/<m> merge origin/<default_branch>
 git -C <runstate>/worktrees/<m> push
 ```
 
-Rerun `just check` in that worktree after the merge only when the merge touched a
-file besides `CHANGELOG.md`; a merge whose only change, or only resolved conflict, is
-in `CHANGELOG.md` needs no rerun.
+After the merge, run in that worktree the narrowest check that covers what it brought
+in (AGENTS.md's "Validating a change" table) -- `just uitest` and/or `just test-ios` for
+the paths [the simulator gate](pr-ci-merge.md#the-simulator-gate) maps to them; a merge whose only change,
+or only resolved conflict, is in `CHANGELOG.md` needs nothing.
 
 **Merge, not rebase** -- step 3 already pushed these branches, so a rebase would
 need a force-push, and this run does not force-push. A repo that requires linear

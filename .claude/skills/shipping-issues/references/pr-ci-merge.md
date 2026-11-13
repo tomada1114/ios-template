@@ -10,6 +10,7 @@ issue's PR -> CI -> merge before opening the next.
 - [6. CI to green](#6-ci-to-green)
   - [Waiting inside the 600-second cap](#waiting-inside-the-600-second-cap)
   - [Reading the verdict](#reading-the-verdict)
+  - [The simulator gate](#the-simulator-gate)
 - [7. Merge and confirm the issue closed](#7-merge-and-confirm-the-issue-closed)
   - [Clearing `blocked: dependency`](#clearing-blocked-dependency)
   - [Moving on](#moving-on)
@@ -33,7 +34,9 @@ ${CLAUDE_SKILL_DIR}/scripts/link_check.sh <pr> --issue <n> --fix
 
 `land_pr.sh` re-checks the link at step 7 too; this earlier call is not redundant,
 because it catches `WRONG_BASE` before CI spends its time on the wrong base. `--fix`
-appends a missing `Closes #N`; `WRONG_BASE` -> retarget before merging.
+appends a missing `Closes #N`; `WRONG_BASE` -> retarget before merging. A PR that must
+leave its issue open skips this call ([landing-outcomes.md](landing-outcomes.md) holds
+the rule).
 
 ## 6. CI to green
 
@@ -75,7 +78,9 @@ actual CI state before deciding anything.
 ### Reading the verdict
 
 - `PASS` -> step 7 **in the same turn**. Do not report the green CI and wait: green CI
-  is the approval.
+  is the approval -- for what CI runs, which is no simulator check at all. The go-ahead
+  is `PASS` plus [the simulator gate](#the-simulator-gate) met; without it the PR is not
+  ready to merge whatever CI says.
 - `FAIL` -> [recovery.md](recovery.md#ci-fails) and
   [agents/ci-repair.md](agents/ci-repair.md), at most 3 attempts. The second and third
   attempts go to the same repair agent by `SendMessage` while it is reachable, with what
@@ -84,13 +89,31 @@ actual CI state before deciding anything.
 - `NO_CHECKS`, `ERROR`, `TIMEOUT` ->
   [recovery.md](recovery.md#no_checks-error-timeout-and-other-non-verdicts).
 
+### The simulator gate
+
+No CI job runs a simulator (`changing-gates` › What no gate here sees), so the simulator
+checks run only on this Mac, and the pushed head's content must be what they exercised.
+Which paths trigger which check is `scripts/simulator-relevant.sh --check uitest` and
+`--check test-ios`, never a list restated here (it includes the `justfile`, `mise.toml`,
+a `Package.resolved`, and `scripts/run-throttled.sh`):
+
+- The full `just check` runs once, after implementation (step 3). For a change that
+  script calls relevant, its output shows the check running -- `uitest-build` and
+  `uitest-run`, `test-ios` -- not `Skipped uitest-build, uitest-run` or
+  `Skipped test-ios`.
+- Any later commit -- step 4's review fix, a merge of the default branch -- that touches
+  paths a check maps to reruns that check, `just uitest` and/or `just test-ios`, not the
+  full `just check`.
+- A merge whose only change, or only resolved conflict, is in `CHANGELOG.md` needs
+  nothing.
+
 ## 7. Merge and confirm the issue closed
 
 ```bash
 ${CLAUDE_SKILL_DIR}/scripts/land_pr.sh <pr> --issue <n>
 ```
 
-Merge as soon as step 6 reports `verdict: PASS`. Read `result:` and `issue:` -- six
+Merge as soon as step 6 reports `verdict: PASS` and [the simulator gate](#the-simulator-gate) is met. Read `result:` and `issue:` -- six
 results, one of which must never read as success:
 [landing-outcomes.md](landing-outcomes.md). Record `--event merged`. Then:
 

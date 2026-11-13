@@ -18,12 +18,14 @@ description: >-
 label vocabulary and issue-body rules (`triaging-issues`); the coding conventions
 (`.claude/rules/`).
 
-**Done means all three:** the PR is merged, the issue is CLOSED, and nothing was deleted
+**Done means all three:** the PR is merged, the issue is CLOSED (unless the user asked for a PR that leaves it open: [landing-outcomes.md](references/landing-outcomes.md)), and nothing was deleted
 or weakened to get there. **Invoking this skill authorizes every write it makes, merge
 included** -- the standing exception in `AGENTS.md`'s "Security and human approval", and
-nothing else that section lists. Green CI is the go-ahead: merge in the same turn. The
+nothing else that section lists. Green CI plus a met [simulator gate](references/pr-ci-merge.md#the-simulator-gate) is the go-ahead: merge in the same turn. The
 only pauses: the [stop conditions](#stop-conditions), a genuinely tied top two (step 2),
-`NO_CHECKS` with no local gate (step 6).
+`NO_CHECKS` with no local gate (step 6), and a flaky test's acceptance criterion
+blocked by failures outside the change: ask whether to land with it reported unmet or
+hold ([recovery.md](references/recovery.md#a-flaky-ui-test)).
 
 ## Modes
 
@@ -127,14 +129,14 @@ second.** **`medium` is the standing default**, `high` only on the triggers in
 [cost-discipline.md](references/cost-discipline.md#code-review-effort), never `low` or
 `ultra`. `--fix` is serial-only; in parallel, numbered findings go to one `executor` per
 branch ([agents/review-fix.md](references/agents/review-fix.md)). Read what the fix
-changed, run the narrowest check that covers it (the touched area's `.claude/rules/` file, else AGENTS.md's Validating table) -- never the full `just check` again -- push, record `--event review`
+changed, run the narrowest check that covers it (the touched area's `.claude/rules/` file, else AGENTS.md's Validating table; the simulator check a touched path maps to, [the simulator gate](references/pr-ci-merge.md#the-simulator-gate)) -- never the full `just check` again -- push, record `--event review`
 ([implement-and-review.md](references/implement-and-review.md#4-review-the-branch)).
 
 ## 5. Open the PR
 
 Serial from here to step 7 in both modes. Push; no commits -> `SKIPPED(<why>)`. Open the
 PR against the default branch: `PR-TITLE`, then `PR-SUMMARY`, **`Closes #N`**,
-`TEST-PLAN`. Record `--event pr-created`, run `link_check.sh <pr> --issue <n> --fix`
+`TEST-PLAN` (a PR that leaves its issue open: [landing-outcomes.md](references/landing-outcomes.md)). Record `--event pr-created`, run `link_check.sh <pr> --issue <n> --fix`
 ([pr-ci-merge.md](references/pr-ci-merge.md#5-open-the-pr)).
 
 ## 6. CI to green
@@ -147,7 +149,7 @@ notification -- never a hand-rolled sleep/poll loop -- or in the foreground with
 ([pr-ci-merge.md](references/pr-ci-merge.md#6-ci-to-green)).
 `FAIL` -> [agents/ci-repair.md](references/agents/ci-repair.md), 3 attempts at most.
 Anything else -> [recovery.md](references/recovery.md#no_checks-error-timeout-and-other-non-verdicts).
-`PASS` -> step 7 in the same turn.
+`PASS` -> step 7 in the same turn, once [the simulator gate](references/pr-ci-merge.md#the-simulator-gate) is met.
 
 ## 7. Merge and confirm the issue closed
 
@@ -158,8 +160,10 @@ as `triaging-issues` asks of whoever lands a blocker: re-plan with `--refresh` a
 its `stale-labels:` command, which drops `blocked: dependency` wherever every `Depends
 on` blocker is now closed. Then continue with the next issue
 ([pr-ci-merge.md](references/pr-ci-merge.md#7-merge-and-confirm-the-issue-closed)). A
-branch brought up to date by merging the default branch reruns `just check` only when
-the merge touched a file besides `CHANGELOG.md`
+branch brought up to date by merging the default branch reruns only the narrowest check
+for what the merge brought in, per
+[the simulator gate](references/pr-ci-merge.md#the-simulator-gate) -- nothing for a
+`CHANGELOG.md`-only merge
 ([recovery.md](references/recovery.md#bringing-the-rest-of-a-parallel-batch-up-to-date)).
 
 ## 8. Close out the findings the run turned up
