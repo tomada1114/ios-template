@@ -154,9 +154,10 @@ git -C <runstate>/worktrees/<m> merge origin/<default_branch>
 git -C <runstate>/worktrees/<m> push
 ```
 
-Rerun `just check` in that worktree after the merge only when the merge touched a
-file besides `CHANGELOG.md`; a merge whose only change, or only resolved conflict, is
-in `CHANGELOG.md` needs no rerun.
+After the merge, run in that worktree the narrowest check that covers what it brought
+in (AGENTS.md's "Validating a change" table) -- `just uitest` when it touches the UI or
+app paths -- per [the UI gate](pr-ci-merge.md#the-ui-gate); a merge whose only change,
+or only resolved conflict, is in `CHANGELOG.md` needs nothing.
 
 **Merge, not rebase** -- step 3 already pushed these branches, so a rebase would
 need a force-push, and this run does not force-push. A repo that requires linear

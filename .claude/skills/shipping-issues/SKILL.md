@@ -23,7 +23,9 @@ or weakened to get there. **Invoking this skill authorizes every write it makes,
 included** -- the standing exception in `AGENTS.md`'s "Security and human approval", and
 nothing else that section lists. Green CI is the go-ahead: merge in the same turn. The
 only pauses: the [stop conditions](#stop-conditions), a genuinely tied top two (step 2),
-`NO_CHECKS` with no local gate (step 6).
+`NO_CHECKS` with no local gate (step 6), and a flaky test's acceptance criterion
+blocked by failures outside the change: ask whether to land with it reported unmet or
+hold ([recovery.md](references/recovery.md#a-flaky-ui-test)).
 
 ## Modes
 
@@ -127,7 +129,7 @@ second.** **`medium` is the standing default**, `high` only on the triggers in
 [cost-discipline.md](references/cost-discipline.md#code-review-effort), never `low` or
 `ultra`. `--fix` is serial-only; in parallel, numbered findings go to one `executor` per
 branch ([agents/review-fix.md](references/agents/review-fix.md)). Read what the fix
-changed, run the narrowest check that covers it (the touched area's `.claude/rules/` file, else AGENTS.md's Validating table) -- never the full `just check` again -- push, record `--event review`
+changed, run the narrowest check that covers it (the touched area's `.claude/rules/` file, else AGENTS.md's Validating table; `just uitest` for the UI or app paths, [the UI gate](references/pr-ci-merge.md#the-ui-gate)) -- never the full `just check` again -- push, record `--event review`
 ([implement-and-review.md](references/implement-and-review.md#4-review-the-branch)).
 
 ## 5. Open the PR

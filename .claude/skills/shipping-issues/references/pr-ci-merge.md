@@ -10,6 +10,7 @@ issue's PR -> CI -> merge before opening the next.
 - [6. CI to green](#6-ci-to-green)
   - [Waiting inside the 600-second cap](#waiting-inside-the-600-second-cap)
   - [Reading the verdict](#reading-the-verdict)
+  - [The UI gate](#the-ui-gate)
 - [7. Merge and confirm the issue closed](#7-merge-and-confirm-the-issue-closed)
   - [Clearing `blocked: dependency`](#clearing-blocked-dependency)
   - [Moving on](#moving-on)
@@ -77,11 +78,9 @@ actual CI state before deciding anything.
 ### Reading the verdict
 
 - `PASS` -> step 7 **in the same turn**. Do not report the green CI and wait: green CI
-  is the approval -- for what CI runs, which is no simulator check at all
-  (`changing-gates` › What no gate here sees). For a change that touches the UI or app
-  paths, the only UI gate is a local `just check` on the final pushed head whose output
-  shows `uitest-build` and `uitest-run` running (not `Skipped uitest-build, uitest-run`).
-  Without it, the PR is not ready to merge whatever CI says.
+  is the approval -- for what CI runs, which is no simulator check at all. A change that
+  touches the UI or app paths also needs [the UI gate](#the-ui-gate) met; without it the
+  PR is not ready to merge whatever CI says.
 - `FAIL` -> [recovery.md](recovery.md#ci-fails) and
   [agents/ci-repair.md](agents/ci-repair.md), at most 3 attempts. The second and third
   attempts go to the same repair agent by `SendMessage` while it is reachable, with what
@@ -89,6 +88,20 @@ actual CI state before deciding anything.
   `architect` takes the third.
 - `NO_CHECKS`, `ERROR`, `TIMEOUT` ->
   [recovery.md](recovery.md#no_checks-error-timeout-and-other-non-verdicts).
+
+### The UI gate
+
+No CI job runs a simulator (`changing-gates` › What no gate here sees), so for a change
+that touches the UI or app paths the UI is checked only on this Mac, and the head that is
+pushed must be the one that was exercised:
+
+- The full `just check` runs once, on the head the PR opens from, and its output shows
+  `uitest-build` and `uitest-run` running -- not `Skipped uitest-build, uitest-run`.
+- A later commit -- a review fix, or a merge of the default branch -- that touches the UI
+  or app paths reruns the narrowest check that covers it, `just uitest`, not the full
+  `just check`.
+- A merge whose only change, or only resolved conflict, is in `CHANGELOG.md` needs
+  nothing.
 
 ## 7. Merge and confirm the issue closed
 
