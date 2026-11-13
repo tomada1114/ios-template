@@ -59,8 +59,8 @@ states which of these it does:
 - **Skip with a one-line notice**, when the question does not exist outside a checkout:
   `scripts/verify-hooks.sh` has no hooks to check, prints one line, and exits 0.
 - **Need no checkout**: `scripts/bundle-id.sh`, `scripts/run-simulator.sh`,
-  `scripts/targets-ipad.sh`, `scripts/uitest-ipad.sh`, and the `scripts/checks/` checks
-  read files under a `--root` that defaults to the checkout
+  `scripts/uitest-ipad.sh`, and the `scripts/checks/` checks read files under a
+  `--root` that defaults to the checkout
   holding the script (the flag is what lets tests point them at a fixture tree);
   `scripts/simulator-destination.sh`, `scripts/run-throttled.sh`, and
   `scripts/wait-simulator-settled.sh` read nothing from the tree.

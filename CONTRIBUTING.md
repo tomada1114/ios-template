@@ -102,7 +102,7 @@ just analyze
 # Run the pull-request checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run, when the UI or app paths changed) → (test-ios, when the platform-adapter paths changed)
 just check
 
-# Run every check, on main before a release tag and after a batch of merges: CHECK_ALL=1 just check → uitest-ipad → smoke → build-device → analyze
+# Run every check, on main before a release tag and after a batch of merges: CHECK_ALL=1 SIMULATOR_FAMILY=iphone just check → uitest-ipad → smoke → build-device → analyze
 just check-release
 
 # Remove build artifacts and the generated project
@@ -161,7 +161,7 @@ rm -rf build/LaunchUITests.xcresult
 scripts/wait-simulator-settled.sh "$(scripts/simulator-destination.sh --udid)"   # boots it; after a cold boot, waits for it to settle
 xcrun simctl spawn "$(scripts/simulator-destination.sh --udid)" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false
 xcodebuild test-without-building -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult   # just uitest-run (just uitest runs both)
-scripts/uitest-ipad.sh                # just uitest-ipad (uitest-build and uitest-run under SIMULATOR_FAMILY=ipad, then xcrun simctl shutdown)
+mise exec -- scripts/uitest-ipad.sh   # just uitest-ipad (xcodegen generate, the family check, uitest-build and uitest-run under SIMULATOR_FAMILY=ipad, then xcrun simctl shutdown of an iPad it booted)
 (cd Packages/MyAppKit && xcodebuild test -scheme MyAppKit-Package -destination "$(../../scripts/simulator-destination.sh)" -derivedDataPath ../../build/ios-test-derived-data -resultBundlePath ../../build/MyAppKitTests-iOS.xcresult)   # just test-ios
 mise exec -- scripts/smoke_launch.sh  # just smoke
 mise exec -- scripts/build-device.sh  # just build-device (after xcodegen generate)

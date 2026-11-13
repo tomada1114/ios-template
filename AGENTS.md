@@ -59,11 +59,11 @@ just reset-permissions  # Make the booted simulator forget this app's privacy gr
 just uitest        # Run the XCUITest launch test on an iOS Simulator (uitest-build, then uitest-run)
 just uitest-build  # Build the app and the launch UI test for an iOS Simulator, without running it
 just uitest-run    # Run the launch UI test uitest-build compiled, without rebuilding
-just uitest-ipad   # Run the launch UI test on an iPad simulator, then shut it down (skipped when project.yml targets iPhone only)
+just uitest-ipad   # Run the launch UI test on an iPad simulator, then shut it down (skipped when the app resolves to TARGETED_DEVICE_FAMILY "1")
 just test-ios      # Run the package tests on an iOS Simulator (no coverage floor)
 just smoke         # Build Release and assert the app launches and stays alive on a simulator
 just check         # Run the pull-request checks: verify-hooks → fmt → lint → test-scripts → check-harness → test → (uitest-build → uitest-run, when the change touches the UI or app paths) → (test-ios, when it touches the platform-adapter paths)
-just check-release # Run every check, on main before a release tag: CHECK_ALL=1 just check (the launch UI test on an iPhone) → uitest-ipad (on an iPad) → smoke → build-device → analyze
+just check-release # Run every check, on main before a release tag: CHECK_ALL=1 SIMULATOR_FAMILY=iphone just check (the launch UI test on an iPhone) → uitest-ipad (on an iPad) → smoke → build-device → analyze
 just clean         # Remove build artifacts and the generated project
 just labels        # Create/update GitHub labels from .github/labels.yml (never deletes)
 just ruleset       # Create/update the "main" branch ruleset from .github/rulesets/main.json (admin-only)

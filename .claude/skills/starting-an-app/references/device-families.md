@@ -90,7 +90,7 @@ chooses: the first available iPhone on the newest installed iOS runtime, unless
 before merging a layout change:
 
 ```bash
-just uitest-ipad                                   # the first available iPad, shut down after
+just uitest-ipad                                   # the first available iPad, shut down after if it booted it
 SIMULATOR_FAMILY=ipad just uitest                  # the same run, the iPad left booted
 xcrun simctl list devices available | grep iPad    # or pick a name from this list
 SIMULATOR_DEVICE="iPad (A16)" just uitest
@@ -99,9 +99,11 @@ SIMULATOR_DEVICE="iPad (A16)" just uitest
 Device names change with each Xcode's runtimes, which is why nothing pins one. `just
 check` runs the iPhone destination only, and no CI job runs either, so an iPad layout is
 asserted only by `just check-release`, which runs `just uitest-ipad` after the iPhone
-run. `scripts/uitest-ipad.sh` asks `scripts/targets-ipad.sh` whether any iOS target in
-`project.yml` builds for iPad: an iPhone-only app (`"1"` on both targets) skips the iPad
-run with a one-line notice, so choosing iPhone only needs no gate change. The launch
+run. `scripts/uitest-ipad.sh` reads, after `xcodegen generate`, the resolved
+`TARGETED_DEVICE_FAMILY` of the app the launch test runs in: an iPhone-only app (`"1"`)
+skips the iPad run with a one-line notice, so choosing iPhone only needs no gate change.
+`SIMULATOR_IPAD_DEVICE` names the iPad it uses; `SIMULATOR_DEVICE` is left to the
+iPhone legs. The launch
 test itself needs no edit for either family: it finds its elements by accessibility
 identifier and label, not by position.
 

@@ -169,11 +169,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `just check-release` now also runs the launch UI test on an iPad: the new
   `just uitest-ipad` (`scripts/uitest-ipad.sh`) runs `uitest-build` and `uitest-run`
-  under `SIMULATOR_FAMILY=ipad` on the first available iPad on the newest runtime,
-  resolved at run time, then shuts that iPad down, pass or fail. An app whose
-  `project.yml` builds no iOS target for iPad (`TARGETED_DEVICE_FAMILY: "1"`,
-  `scripts/targets-ipad.sh`) skips it with a one-line notice. `just check` stays
-  iPhone-only. `scripts/simulator-destination.sh` takes `--family iphone|ipad` (or
+  under `SIMULATOR_FAMILY=ipad` on the first available iPad on the newest runtime
+  (`SIMULATOR_IPAD_DEVICE` picks one; `SIMULATOR_DEVICE` is ignored there), resolved at
+  run time, into its own `build/LaunchUITests-ipad.xcresult`, then shuts that iPad down,
+  pass, fail, or interrupt, if this run booted it. An app whose UI-test host resolves to
+  `TARGETED_DEVICE_FAMILY` `"1"` after `xcodegen generate` skips it with a one-line
+  notice; an unreadable value fails it. The iPhone legs of `just check-release` now pin
+  `SIMULATOR_FAMILY=iphone`. `just check` stays iPhone-only. `scripts/simulator-destination.sh` takes `--family iphone|ipad` (or
   `SIMULATOR_FAMILY`); with a family set, `SIMULATOR_DEVICE` must name a device of it.
 - The checks run in three tiers, so a pull request no longer pays for every clean build.
   `just check`, run once before a pull request, now runs each simulator check only for

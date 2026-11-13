@@ -43,12 +43,17 @@ the UI or app paths, and `test-ios` when `--check test-ios` says it touches the
 platform-adapter paths; without `--check` the same script decides whether CI's `test`
 job has macOS work. `just check` runs the launch UI test on an iPhone only. `uitest-ipad`,
 `smoke`, `build-device`, and `analyze` run in neither `just check` nor CI:
-`just check-release` runs them, after `CHECK_ALL=1 just check`, on `main` before a
-release tag and after a batch of merges. `uitest-ipad` (`scripts/uitest-ipad.sh`) runs
-`uitest-build` and `uitest-run` under `SIMULATOR_FAMILY=ipad` on an iPad
-`scripts/simulator-destination.sh` resolves at run time, shuts that iPad down after, and
-skips with a one-line notice when `scripts/targets-ipad.sh` says no iOS target builds for
-iPad (`TARGETED_DEVICE_FAMILY: "1"`); why they wait for it, and what that leaves
+`just check-release` runs them, after `CHECK_ALL=1 SIMULATOR_FAMILY=iphone just check`
+(its iPhone legs pin the family, so a `SIMULATOR_DEVICE` naming an iPad fails them), on
+`main` before a release tag and after a batch of merges. `uitest-ipad`
+(`scripts/uitest-ipad.sh`) first runs `xcodegen generate` and reads the resolved
+`TARGETED_DEVICE_FAMILY` of the app the launch UI test runs in (`xcodebuild
+-showBuildSettings`, under the lock): exactly `"1"` skips with a one-line notice, a value
+it cannot read fails the run, never skips it. Otherwise it runs `uitest-build` and
+`uitest-run` under `SIMULATOR_FAMILY=ipad` on an iPad `scripts/simulator-destination.sh`
+resolves at run time (`SIMULATOR_IPAD_DEVICE` picks one; `SIMULATOR_DEVICE` is ignored),
+into `build/LaunchUITests-ipad.xcresult`, and shuts that iPad down after only if this
+run booted it; why they wait for it, and what that leaves
 unseen, is [references/enforcement-layers.md](references/enforcement-layers.md) › Gaps.
 `scripts/checks/just-check-matches-ci.sh` holds `just check` and CI to the same set of
 gates, in both directions, apart from its reasoned exception list.
