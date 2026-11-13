@@ -64,6 +64,13 @@ struct ArchitectureBoundaryTests {
     /// `Sources/MyAppCore`, the directory the Core ban list applies to.
     static let coreSourcesDirectory = sourcesDirectory(of: "MyAppCore")
 
+    /// The files a module may keep at its root, outside every folder
+    /// (`AGENTS.md` › Architecture): the ones every feature touches.
+    static let rootFiles = [
+        "MyAppCore": ["AppLog.swift", "AppModel.swift"],
+        "MyAppUI": ["RootView.swift"],
+    ]
+
     // MARK: - Helpers
 
     /// The same pattern as the lint rule: any attributes (`@preconcurrency`, `@_exported`)
@@ -201,6 +208,24 @@ struct ArchitectureBoundaryTests {
     @Test(arguments: ["MyAppCore", "MyAppUI", "MyAppPlatform"])
     func `no shipped source file imports MyAppTestSupport`(module: String) throws {
         try Self.expectNoImports(of: ["MyAppTestSupport"], in: module)
+    }
+
+    @Test(arguments: ["MyAppCore", "MyAppUI"])
+    func `only the files every feature touches sit at a module's root`(module: String) throws {
+        let directory = Self.sourcesDirectory(of: module)
+        let atRoot = try FileManager.default
+            .contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "swift" }
+            .map(\.lastPathComponent)
+            .sorted()
+        #expect(
+            atRoot == Self.rootFiles[module],
+            """
+            \(module)'s root holds \(atRoot). A new file goes in its feature's folder \
+            (Todos/) or the shared folder named for its concern (Failures/, Navigation/, …), \
+            never at the root (AGENTS.md › Architecture).
+            """,
+        )
     }
 
     // MARK: - The pattern itself
