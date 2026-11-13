@@ -78,8 +78,8 @@ The example's own files sit in one `Todos/` folder per module
 
 - `MyAppCore/Todos/` under `Sources/` — the domain value `TodoItem`, the port
   `TodoRepository` with its error type and its null object `UnavailableTodoRepository`,
-  `UpdateFailingTodoRepository` (the UI tests' failing store) with `FailedUpdateGate`,
-  where it holds each failure until the test releases it, the view models
+  `UpdateFailingTodoRepository` (the UI tests' failing store) and `FailedUpdateGate`,
+  where that store holds each failure until the test releases it, the view models
   `TodoListViewModel` (with `AcknowledgedWrite`, the writes its load replays, and
   `TodoListFailure`, what it reports) and `TodoDetailViewModel`, and the wording
   `TodoListStrings` and `TodoDetailStrings`
@@ -149,9 +149,15 @@ order at the end keeps `just check` green while the folders go.
 **UI tests:**
 
 - [ ] `LaunchUITests/LaunchTests.swift` — every test adds, opens, deletes, or hides a
-      to-do; point them at what your first screen shows. The failure launch's
-      `LaunchUITests/Support/HeldFailure.swift` and `Timeout.releasedFailureAppears` go
-      with it
+      to-do; point them at what your first screen shows. The failure launch
+      (`testAFailedTogglePresentsTheFailureOverTheDetailScreenAndOverASheet`) goes with
+      the steps only it calls — `failATogglePresentsTheFailureOverTheAboutSheet` in
+      `LaunchUITests/LaunchTests+AboutSheet.swift`, and the link steps in
+      `LaunchUITests/LaunchTests+LinkUnderAlert.swift` — then
+      `LaunchUITests/Support/HeldFailure.swift` and `Timeout.releasedFailureAppears`,
+      which only those steps use. Keep the About sheet's walk step and
+      `waitForTheAboutSheetToSettle`; `theRowToggleAndItsItem`, in the link file, is
+      to-do code the walk's deep-link step also calls
 
 **Routing:**
 
@@ -206,8 +212,10 @@ order at the end keeps `just check` green while the folders go.
    coverage floor always has something to measure.
 2. Put your first screen's view model on `AppModel` and the screen at the root of
    `RootView`, in place of `todoList` and `TodoListView`; wire your adapter in
-   `App/MyAppApp.swift` in place of `makeRepository()`; and point
-   `LaunchUITests/LaunchTests.swift` at it (`just uitest`).
+   `App/MyAppApp.swift` in place of `makeRepository()`, removing its Debug-only
+   failure wiring (`failedUpdateGate(in:)`, its two arguments, and `import notify`) with
+   it; and point `LaunchUITests/LaunchTests.swift` at it, removing the failure launch,
+   its steps, and `HeldFailure` in the same step (`just uitest`).
 3. Delete `MyAppUI/Todos/`: the views and the previews' repository.
 4. Replace `AppRoute.todoDetail` and the `todo` deep link with a route of your own,
    updating `DeepLinkTests`, `NavigationModelTests`, and `LaunchTests`' deep-link step
