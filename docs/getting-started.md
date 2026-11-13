@@ -78,7 +78,8 @@ The example's own files sit in one `Todos/` folder per module
 
 - `MyAppCore/Todos/` under `Sources/` — the domain value `TodoItem`, the port
   `TodoRepository` with its error type and its null object `UnavailableTodoRepository`,
-  `UpdateFailingTodoRepository` (the UI tests' failing store), the view models
+  `UpdateFailingTodoRepository` (the UI tests' failing store) with `FailedUpdateGate`,
+  where it holds each failure until the test releases it, the view models
   `TodoListViewModel` (with `AcknowledgedWrite`, the writes its load replays, and
   `TodoListFailure`, what it reports) and `TodoDetailViewModel`, and the wording
   `TodoListStrings` and `TodoDetailStrings`
@@ -138,7 +139,9 @@ order at the end keeps `just check` green while the folders go.
 **App:**
 
 - [ ] `makeRepository()` in `App/MyAppApp.swift`, and the `TodoRepository` it hands
-      to `AppModel` — wire your own port's adapter there
+      to `AppModel` — wire your own port's adapter there; its Debug-only
+      `-failUpdates` and `-holdFailedUpdates` wiring (`failedUpdateGate(in:)` and the
+      `import notify` it needs) serves only the to-do failure launch
 - [ ] The `TodoListView` root screen and the `.todoDetail` branch of
       `Packages/MyAppKit/Sources/MyAppUI/RootView.swift` — your first screen and your
       routes' screens go there
@@ -146,7 +149,9 @@ order at the end keeps `just check` green while the folders go.
 **UI tests:**
 
 - [ ] `LaunchUITests/LaunchTests.swift` — every test adds, opens, deletes, or hides a
-      to-do; point them at what your first screen shows
+      to-do; point them at what your first screen shows. The failure launch's
+      `LaunchUITests/Support/HeldFailure.swift` and `Timeout.releasedFailureAppears` go
+      with it
 
 **Routing:**
 
