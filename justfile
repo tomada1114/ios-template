@@ -134,7 +134,11 @@ uitest-run:
     rm -rf build/LaunchUITests.xcresult
     # Boot the simulator and wait for it to finish first: a cold boot inside
     # xcodebuild's launch window is what timed out on CI (#32).
-    xcrun simctl bootstatus "$(scripts/simulator-destination.sh --udid)" -b
+    # Then pin the full software keyboard: with automatic minimization on, a hardware
+    # keyboard shrinks it to a bar of no height, and the launch test waits for the full
+    # one (#137). The setting persists on the device, so without this each run inherits
+    # the last.
+    udid="$(scripts/simulator-destination.sh --udid)" && xcrun simctl bootstatus "$udid" -b && xcrun simctl spawn "$udid" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false
     set -o pipefail && scripts/run-throttled.sh --lock -- xcodebuild test-without-building -jobs "$(scripts/run-throttled.sh --print-jobs)" -parallel-testing-enabled NO -project MyApp.xcodeproj -scheme MyApp -destination "$(scripts/simulator-destination.sh)" -derivedDataPath build/dev-derived-data -resultBundlePath build/LaunchUITests.xcresult | mise exec -- xcbeautify
 
 # Run every MyAppKit test suite on an iOS Simulator, with no coverage floor (`just test`

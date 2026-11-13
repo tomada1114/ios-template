@@ -222,6 +222,12 @@ never `sleep`, and keeps its timeouts in `Support/Timeout.swift`'s `Timeout`. A 
 helper more than one test file needs (`focus`, `waitForDisappearance`) goes in
 `LaunchUITests/Support/`, never copied into a second file.
 
+The launch test needs the full software keyboard: `waitForTheKeyboardToPresent` waits
+for it before typing, and the minimized bar a hardware keyboard brings never passes.
+`just uitest-run` pins it on the simulator (`AutomaticMinimizationEnabled` off); a run
+from Xcode on a simulator with a hardware keyboard needs it off too (Simulator ›
+I/O › Keyboard › Toggle Software Keyboard).
+
 The launch walk runs Xcode's accessibility audit (`auditAccessibility(of:)`,
 `Support/XCTestCase+AccessibilityAudit.swift`) on exactly these states: the empty list,
 the list with an item (keyboard dismissed), the About sheet, the item's detail screen,
