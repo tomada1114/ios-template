@@ -141,7 +141,9 @@ Give the body what the next session needs and cannot cheaply re-derive:
 - why it matters in this codebase's terms;
 - **what currently prevents it, and why that is not enough**;
 - the invariants a fix must not break -- quote the canonical doc;
-- a completion checklist.
+- a completion checklist;
+- for a flaky test, the failing run's conditions and kept bundle (`triaging-issues` ›
+  What an issue body must contain).
 
 Name the open design questions and leave them open rather than deciding them
 here.

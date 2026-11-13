@@ -33,7 +33,9 @@ ${CLAUDE_SKILL_DIR}/scripts/link_check.sh <pr> --issue <n> --fix
 
 `land_pr.sh` re-checks the link at step 7 too; this earlier call is not redundant,
 because it catches `WRONG_BASE` before CI spends its time on the wrong base. `--fix`
-appends a missing `Closes #N`; `WRONG_BASE` -> retarget before merging.
+appends a missing `Closes #N`; `WRONG_BASE` -> retarget before merging. A PR that must
+leave its issue open (`Refs #N`, by the owner's call) skips this call and lands without
+`--issue` ([landing-outcomes.md](landing-outcomes.md)).
 
 ## 6. CI to green
 
@@ -75,7 +77,11 @@ actual CI state before deciding anything.
 ### Reading the verdict
 
 - `PASS` -> step 7 **in the same turn**. Do not report the green CI and wait: green CI
-  is the approval.
+  is the approval -- for what CI runs, which is no simulator check at all
+  (`changing-gates` › What no gate here sees). For a change that touches the UI or app
+  paths, the only UI gate is a local `just check` on the final pushed head whose output
+  shows `uitest-build` and `uitest-run` running (not `Skipped uitest-build, uitest-run`).
+  Without it, the PR is not ready to merge whatever CI says.
 - `FAIL` -> [recovery.md](recovery.md#ci-fails) and
   [agents/ci-repair.md](agents/ci-repair.md), at most 3 attempts. The second and third
   attempts go to the same repair agent by `SendMessage` while it is reachable, with what
