@@ -15,8 +15,8 @@ narrows a layer updates this file in the same pull request.
 | `scripts/coverage.sh` | `just test`, CI `test` | 80% line / 75% function coverage on `MyAppCore` |
 | `AppLogTests` | `just test`, CI `test` | `AppLog.subsystem` equals the bundle identifier in `project.yml` |
 | `DeepLinkTests` | `just test`, CI `test` | the scheme Core parses is the one `project.yml` registers |
-| `PrivacyManifestTests` + `RequiredReasonAPITests` | `just test`, CI `test` | `App/PrivacyInfo.xcprivacy` keeps `UserDefaults`/`CA92.1`, no tracking and no collected data; every required-reason API category whose Apple-listed symbol appears in the code (comments and one-line strings stripped) of a `.swift`, `.c`, `.h`, `.m`, or `.mm` file under `Packages/MyAppKit/Sources/` or `App/` has an entry with at least one reason (a textual scan: no binary dependency, no alias, no judgment of the reason) |
-| `scripts/build-device.sh`'s bundle check | `just build-device` (in `just check-release`) | the Release device build links `MyApp.app/MyApp` and bundles `PrivacyInfo.xcprivacy` at its root, passing `plutil -lint` and equal to `App/PrivacyInfo.xcprivacy` (`ERR_BUILD_DEVICE_NO_APP`, `ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST`, `ERR_BUILD_DEVICE_PRIVACY_MANIFEST_INVALID`, `ERR_BUILD_DEVICE_PRIVACY_MANIFEST_MISMATCH`), from a bundle removed before the build |
+| `PrivacyManifestTests` + `RequiredReasonAPITests` | `just test`, CI `test` | `App/PrivacyInfo.xcprivacy` keeps `UserDefaults`/`CA92.1`, no tracking and no collected data; every required-reason API category whose Apple-listed symbol appears in the code (comments and one-line strings stripped) of a `.swift`, `.c`, `.h`, `.m`, or `.mm` file under `Packages/MyAppKit/Sources/` or `App/` has an entry with at least one reason (a textual scan, the fast signal: no binary dependency, no alias, no judgment of the reason; the linked binary is `scripts/build-device.sh`'s) |
+| `scripts/build-device.sh`'s bundle check | `just build-device` (in `just check-release`) | the Release device build links `MyApp.app/MyApp` and bundles `PrivacyInfo.xcprivacy` at its root, passing `plutil -lint` and equal to `App/PrivacyInfo.xcprivacy` (`ERR_BUILD_DEVICE_NO_APP`, `ERR_BUILD_DEVICE_NO_PRIVACY_MANIFEST`, `ERR_BUILD_DEVICE_PRIVACY_MANIFEST_INVALID`, `ERR_BUILD_DEVICE_PRIVACY_MANIFEST_MISMATCH`), from a bundle removed before the build; every required-reason API category the linked executable uses — its imported symbols (`xcrun nm -u`) and sent Objective-C selectors (`xcrun otool`), through the script's `REQUIRED_REASON_APIS` table — has an entry with at least one reason in the bundled manifest, and every app extension's executable (`PlugIns/*.appex`) the same against the `PrivacyInfo.xcprivacy` in its own bundle (`ERR_BUILD_DEVICE_UNDECLARED_REQUIRED_REASON_API`; an executable `nm` or `otool` cannot read — otool's section header and at least one selector line are required — or an extension naming none, `ERR_BUILD_DEVICE_SYMBOLS_UNREADABLE`) |
 | `PreferenceKeysTests` | `just test`, CI `test` | stored preference key names and defaults never change silently |
 | `LocalizationTests` | `just test`, CI `test` | every `LocalizedStringResource(…)` in Core has a key, a `defaultValue`, and `bundle: .module`; its keys are exactly the catalog's; the catalog's English is what Core renders |
 | CI (`.github/workflows/ci.yml`) | push to `main` and every pull request (`lint`, `zizmor`); a non-draft pull request whose diff `scripts/simulator-relevant.sh` calls relevant (macOS work in `test`, `bootstrap-smoke`) | `lint` (format, lint, shellcheck, actionlint, typos; `scripts/tests/run.sh` — the script tests and the skills' Python suites; the harness checks (`scripts/checks/run-all.sh`)), `test` (`Test & Coverage Gate`: package tests + coverage floor on the host, and nothing else), `bootstrap-smoke` (`Template Bootstrap Smoke`: `scripts/bootstrap.sh` renames a clone of the template, which is then linted, tested, and built for the simulator — template-only, so the rename removes it from every app), `changes` (ubuntu: says false on a push to `main` or a draft, else diffs a pull request's files against `scripts/simulator-relevant.sh`; on false `test` and `bootstrap-smoke` still run and report on Ubuntu but skip their steps — a failed detection runs them in full), and the `zizmor` workflow lint (`Workflow Security Lint`). The UI test, iOS Simulator package tests, Release smoke launch, Release device build, and analyzer rules run in no CI job |
@@ -54,6 +54,10 @@ and what it cannot see.
   `pull_request`.
 - `core-ban-lists-agree.sh`: `.swiftlint.yml`'s `no_ui_import_in_core` regex and
   `ArchitectureBoundaryTests.forbiddenModules` ban the same modules.
+- `required-reason-tables-agree.sh`: `scripts/build-device.sh`'s `REQUIRED_REASON_APIS`
+  and `RequiredReasonAPIScan.categories` name the same required-reason categories (the
+  categories only: the symbols differ by design, a binary's spelling against a
+  source's).
 - `just-check-matches-ci.sh`: the gates `just check` runs and the `run:` steps of
   `.github/workflows/ci.yml` match in both directions, apart from its reasoned exception
   list.
@@ -99,8 +103,33 @@ human at a shell are bound by the instructions in `AGENTS.md` and by the gates a
 **No gate runs the app on a device, or on any iOS release but the one the pinned Xcode
 ships: the local simulators run the Xcode-pinned runtime only.** `just build-device`
 (in `just check-release`) compiles and links Release for the device SDK,
-unsigned, and checks that the privacy manifest is in the bundle; nothing signs, installs, or launches that build, so a signing, entitlement,
+unsigned, and checks that the privacy manifest is in the bundle and declares every
+required-reason API the executable uses; nothing signs, installs, or launches that build, so a signing, entitlement,
 or on-device runtime failure still reaches `main` unseen.
+
+**The privacy manifest is held to the code twice, and the binary check is the one that
+counts.** `RequiredReasonAPITests` scans the shipped sources' text in `just test`, on
+every pull request, in seconds; `scripts/build-device.sh` reads the linked Release
+executable in `just build-device`, which only `just check-release` runs. Both stay: the
+binary is what App Store Connect judges and the only place a call reached through a
+package, an alias, or generated code shows, but it waits for a release check, so
+without the scan a new `systemUptime` call with no manifest entry would merge and
+surface only then. `required-reason-tables-agree.sh` (`just check-harness`) keeps the
+two tables on the same categories; within a category, each table's symbols are its own. The scan's misses (anything outside the source text) and its false
+reports (a domain identifier named like a listed symbol) are why it is not the
+authority; when the two disagree, the binary's answer stands. The binary check reads
+the app's executable and each app extension's, each against the manifest in its own
+bundle. Neither reads a framework
+embedded under `MyApp.app/Frameworks/`, a symbol looked up with `dlsym`, or a selector
+built at run time, and neither judges whether a declared reason is the right one —
+that stays the author's and the reviewer's. The binary check's own blind spots: a
+`selector` row matches any selector of that name in the binary, so the app's own
+`@objc` member called `systemUptime` reads as Apple's API (the error's `Next:` says to
+rename the member), and an `import-part` row (`So14NSUserDefaultsC`) matches the
+literal mangled spelling only, so a Swift symbol whose mangling abbreviates it with a
+word substitution is not seen. The binary table's spellings were read from
+a probe built against one SDK (the script's comment names it): a later SDK that links
+an API under another name leaves its row unmatched, silently.
 
 **The simulator checks are local only.** `just uitest` and `just test-ios` (and so
 every `#if os(iOS)` test) run in `just check` on the author's Mac only when the change
