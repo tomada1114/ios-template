@@ -33,14 +33,8 @@ extension LaunchTests {
     /// its failure back for seconds, and the step proves the alert is not up yet once the
     /// sheet has settled, so the alert that follows arrived under the sheet.
     @MainActor
-    func failATogglePresentsTheFailureOverTheAboutSheet(in app: XCUIApplication) {
-        let toggle = app.buttons
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", Self.rowTogglePrefix))
-            .firstMatch
-        XCTAssertTrue(
-            toggle.waitForExistence(timeout: Timeout.elementAppears),
-            "the list should show the item's row toggle",
-        )
+    func failATogglePresentsTheFailureOverTheAboutSheet(in app: XCUIApplication) throws {
+        let (toggle, _) = try theRowToggleAndItsItem(in: app)
         toggle.tap()
         app.buttons["aboutButton"].tap()
         let sheet = waitForTheAboutSheetToSettle(in: app)
@@ -74,57 +68,11 @@ extension LaunchTests {
         )
     }
 
-    /// A sheet closed by code under its alert — here by a deep link, which dismisses any
-    /// sheet as it pushes — does not clear the failure the person never dismissed: once the
-    /// sheet has gone, the failure presents again over the stack, on the screen the link
-    /// pushed, and OK leaves that screen showing the item unchanged.
-    @MainActor
-    func closeTheSheetUnderItsAlertByDeepLink(in app: XCUIApplication) throws {
-        let toggle = app.buttons
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", Self.rowTogglePrefix))
-            .firstMatch
-        XCTAssertTrue(
-            toggle.waitForExistence(timeout: Timeout.elementAppears),
-            "the list should show the item's row toggle",
-        )
-        let id = try XCTUnwrap(
-            UUID(uuidString: String(toggle.identifier.dropFirst(Self.rowTogglePrefix.count))),
-            "the row toggle's identifier should end in the item's UUID",
-        )
-        toggle.tap()
-        app.buttons["aboutButton"].tap()
-        let sheet = waitForTheAboutSheetToSettle(in: app)
-        let alert = app.alerts["Something Went Wrong"]
-        XCTAssertTrue(
-            alert.waitForExistence(timeout: Timeout.delayedFailure),
-            "a failure that arrives while the About sheet is up should present over it",
-        )
-
-        let detail = app.collectionViews["todoDetail"]
-        XCTAssertTrue(
-            openFromTheSystem(link(toItemWithID: id), expecting: detail),
-            "a link to the item should push its detail screen while the alert is up",
-        )
-        XCTAssertTrue(waitForDisappearance(of: sheet), "the link should close the sheet")
-        XCTAssertTrue(
-            alert.waitForExistence(timeout: Timeout.elementAppears),
-            "the failure the sheet took down with it should present again over the stack",
-        )
-        alert.buttons["OK"].tap()
-        XCTAssertTrue(waitForDisappearance(of: alert), "OK should dismiss the alert")
-        XCTAssertTrue(detail.exists, "dismissing the alert should leave the detail on top")
-        XCTAssertEqual(
-            app.buttons["detailToggle"].label,
-            "Mark as Done",
-            "the item should stay open after its save failed",
-        )
-    }
-
     /// Waits for the About sheet to present and settle, and returns it. Settled when its
     /// close button can be tapped: the sheet has finished sliding in. The list behind it is
     /// no signal, since on iPad a form sheet leaves it partly uncovered.
     @MainActor
-    private func waitForTheAboutSheetToSettle(in app: XCUIApplication) -> XCUIElement {
+    func waitForTheAboutSheetToSettle(in app: XCUIApplication) -> XCUIElement {
         // The identifier lands on the sheet's Form, a collection view to XCUITest.
         let sheet = app.collectionViews["aboutSheet"]
         XCTAssertTrue(

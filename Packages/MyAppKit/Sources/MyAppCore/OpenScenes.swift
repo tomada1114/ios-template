@@ -63,6 +63,12 @@ final class OpenScenes {
         holders[claim]?.presenter
     }
 
+    /// Whether `scene` presents any failure at all, whichever shared model reported it:
+    /// every failure holds a claim here, so none can be left out.
+    func presentsAnyFailure(_ scene: SceneID) -> Bool {
+        holders.values.contains { $0.presenter == scene }
+    }
+
     /// Records whether `scene` is in the foreground. A scene that comes to it — for the
     /// first time or back from the background — goes last, behind every window already
     /// there; one that leaves, or reports what is already recorded, keeps its place.

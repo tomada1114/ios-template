@@ -79,8 +79,13 @@ final class LaunchTests: XCTestCase {
     /// up (#124): a toggle that fails on the pushed detail screen shows its alert there,
     /// and dismissing it leaves the detail screen showing the item unchanged; a toggle on
     /// the list whose failure arrives once the About sheet is up shows its alert over the
-    /// sheet, and dismissing it leaves the sheet up; and a deep link that closes the sheet
-    /// under that alert brings the failure back over the screen it pushed.
+    /// sheet, and dismissing it leaves the sheet up; and a deep link that arrives while
+    /// the alert is coming up, over the list or over the sheet, pushes its screen once
+    /// the alert is answered (#140).
+    ///
+    /// A link is opened first, before any save is in flight: the first link of the scheme
+    /// on a simulator asks "Open in …?", and the links under an alert must reach the app
+    /// at once.
     ///
     /// A launch of its own, because `-failUpdates` (Debug-only, `App/MyAppApp.swift`)
     /// fails every toggle for the whole launch, and the walk above needs one to succeed.
@@ -98,15 +103,23 @@ final class LaunchTests: XCTestCase {
         app.launch()
 
         XCTContext.runActivity(named: "Add an item") { _ in addAnItem(in: app) }
+        XCTContext.runActivity(named: "Open a first link, which the system may ask about") { _ in
+            openAFirstLinkAndGoBack(in: app)
+        }
         XCTContext.runActivity(named: "Fail a toggle on the item's detail") { _ in
             failATogglePresentsTheFailureOnTheDetail(in: app)
         }
-        XCTContext.runActivity(named: "Fail a toggle that lands while the About sheet is up") { _ in
-            failATogglePresentsTheFailureOverTheAboutSheet(in: app)
-        }
         try XCTContext
-            .runActivity(named: "Close the sheet under its alert by deep link") { _ in
-                try closeTheSheetUnderItsAlertByDeepLink(in: app)
+            .runActivity(named: "Fail a toggle that lands while the About sheet is up") { _ in
+                try failATogglePresentsTheFailureOverTheAboutSheet(in: app)
+            }
+        try XCTContext
+            .runActivity(named: "Open a link as an alert comes up over the list") { _ in
+                try aLinkUnderAnAlertOverTheListWaitsForItsAnswer(in: app)
+            }
+        try XCTContext
+            .runActivity(named: "Open a link as an alert comes up over the About sheet") { _ in
+                try aLinkUnderAnAlertOverTheAboutSheetWaitsForItsAnswer(in: app)
             }
     }
 
@@ -174,19 +187,7 @@ final class LaunchTests: XCTestCase {
     /// state for an identifier no item has.
     @MainActor
     private func openTheItemThenAnUnknownItemByDeepLink(in app: XCUIApplication) throws {
-        // The item's identifier, read from its row toggle rather than hard-coded: the
-        // walk created the item, so only the running app knows it.
-        let toggle = app.buttons
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", Self.rowTogglePrefix))
-            .firstMatch
-        XCTAssertTrue(
-            toggle.waitForExistence(timeout: Timeout.elementAppears),
-            "the list should show the item's row toggle",
-        )
-        let id = try XCTUnwrap(
-            UUID(uuidString: String(toggle.identifier.dropFirst(Self.rowTogglePrefix.count))),
-            "the row toggle's identifier should end in the item's UUID",
-        )
+        let (_, id) = try theRowToggleAndItsItem(in: app)
 
         // The found state's identifier lands on its Form, a collection view to XCUITest.
         let detail = app.collectionViews["todoDetail"]
