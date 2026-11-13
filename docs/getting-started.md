@@ -70,28 +70,37 @@ covers the setup, the bundle identifier, and a free Personal Team's limits.
 The to-do list is an illustration for a new app to replace — example code in a skill
 or a doc is likewise a sketch of the pattern, never something the app must keep. Work
 through this list after `scripts/bootstrap.sh` (the paths below carry your app's name
-once it has run).
+once it has run, and every one is under `Packages/MyAppKit/`).
+
+The example's own files sit in one `Todos/` folder per module
+(`AGENTS.md` › Architecture), so most of the removal is four folder deletes:
+
+- `MyAppCore/Todos/` under `Sources/` — the domain value `TodoItem`, the port
+  `TodoRepository` with its error type and its null object `UnavailableTodoRepository`,
+  `UpdateFailingTodoRepository` (the UI tests' failing store), the view models
+  `TodoListViewModel` (with `AcknowledgedWrite`, the writes its load replays, and
+  `TodoListFailure`, what it reports) and `TodoDetailViewModel`, and the wording
+  `TodoListStrings` and `TodoDetailStrings`
+- `MyAppUI/Todos/` under `Sources/` — `TodoListView`, `TodoDetailView`,
+  `TodoDoneToggle`, and the previews' repository `PreviewTodoRepository`
+- `MyAppCoreTests/Todos/` under `Tests/` — every to-do suite, the contract run
+  `TodoRepositoryContractTests`, and `TodoListViewModelFixture`
+- `MyAppTestSupport/Todos/` under `Tests/` — the fake `InMemoryTodoRepository` and the
+  contract `TodoRepositoryContract`
+
+The rest of this list is what still names the example outside those folders, and the
+order at the end keeps `just check` green while the folders go.
 
 **Core:**
 
-- [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoItem.swift` — the domain value
-- [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoRepository.swift` — the port and its
-      error type, and its null object
-      `Packages/MyAppKit/Sources/MyAppCore/UnavailableTodoRepository.swift`
-- [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoListViewModel.swift` (with
-      `Packages/MyAppKit/Sources/MyAppCore/AcknowledgedWrite.swift`, the writes its load
-      replays) and
-      `Packages/MyAppKit/Sources/MyAppCore/TodoDetailViewModel.swift` — the view models
 - [ ] `AppModel.todoList` and `AppModel.makeTodoDetailViewModel(id:scene:)` in
       `Packages/MyAppKit/Sources/MyAppCore/AppModel.swift` — put your own shared view
       models and route factories there instead
-- [ ] `Packages/MyAppKit/Sources/MyAppCore/TodoListStrings.swift` and
-      `Packages/MyAppKit/Sources/MyAppCore/TodoDetailStrings.swift` — the wording
 - [ ] The `todoList.*` and `todoDetail.*` keys in
       `Packages/MyAppKit/Sources/MyAppCore/Resources/Localizable.xcstrings`, and the
       `TodoListStrings` and `TodoDetailStrings` cases in
       `Packages/MyAppKit/Tests/MyAppCoreTests/LocalizationTests.swift`
-- [ ] What `Packages/MyAppKit/Sources/MyAppCore/SceneLifecycleModel.swift` does with the
+- [ ] What `Packages/MyAppKit/Sources/MyAppCore/Scenes/SceneLifecycleModel.swift` does with the
       list: it is built over `AppModel.todoList` (`makeSceneLifecycleModel()`) and
       `refreshIfNeeded()` calls `TodoListViewModel.refresh()` — point both at your own
       shared model. Its failure presentation (`presented(_:)`) names no feature: give
@@ -100,19 +109,12 @@ once it has run).
 - [ ] `AppLog.todos`, the `todos` log category, in
       `Packages/MyAppKit/Sources/MyAppCore/AppLog.swift` — add a `Logger` for your own
       concern instead
-- [ ] The Core tests: `Packages/MyAppKit/Tests/MyAppCoreTests/TodoItemTests.swift`,
-      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelTests.swift`,
-      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelEditingTests.swift`,
-      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelHideCompletedTests.swift`,
-      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelLookupTests.swift`,
-      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelRefreshTests.swift`,
-      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoListViewModelFixture.swift`,
-      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoDetailViewModelTests.swift`, the to-do
-      cases in `Packages/MyAppKit/Tests/MyAppCoreTests/AppModelTests.swift`,
-      `Packages/MyAppKit/Tests/MyAppCoreTests/TodoRepositoryContractTests.swift`, and —
-      rewritten over your own shared model rather than deleted, since the rules they pin
-      stay — `Packages/MyAppKit/Tests/MyAppCoreTests/SceneLifecycleModelTests.swift` and
-      `Packages/MyAppKit/Tests/MyAppCoreTests/FailurePresentationTests.swift`
+- [ ] The Core tests outside `Todos/`: the to-do cases in
+      `Packages/MyAppKit/Tests/MyAppCoreTests/AppModelTests.swift`, and — rewritten over
+      your own shared model rather than deleted, since the rules they pin stay —
+      `Packages/MyAppKit/Tests/MyAppCoreTests/Scenes/SceneLifecycleModelTests.swift` and
+      the `Failures/` suites with their fixture
+      `Packages/MyAppKit/Tests/MyAppCoreTests/Failures/FailurePresentationFixture.swift`
 
 **Platform:**
 
@@ -130,18 +132,6 @@ once it has run).
 - [ ] Its tests: `Packages/MyAppKit/Tests/MyAppPlatformTests/SwiftDataTodoRepositoryTests.swift`,
       `Packages/MyAppKit/Tests/MyAppPlatformTests/PersistenceStoreTests.swift`, and the
       frozen schema copy `Packages/MyAppKit/Tests/MyAppPlatformTests/PreRenameSchemaV1.swift`
-
-**Test support:**
-
-- [ ] The fake `Packages/MyAppKit/Tests/MyAppTestSupport/InMemoryTodoRepository.swift`
-      and the contract `Packages/MyAppKit/Tests/MyAppTestSupport/TodoRepositoryContract.swift`
-
-**UI:**
-
-- [ ] `Packages/MyAppKit/Sources/MyAppUI/TodoListView.swift`,
-      `Packages/MyAppKit/Sources/MyAppUI/TodoDetailView.swift`, and
-      `Packages/MyAppKit/Sources/MyAppUI/TodoDoneToggle.swift`
-- [ ] The previews' repository: `Packages/MyAppKit/Sources/MyAppUI/PreviewTodoRepository.swift`
 
 **App:**
 
@@ -161,23 +151,23 @@ once it has run).
 - [ ] `AppRoute.todoDetail` in `Packages/MyAppKit/Sources/MyAppCore/Navigation/AppRoute.swift`,
       the `todo` host `Packages/MyAppKit/Sources/MyAppCore/Navigation/DeepLink.swift`
       parses, and the cases that use them in
-      `Packages/MyAppKit/Tests/MyAppCoreTests/DeepLinkTests.swift` and
-      `Packages/MyAppKit/Tests/MyAppCoreTests/NavigationModelTests.swift`, and the
+      `Packages/MyAppKit/Tests/MyAppCoreTests/Navigation/DeepLinkTests.swift` and
+      `Packages/MyAppKit/Tests/MyAppCoreTests/Navigation/NavigationModelTests.swift`, and the
       deep-link step that opens one in `LaunchUITests/LaunchTests.swift`
 
 **Preferences:**
 
 - [ ] `PreferenceKeys.hideCompleted` in
       `Packages/MyAppKit/Sources/MyAppCore/Preferences/PreferenceKeys.swift`, its
-      line in `Packages/MyAppKit/Tests/MyAppCoreTests/PreferenceKeysTests.swift`, and
+      line in `Packages/MyAppKit/Tests/MyAppCoreTests/Preferences/PreferenceKeysTests.swift`, and
       the `init(hideCompleted:)` that reads it in
-      `Packages/MyAppKit/Sources/MyAppUI/PreviewPreferences.swift`
+      `Packages/MyAppKit/Sources/MyAppUI/Preferences/PreviewPreferences.swift`
 
 **Secure storage:**
 
 - [ ] `SecureKeys.authToken` in
       `Packages/MyAppKit/Sources/MyAppCore/SecureStorage/SecureKeys.swift` and its
-      lines in `Packages/MyAppKit/Tests/MyAppCoreTests/SecureKeysTests.swift` — nothing
+      lines in `Packages/MyAppKit/Tests/MyAppCoreTests/SecureStorage/SecureKeysTests.swift` — nothing
       reads it; rename it to the secret your app stores, or delete it with the port
       below if your app stores none
 
@@ -208,7 +198,7 @@ once it has run).
    `RootView`, in place of `todoList` and `TodoListView`; wire your adapter in
    `App/MyAppApp.swift` in place of `makeRepository()`; and point
    `LaunchUITests/LaunchTests.swift` at it (`just uitest`).
-3. Delete the UI files and the previews' repository.
+3. Delete `MyAppUI/Todos/`: the views and the previews' repository.
 4. Replace `AppRoute.todoDetail` and the `todo` deep link with a route of your own,
    updating `DeepLinkTests`, `NavigationModelTests`, and `LaunchTests`' deep-link step
    in the same step, and replace
@@ -220,11 +210,11 @@ once it has run).
    strings files, their catalog keys, and their `LocalizationTests` cases together.
 6. Delete `PreferenceKeys.hideCompleted` with its `PreferenceKeysTests` line and
    `PreviewPreferences`' `init(hideCompleted:)` in
-   `Packages/MyAppKit/Sources/MyAppUI/PreviewPreferences.swift` — a stored key's
+   `Packages/MyAppKit/Sources/MyAppUI/Preferences/PreviewPreferences.swift` — a stored key's
    removal is a migration for any app already installed, so do it before you ship.
-7. Delete the Platform persistence files and their test, then the fake, the contract,
-   and `TodoRepositoryContractTests`, then `TodoRepository`,
-   `UnavailableTodoRepository`, `TodoItem` with `TodoItemTests`, and `AppLog.todos`.
+7. Delete the Platform persistence files and their test, then what is left of the
+   `Todos/` folders — `MyAppTestSupport/Todos/`, `MyAppCoreTests/Todos/`, and
+   `MyAppCore/Todos/` (the port, its null object, and `TodoItem`) — and `AppLog.todos`.
 
 `rg -i 'todo'` then lists anything left — including the mentions in `AGENTS.md`,
 `.claude/rules/`, and the skills that cite the to-do list as the worked example — among

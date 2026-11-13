@@ -48,14 +48,14 @@ what is private"). A pull request that changes either rewrites this skill in pla
 
 | Piece | Home |
 |---|---|
-| The port, its error enum, and the domain value | `Sources/MyAppCore/TodoRepository.swift`, `TodoItem.swift` |
-| The null object for "no store" | `Sources/MyAppCore/UnavailableTodoRepository.swift` |
+| The port, its error enum, and the domain value | `TodoRepository.swift` and `TodoItem.swift` in the feature's folder, `MyAppCore/Todos/` |
+| The null object for "no store" | `UnavailableTodoRepository.swift`, beside the port in `MyAppCore/Todos/` |
 | The one container, the schema, the migration plan, the adapter | `Sources/MyAppPlatform/Persistence/` |
 | The preferences port, `PreferenceKey`, and every key | `Sources/MyAppCore/Preferences/` |
 | The `UserDefaults` adapter | `Sources/MyAppPlatform/Preferences/UserDefaultsPreferences.swift` |
 | The secure-storage port, `SecureKey`, its error enum, and every key | `Sources/MyAppCore/SecureStorage/` |
 | The Keychain adapter | `Sources/MyAppPlatform/SecureStorage/KeychainSecureStore.swift` |
-| Fakes and contracts | `Tests/MyAppTestSupport/` (`InMemoryTodoRepository`, `TodoRepositoryContract`, `InMemoryPreferences`, `PreferencesContract`, `InMemorySecureStore`, `SecureStoringContract`) |
+| Fakes and contracts | `Tests/MyAppTestSupport/`, in the folder named for the port's Core folder (`Todos/`: `InMemoryTodoRepository`, `TodoRepositoryContract`; `Preferences/`: `InMemoryPreferences`, `PreferencesContract`; `SecureStorage/`: `InMemorySecureStore`, `SecureStoringContract`) |
 | Store, migration, and adapter tests | `Tests/MyAppPlatformTests/` |
 
 Where SwiftData may appear, the `@ModelActor` adapter, and never editing a shipped schema

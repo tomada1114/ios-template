@@ -26,6 +26,19 @@ floors (`scripts/coverage.sh`) apply to Core only, which is what makes a strict 
 gate honest for a UI app instead of an invitation to write meaningless view tests
 (`changing-gates`' `references/coverage-floor.md`).
 
+## One folder per feature, inside the three modules
+
+Inside each module a feature's own files sit in one folder named after it (`Todos/`),
+shared infrastructure in a folder named for its concern (`Failures/`, `Scenes/`,
+`Navigation/`, …), and only `AppLog` and `AppModel` at Core's root, because every
+feature touches them; the convention itself is `AGENTS.md`'s Architecture section. The
+folder is where the next feature visibly goes, and it is what makes replacing the worked
+example a folder delete per module rather than a hunt through a flat directory. A
+folder is not a SwiftPM target: a target per feature would add an access boundary and a
+`Package.swift` edit for every feature, and the layers already give the boundaries the
+compiler needs to enforce. A file moves to a shared folder only when a second feature
+uses it.
+
 ## MVVM with `@MainActor @Observable` view models in Core
 
 The view model is plain Swift that `swift test` drives in milliseconds, so every decision

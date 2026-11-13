@@ -37,10 +37,10 @@ full:
 
 | Piece | Where | Worked example |
 |---|---|---|
-| Port: a `Sendable` protocol, Core value types in and out, and the decision it serves | `Sources/MyAppCore/` | `TodoRepository.swift`, and `TodoListViewModel` deciding what to show |
+| Port: a `Sendable` protocol, Core value types in and out, and the decision it serves | `Sources/MyAppCore/`, in the folder of the feature that owns it, or a named folder for a service every feature shares (`Networking/`) | `Todos/TodoRepository.swift`, and `TodoListViewModel` deciding what to show |
 | Adapter: the framework import, translation only | `Sources/MyAppPlatform/` | `Persistence/SwiftDataTodoRepository.swift` |
-| Fake: a real implementation answering from test data | `Tests/MyAppTestSupport/` | `InMemoryTodoRepository.swift` |
-| Contract: the port's promises, run against the fake and the adapter | `Tests/MyAppTestSupport/` | `TodoRepositoryContract.swift` |
+| Fake: a real implementation answering from test data | `Tests/MyAppTestSupport/`, in the folder named for the port's | `Todos/InMemoryTodoRepository.swift` |
+| Contract: the port's promises, run against the fake and the adapter | `Tests/MyAppTestSupport/`, beside its fake | `Todos/TodoRepositoryContract.swift` |
 | Wiring: which adapter each port gets | `App/` | `MyAppApp.makeRepository()` |
 
 Write the port first. Its signature is where you decide what the framework type

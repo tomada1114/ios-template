@@ -83,9 +83,9 @@ works under a service of its own.
 
 | Under test | Test | Runs in |
 |---|---|---|
-| The port's promises, against the fake, and the contract's own oracle (six broken stores) | `MyAppCoreTests/SecureStoringContractTests.swift` | `just test`, CI |
-| The fake's failures and recorded calls | `MyAppCoreTests/InMemorySecureStoreTests.swift` | `just test`, CI |
-| Key names | `MyAppCoreTests/SecureKeysTests.swift` | `just test`, CI |
+| The port's promises, against the fake, and the contract's own oracle (six broken stores) | `MyAppCoreTests/SecureStorage/SecureStoringContractTests.swift` | `just test`, CI |
+| The fake's failures and recorded calls | `MyAppCoreTests/SecureStorage/InMemorySecureStoreTests.swift` | `just test`, CI |
+| Key names | `MyAppCoreTests/SecureStorage/SecureKeysTests.swift` | `just test`, CI |
 | `OSStatus` to `SecureStoringError` | `MyAppPlatformTests/KeychainSecureStoreTests.swift` (`storeError(for:)`) | `just test`, CI |
 | A write's update, add, and retried update on a duplicate | `MyAppPlatformTests/KeychainSecureStoreTests.swift` (`writeStatus(update:add:)`) | `just test`, CI |
 | The query and attribute dictionaries (class, service, account, data protection keychain, accessibility, match limit) | `MyAppPlatformTests/KeychainSecureStoreTests.swift` (`itemQuery`, `readQuery`, `writeAttributes`, `newItem`) | `just test`, CI |

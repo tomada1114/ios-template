@@ -115,7 +115,7 @@ protocol, not over either implementation, and every clause it checks is one the 
   replace, delete, and `notFound` for a missing identifier. Its `violations(of:)` returns
   what `check(_:)` asserts on, so a Core test hands it an implementation that breaks a
   clause and sees the contract report it — the proof the contract is not vacuous.
-- `MyAppCoreTests/TodoRepositoryContractTests.swift` runs it against
+- `MyAppCoreTests/Todos/TodoRepositoryContractTests.swift` runs it against
   `InMemoryTodoRepository`, and against the deliberately broken implementations: CI runs
   it, so the fake cannot drift from the port.
 - `MyAppPlatformTests/SwiftDataTodoRepositoryTests.swift` runs the same function against

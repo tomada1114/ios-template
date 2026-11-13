@@ -113,8 +113,11 @@ hyphen, so a spelling the literal replace does not cover fails that job.
 
 The rename leaves the example code in place: the to-do list — its `TodoRepository`
 port, the SwiftData adapter, the in-memory fake and the contract suite, the view, and
-the view model — is an illustration, not the app. Replace or remove it as one change,
-keeping the layers and a port's fake-plus-contract shape.
+the view model — is an illustration, not the app. Its own files are the `Todos/` folder
+of each module (`AGENTS.md` › Architecture), so removing it is deleting those folders and
+the SwiftData adapter, then its lines in the shared files `docs/getting-started.md`
+lists. Replace or remove it as one change, keeping the layers and a port's
+fake-plus-contract shape.
 
 ## Filling in the Product section
 
