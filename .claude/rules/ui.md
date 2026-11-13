@@ -20,7 +20,8 @@ screen looks like — the design lock, a token's value, custom glass — is the
   internal.
 - `App/` is the composition root and nothing else: it picks adapters and hands them to
   `AppModel` as ports. `MyAppApp` keeps the `AppModel` in `@State`; its `SceneRoot` keeps
-  a `NavigationModel` in `@State` per scene, so each window navigates on its own.
+  a `NavigationModel` (`app.makeNavigationModel(for:)`, over the scene's lifecycle
+  model) in `@State` per scene, so each window navigates on its own.
 - `SceneRoot` keeps a `SceneLifecycleModel` (`app.makeSceneLifecycleModel()`) in
   `@State` too, and forwards that window's `@Environment(\.scenePhase)`, mapped to Core's
   `LifecyclePhase`: `sceneDidEnter(_:)` synchronously in `onChange`, then
@@ -151,6 +152,14 @@ design-lock decision, never a per-screen one.
   in the foreground (#133). A view never compares scenes or phases itself; the rule and
   its reasons are the `designing-ui` skill's `references/navigation.md` › A failure
   presents in one window.
+- `RootView` tells the `NavigationModel` what only the screen knows — a sheet started
+  presenting (`sheetDidStartPresenting()`), a sheet finished leaving
+  (`sheetDidLeave()`, from `onDismiss`), a failure alert's button was tapped
+  (`failureAlertDidLeave()`, after `dismissFailure(_:)`) — and decides nothing with it:
+  Core holds a deep link back while a sheet or an alert covers the stack, because UIKit
+  drops a push that lands on a presentation in flight (#140; the `designing-ui` skill's
+  `references/navigation.md` › A link waits until nothing covers the stack). A new
+  alert or sheet modifier reports the same way.
 - Sheet sizing (`.presentationDetents`) only as the lock says.
 
 ## Size classes, Dynamic Type, safe areas, keyboard

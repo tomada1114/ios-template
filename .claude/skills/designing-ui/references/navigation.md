@@ -33,7 +33,10 @@ still up (`dismissSheet()` whatever is up), `open(_:)` handles a deep link, and
 `App/`'s scene root holds it in `@State` and hands it to the root view, while
 the shared view models it routes between stay app-level, in `AppModel`. It never moves
 into `AppModel`: the app supports multiple scenes (two windows on iPad), so an app-level
-path would move every window in lockstep and a deep link would move them all.
+path would move every window in lockstep and a deep link would move them all. `AppModel`
+does build it — `makeNavigationModel(for:)`, over the scene's `SceneLifecycleModel` —
+because a link waits on that window's failure alerts ("A link waits until nothing covers
+the stack", below).
 
 ## Why the stack and its destinations live in `RootView`
 
@@ -72,6 +75,15 @@ dismisses the sheet: a write to `path` that changes it (its `didSet`), and the a
 person would close the sheet onto a stack they did not see move. A link `open(_:)`
 rejects leaves both the path and the sheet alone.
 
+Whether a sheet is on screen is Core state too, `NavigationModel.isSheetOnScreen`, and
+it is not `sheet != nil`: a sheet is on screen from the moment `RootView` starts
+presenting it (`sheetDidStartPresenting()`, from an `onChange` of the request) until it
+has finished sliding away (`sheetDidLeave()`, from the sheet's `onDismiss`), whoever
+dismissed it. The view reports both because only it sees them: a sheet asked for and
+dismissed before a render is never presented and never leaves, so `present(_:)` cannot
+assume one is on screen. Two decisions read it — which layer gets the failures, and when
+a link may move the stack.
+
 A failure presents over a sheet that is on screen. SwiftUI presents nothing from a view
 that is already presenting a sheet, so an alert outside the stack cannot show while a
 sheet is up. `RootView` therefore attaches every failure alert to each presentation
@@ -79,12 +91,13 @@ layer — the stack, and the `sheet(for:)` content — through one function,
 `failureAlerts(on:isTopmost:)`, and hands the failures only to the topmost layer, so a
 feature adds its alert once and one failure is never bound to two alerts in a window
 (which window gets it at all is "A failure presents in one window", below). The topmost
-layer is the sheet from the moment one is asked for until its `onDismiss` — after it has
-finished sliding away, not when `NavigationModel.sheet` turns `nil` — because an alert
-handed to the stack while the sheet is still leaving is dropped by UIKit and never comes
-back. An alert's binding ignores SwiftUI's write-back and only its button clears the
-failure: a sheet closed by code under its alert (a deep link) tears the alert down
-without the person seeing it go, and the failure then presents again over the stack.
+layer is the sheet while one is on screen (`isSheetOnScreen`) — until it has finished
+sliding away, not when `NavigationModel.sheet` turns `nil` — because an alert handed to
+the stack while the sheet is still leaving is dropped by UIKit and never comes back. An
+alert's binding ignores SwiftUI's write-back and only its button clears the failure: a
+presentation torn down by code — a failure that arrives while its sheet is already
+leaving, a failure handed to another window — takes the alert down without the person
+seeing it go, and the failure then presents again where it is handed next.
 
 So a failure shows at once over the sheet, wherever the action that failed began — a
 save still in flight from the list when the sheet opened, or the first sheet whose own
@@ -94,10 +107,68 @@ is still looking at it, and a failure held back would show over a screen that no
 explains it. `LaunchTests` pins both halves: under `-failUpdates -delayFailedUpdates
 <seconds>` (Debug-only, `App/MyAppApp.swift`) a toggle's failure arrives that long after
 the tap, so the test opens the About sheet over the save still in flight; the alert
-presents over the sheet, OK leaves the sheet up, and a deep link that closes the sheet
-under the alert brings the alert back over the screen it pushed.
+presents over the sheet, and OK leaves the sheet up.
 
 Full-screen covers, popovers, and a sheet presented from inside a sheet are not modeled.
+
+## A link waits until nothing covers the stack
+
+A deep link is the one change to the stack that arrives whenever the system delivers it,
+whatever is on screen. UIKit refuses a change to a navigation stack while a presentation
+over it is in flight — an alert still coming up, a sheet sliding in or out — and says so
+only in the log ("…while an existing transition or presentation is occurring; the
+navigation stack will not be updated"). SwiftUI does not try again and does not write
+the path back, so a path set at that moment names a screen that never showed: the link
+is lost, and the same link again changes nothing, because the path already equals it
+(#140). An alert takes about half a second to present, and a link that lands inside that
+time is enough.
+
+So `open(_:)` moves the path only when nothing covers the stack, and otherwise keeps
+the link — the newest only — until the view reports the stack clear:
+
+- **Under a failure alert in this window, nothing moves**, a sheet under the alert
+  included. When the person answers the alert, its button calls
+  `failureAlertDidLeave()` after dismissing the failure; UIKit has taken the alert down
+  by the time a button's action runs. The model then goes on: it dismisses the sheet if
+  one is up, and moves the path once none is on screen.
+- **Under a sheet on screen, the link dismisses the sheet at once** and the path moves
+  in `sheetDidLeave()`, after the slide-out. If a failure arrives while the sheet is
+  leaving, its alert presents over the stack first and the link waits for its answer:
+  the push never lands on an alert that is coming up.
+- **With nothing over the stack, the link acts at once.** So does a link that arrives
+  after a sheet was asked for but before `RootView` started presenting it: clearing the
+  request means no sheet is ever presented.
+
+While a link waits, `path` is still the screen the person sees, and so is `encodedPath`:
+a waiting link is never stored, and a process that ends before the alert is answered
+loses it rather than restoring a screen nobody saw. A link is newer than a stored path
+whether it has been applied or still waits, so `restore(from:)` does nothing after one.
+A second link replaces the one waiting, and so does `show(_:)` or `popToRoot()`, which
+move at once: they are for a screen's own controls, which nothing covers when tapped.
+
+The model learns of its window's alerts from Core, not from the view: `AppModel` builds
+it over a closure that asks the scene's `SceneLifecycleModel` whether it presents each
+shared model's failure, so the answer is right in the same turn of the run loop in
+which a failure is reported, before any view has rendered it. A second shared model
+adds its failure to that closure, beside its `.failureAlert` line in `RootView`. The
+two signals that only the screen has — an alert answered, a sheet gone — are the view's
+to forward, and it decides nothing with them.
+
+Waiting for the person's answer, rather than for the alert to finish presenting, is
+forced: SwiftUI reports nothing when an alert has finished coming up, so Core cannot
+tell an alert that has settled from one still in flight. It also keeps the alert over
+the screen that explains it. The alternatives: setting the path at once is what UIKit
+drops; noticing afterwards that the stack did not follow and setting the path again
+needs a second write a frame later, timed by guesswork; and asking UIKit for its
+transition coordinator from a view puts a decision in `MyAppUI`, on a private detail
+of how SwiftUI hosts its stack.
+
+`NavigationModelWaitingLinkTests` and `NavigationModelFailureAlertTests` pin every rule
+above. The failure launch test opens a link the moment an alert exists — over the list,
+and over the About sheet — without the second's grace `waitForExistence` gives, so the
+link lands while the alert is still presenting, and the link's screen shows once OK is
+tapped. Not covered: a failure reported while a push is still animating, the reverse
+order, where the alert presents over a stack in transition.
 
 ## A failure presents in one window
 
@@ -179,7 +250,9 @@ launch test pins that a single window still presents its own.
 the host `todo`, one `UUID` path component — and rejects every other shape rather than
 guessing; `DeepLink.url(for:)` is its inverse. The scene root forwards `.onOpenURL` to
 its `NavigationModel.open(_:)`, which replaces the path with the parsed route (dismissing
-any sheet) or logs the rejected link's scheme and host in the `navigation` category.
+any sheet) — at once, or once nothing covers the stack ("A link waits until nothing
+covers the stack") — or logs the rejected link's scheme and host in the `navigation`
+category.
 
 No link presents a sheet: About is not worth a URL that becomes contract the day a build
 ships. A sheet that is worth one gets a new link shape in `DeepLink` (for example

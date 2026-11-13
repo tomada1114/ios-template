@@ -54,7 +54,7 @@ private struct SceneRoot: View {
     /// Whether this window stores and restores its path: off under UI testing, where
     /// each launch must start at the root whatever the last one left pushed.
     let restoresPath: Bool
-    @State private var navigation = NavigationModel()
+    @State private var navigation: NavigationModel
     @State private var lifecycle: SceneLifecycleModel
     @Environment(\.scenePhase)
     private var scenePhase
@@ -90,9 +90,12 @@ private struct SceneRoot: View {
     init(app: AppModel, restoresPath: Bool) {
         self.app = app
         self.restoresPath = restoresPath
-        // A re-render builds a spare model, which `@State` discards: building one has no
-        // side effects.
-        _lifecycle = State(initialValue: app.makeSceneLifecycleModel())
+        // A re-render builds a spare pair of models, which `@State` discards: building
+        // one has no side effects. The navigation model is built over this window's
+        // lifecycle model, whose failure alerts a link waits on.
+        let sceneLifecycle = app.makeSceneLifecycleModel()
+        _lifecycle = State(initialValue: sceneLifecycle)
+        _navigation = State(initialValue: app.makeNavigationModel(for: sceneLifecycle))
     }
 
     /// SwiftUI's phase as Core's. A phase a later SDK adds is `background`: nothing says

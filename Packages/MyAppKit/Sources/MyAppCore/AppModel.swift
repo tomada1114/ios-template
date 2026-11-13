@@ -63,6 +63,19 @@ public final class AppModel {
         SceneLifecycleModel(list: todoList, openScenes: openScenes)
     }
 
+    /// A new navigation model for the scene `lifecycle` belongs to: the scene root keeps
+    /// it in `@State` beside `lifecycle`.
+    ///
+    /// Built here because it waits on that window's failure alerts: a link that arrives
+    /// while the window presents one moves nothing until the alert is answered
+    /// (``NavigationModel/open(_:)``). Every shared model whose failure `RootView`
+    /// presents is asked here, so a new one adds its line.
+    public func makeNavigationModel(for lifecycle: SceneLifecycleModel) -> NavigationModel {
+        NavigationModel { [todoList] in
+            lifecycle.presented(todoList.reportedFailure) != nil
+        }
+    }
+
     /// The view model of the screen ``AppRoute/todoDetail(_:)`` pushes for `id`, in the
     /// window `scene` names.
     ///

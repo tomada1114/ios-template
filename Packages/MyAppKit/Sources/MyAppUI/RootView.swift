@@ -30,14 +30,8 @@ public struct RootView: View {
     @Bindable private var navigation: NavigationModel
     private let lifecycle: SceneLifecycleModel
 
-    /// Whether a sheet is on screen, which ``NavigationModel/sheet`` alone does not say:
-    /// set as soon as one is asked for, and cleared only by the sheet's `onDismiss`, once
-    /// it has finished leaving — after its slide-out, whether a swipe, its close button, or
-    /// a deep link dismissed it. Until then UIKit presents nothing from the stack.
-    @State private var isSheetOnScreen = false
-
     public var body: some View {
-        failureAlerts(on: stackAndSheet, isTopmost: !isSheetOnScreen)
+        failureAlerts(on: stackAndSheet, isTopmost: !navigation.isSheetOnScreen)
     }
 
     private var stackAndSheet: some View {
@@ -51,13 +45,16 @@ public struct RootView: View {
                 }
         }
         // Outside the stack, like the failure alerts, so it presents whichever screen is
-        // on top.
-        .sheet(item: presentedSheet, onDismiss: sheetDidLeave) { sheet in
+        // on top. Core is told when a sheet starts presenting and when it has finished
+        // leaving (`onDismiss`, after its slide-out): what is on screen, which
+        // `NavigationModel.sheet` alone does not say, decides which layer gets the
+        // failures and when a link may move the stack.
+        .sheet(item: presentedSheet, onDismiss: navigation.sheetDidLeave) { sheet in
             failureAlerts(on: self.sheet(for: sheet), isTopmost: true)
         }
         .onChange(of: navigation.sheet != nil, initial: true) { _, isAskedFor in
             if isAskedFor {
-                isSheetOnScreen = true
+                navigation.sheetDidStartPresenting()
             }
         }
     }
@@ -97,18 +94,15 @@ public struct RootView: View {
     ///
     /// The list is shared by every window, so its failure is read through this window's
     /// lifecycle model: Core hands it to exactly one window, and the button dismisses the
-    /// failure it was shown for, so only that window's button can (#133).
+    /// failure it was shown for, so only that window's button can (#133). The button then
+    /// tells the navigation model the alert has gone, which is when a link that arrived
+    /// under it may move the stack (#140).
     private func failureAlerts(on layer: some View, isTopmost: Bool) -> some View {
         let shown = isTopmost ? lifecycle.presented(app.todoList.reportedFailure) : nil
         return layer.failureAlert(shown?.failure) {
             app.todoList.dismissFailure(shown)
+            navigation.failureAlertDidLeave()
         }
-    }
-
-    /// Hands the failures back to the stack once the sheet has gone — unless another sheet
-    /// was asked for meanwhile, which replaces it rather than uncovering the stack.
-    private func sheetDidLeave() {
-        isSheetOnScreen = navigation.sheet != nil
     }
 
     /// The screen `route` names. A model built here is handed to a screen that keeps the

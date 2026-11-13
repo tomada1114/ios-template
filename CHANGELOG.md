@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A link to an item (`my-app://todo/<id>`) opened just as an error alert was coming up
+  was lost, and the same link then did nothing until something else moved the screen:
+  UIKit drops a push that arrives while an alert or a sheet is still animating, and the
+  app went on believing the screen was showing. A link that arrives under an error alert
+  now waits for OK, and one that arrives under a sheet closes the sheet and shows its
+  screen once the sheet has gone. `NavigationModel` holds the link meanwhile, and its
+  `path` stays the screen on show; `AppModel.makeNavigationModel(for:)` builds it for a
+  scene, and `RootView` reports a sheet presenting or gone and an alert answered
+  (`sheetDidStartPresenting()`, `sheetDidLeave()`, `failureAlertDidLeave()`). A link
+  under an alert over a sheet used to close the sheet at once and bring the alert back
+  over the linked screen; it now leaves both up until the alert is answered. (#140)
 - With two windows open on iPad, a failure now presents in one window instead of both,
   and OK in one window no longer pulls the alert out from under the other. The window
   whose action failed presents it if it is in the foreground; otherwise the window that
