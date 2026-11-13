@@ -218,12 +218,14 @@ struct MyAppApp: App {
 
     #if DEBUG
         /// A gate released by each post of the Darwin notification named after
-        /// `-holdFailedUpdates`, or none when the name is missing. A Darwin notification
-        /// because it is the one channel a UI test runner and the app share on the
-        /// simulator with nothing to set up; the registration lasts as long as the app.
+        /// `-holdFailedUpdates`, or none when the name is missing, is another argument, or
+        /// cannot be observed. A Darwin notification because it is the one channel a UI
+        /// test runner and the app share on the simulator with nothing to set up; the
+        /// registration lasts as long as the app.
         private static func failedUpdateGate(in arguments: [String]) -> FailedUpdateGate? {
             guard let index = arguments.firstIndex(of: holdFailedUpdatesArgument),
-                  arguments.indices.contains(index + 1)
+                  arguments.indices.contains(index + 1),
+                  !arguments[index + 1].hasPrefix("-")
             else {
                 return nil
             }
@@ -233,11 +235,14 @@ struct MyAppApp: App {
             let status = notify_register_dispatch(name, &token, .main) { _ in
                 Task { await gate.release() }
             }
-            if status != NOTIFY_STATUS_OK {
+            // A gate nothing can release would hold every failing save for the life of
+            // the app, so without the registration the failures arrive at once.
+            guard status == NOTIFY_STATUS_OK else {
                 AppLog.todos
                     .fault(
                         "Cannot observe the failed-update release: status \(status, privacy: .public)",
                     )
+                return nil
             }
             return gate
         }

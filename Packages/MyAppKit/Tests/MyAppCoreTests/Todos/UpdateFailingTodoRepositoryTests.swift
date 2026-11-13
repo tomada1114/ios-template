@@ -150,10 +150,11 @@
                 try await repository.save(toggled)
             }
             await gate.nextHold()
+            // No wait for the cancellation to land: the release may reach the gate
+            // before it or after, and either way it is kept for the next failure.
             cancelled.cancel()
-            _ = await cancelled.result
-
             await gate.release()
+            _ = await cancelled.result
 
             await #expect(throws: TodoRepositoryError.storageFailure) {
                 try await repository.save(toggled)

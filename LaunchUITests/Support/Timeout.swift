@@ -6,9 +6,12 @@ enum Timeout {
     static let launch: TimeInterval = 20
     static let elementAppears: TimeInterval = 5
     /// How long a held failure takes to appear once the test releases it
-    /// (`HeldFailure.release()`): the app's answer to the release, then the alert's
-    /// presentation, which is an element appearing.
-    static let releasedFailureAppears: TimeInterval = elementAppears
+    /// (`HeldFailure.release()`): the notification's trip to the app, the app's answer,
+    /// and the alert's presentation. Four `elementAppears`, because on a loaded
+    /// simulator one look at the screen has taken 4–11 s (#141), and a wait that passes
+    /// costs only as long as the alert takes.
+    static let releasedFailureAppears: TimeInterval =
+        elementAppears + elementAppears + elementAppears + elementAppears
     static let keyboardFocus: TimeInterval = 3
     /// How long the keyboard may take to present once a field holds focus. As long as a
     /// launch, because on a cold-booted simulator its first presentation is one: the

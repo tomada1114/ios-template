@@ -11,7 +11,9 @@ enum HeldFailure {
     static let releaseNotification = "LaunchUITests.releaseFailedUpdate"
 
     /// Lets the next held failure through: the one already held, or, when the save has
-    /// not reached the gate yet, the next one to arrive.
+    /// not reached the gate yet, the next one to arrive. One call per failure, after the
+    /// tap that starts its save: the system may merge two posts that come close together
+    /// into one delivery.
     static func release() {
         notify_post(releaseNotification)
     }
