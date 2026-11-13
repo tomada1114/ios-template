@@ -116,8 +116,8 @@ Packages/MyAppKit/
 │   │                       #   (enforced by lint and test); coverage-gated
 │   ├── AppLog.swift        # Every logger — one of the only two files at the root
 │   ├── AppModel.swift      # The shared view models and route factories
-│   ├── Todos/              # The worked example: one folder per feature
-│   ├── About/              # The About sheet's wording
+│   ├── Todos/              # Features, one folder each: the worked example,
+│   ├── About/              #   and the About sheet an app keeps and rewrites
 │   ├── Failures/           # How a failure reaches one window's alert
 │   ├── Scenes/             # The open windows and each one's lifecycle
 │   ├── Configuration/      # AppConfiguration (from Info.plist) and Tuning
@@ -136,32 +136,43 @@ Packages/MyAppKit/
 │                           #   Networking/, Preferences/, SecureStorage/) — translation
 │                           #   only, no domain logic, outside the coverage floor
 ├── Tests/MyAppTestSupport/ # Each port's fake and contract function, in the folder named
-│                           #   for the port's Core folder — test code no shipped module
-│                           #   imports (enforced by test)
-├── Tests/MyAppCoreTests/   # Swift Testing suites, in the folder of the Core folder they
-│                           #   test; the suites that hold Core to files outside it (the
-│                           #   import ban, the String Catalog, the privacy manifest,
-│                           #   project.yml) at the root — coverage-gated
+│                           #   for the port's Core folder; a helper several folders'
+│                           #   tests share (ManualClock) at the root — test code no
+│                           #   shipped module imports (enforced by test)
+├── Tests/MyAppCoreTests/   # Swift Testing suites, each in the folder of the Core code it
+│                           #   tests; at the root, the root files' tests, the suites over
+│                           #   a whole module (the import ban, the String Catalog, the
+│                           #   privacy manifest), and the helpers suites in several
+│                           #   folders share (RepositoryRoot, ProjectManifest) —
+│                           #   coverage-gated
 └── Tests/MyAppPlatformTests/  # Adapters against the real framework, on the host
 LaunchUITests/              # XCUITest on the iOS Simulator (XCTest by necessity)
 ```
 
 - New logic goes in `MyAppCore` with tests; views only render Core state.
-- `MyAppCore`, `MyAppUI`, `MyAppCoreTests`, and `MyAppTestSupport` are grouped the same
-  way: one folder per feature (`Todos/`), named after the feature, holding everything only that feature uses; shared infrastructure in a
-  folder named for its concern (`Failures/`, `Scenes/`, `Configuration/`, `Navigation/`,
-  `Networking/`, `Preferences/`, `SecureStorage/`); and at Core's root only `AppLog.swift`
-  and `AppModel.swift`, which every feature touches (`RootView.swift` at UI's). A file
-  used by one feature goes in its folder even when its kind is general (`AcknowledgedWrite`,
-  `TodoListFailure`); a file a second feature starts using moves to a shared folder. So a
-  feature's own code is one folder per module — `MyAppCore/Todos/`, `MyAppUI/Todos/`,
-  `MyAppCoreTests/Todos/`, `MyAppTestSupport/Todos/` — and removing it deletes those
+- `MyAppCore`, `MyAppUI`, `MyAppCoreTests`, and `MyAppTestSupport` are grouped the
+  same way. A feature — a screen or sheet and what only it uses — is one folder named
+  after it: `Todos/`, the worked example, and `About/`, the About sheet an app keeps and
+  rewrites. Shared infrastructure is one folder named for its concern (`Failures/`,
+  `Scenes/`, `Configuration/`, `Navigation/`, `Networking/`, `Preferences/`,
+  `SecureStorage/`). Only the files every feature touches sit at a module's root:
+  `AppLog.swift` and `AppModel.swift` in Core, `RootView.swift` in UI
+  (`ArchitectureBoundaryTests` fails on any other). A test goes in the folder of the
+  code it tests, and a suite over a whole module sits at its target's root
+  (`ArchitectureBoundaryTests`, `LocalizationTests`); a test helper goes in the folder
+  of the only suites that use it, and one shared across folders sits at the root
+  (`ManualClock`, `RepositoryRoot`).
+  A file one feature uses goes in its folder even when its kind is general
+  (`AcknowledgedWrite`, `TodoListFailure`), and moves to a shared folder once a second
+  feature uses it. So the example's own code is `MyAppCore/Todos/`, `MyAppUI/Todos/`,
+  `MyAppCoreTests/Todos/`, and `MyAppTestSupport/Todos/`, and removing it deletes those
   folders plus its lines in the shared files that name it (`AppModel`, `RootView`,
   `AppRoute`, the catalog; `docs/getting-started.md` lists them). Folders are not
   targets: a feature still compiles into `MyAppCore` and `MyAppUI`. `MyAppPlatform` is
   grouped by the framework an adapter wraps instead, so a feature's adapter sits in its
   framework's folder (`Persistence/SwiftDataTodoRepository.swift`), and
-  `MyAppPlatformTests` stays flat.
+  `MyAppPlatformTests` stays flat. Why: `designing-core-logic`'s
+  `references/design-reasons.md`.
 - The dependency direction is one-way: Core ← UI and Core ← Platform, both ← App.
   `MyAppUI` and `MyAppPlatform` are siblings and never import each other.
 - Storage and OS services go in `MyAppPlatform` as an adapter behind a `Sendable` port

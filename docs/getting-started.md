@@ -114,7 +114,8 @@ order at the end keeps `just check` green while the folders go.
       `Packages/MyAppKit/Tests/MyAppCoreTests/AppModelTests.swift`, and — rewritten over
       your own shared model rather than deleted, since the rules they pin stay —
       `Packages/MyAppKit/Tests/MyAppCoreTests/Scenes/SceneLifecycleModelTests.swift` and
-      the `Failures/` suites with their fixture
+      `Packages/MyAppKit/Tests/MyAppCoreTests/Failures/FailurePresentationTests.swift`
+      with its fixture
       `Packages/MyAppKit/Tests/MyAppCoreTests/Failures/FailurePresentationFixture.swift`
 
 **Platform:**
@@ -190,6 +191,9 @@ order at the end keeps `just check` green while the folders go.
   factories, and the one navigation stack
 - `DesignTokens` — `Packages/MyAppKit/Sources/MyAppUI/DesignSystem/DesignTokens.swift`
 - `AppLog` — `Packages/MyAppKit/Sources/MyAppCore/AppLog.swift`
+- The About sheet — the `About/` folders of `MyAppCore` and `MyAppUI`: a feature of
+  every app, not part of the example; rewrite its wording (`AboutStrings` and its
+  catalog keys) for yours
 
 **An order that keeps `just check` green at each step:**
 

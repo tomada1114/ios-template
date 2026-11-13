@@ -26,18 +26,18 @@ floors (`scripts/coverage.sh`) apply to Core only, which is what makes a strict 
 gate honest for a UI app instead of an invitation to write meaningless view tests
 (`changing-gates`' `references/coverage-floor.md`).
 
-## One folder per feature, inside the three modules
+## Feature folders, not feature targets
 
-Inside each module a feature's own files sit in one folder named after it (`Todos/`),
-shared infrastructure in a folder named for its concern (`Failures/`, `Scenes/`,
-`Navigation/`, …), and only `AppLog` and `AppModel` at Core's root, because every
-feature touches them; the convention itself is `AGENTS.md`'s Architecture section. The
-folder is where the next feature visibly goes, and it is what makes replacing the worked
-example a folder delete per module rather than a hunt through a flat directory. A
-folder is not a SwiftPM target: a target per feature would add an access boundary and a
-`Package.swift` edit for every feature, and the layers already give the boundaries the
-compiler needs to enforce. A file moves to a shared folder only when a second feature
-uses it.
+Core and UI code, and the tests and fakes beside it, is grouped by feature, with shared
+infrastructure in named folders; the layout is `AGENTS.md`'s Architecture section. A
+feature folder is where the next feature visibly goes, and it is what makes replacing
+the worked example a folder delete per module rather than a hunt through a flat
+directory. Keeping the root to the files every feature touches keeps that true, which is
+why `ArchitectureBoundaryTests` holds it. A folder is not a SwiftPM target: a target per
+feature would add an access boundary and a `Package.swift` edit for every feature, and
+the layers already give the boundaries the compiler needs to enforce. Platform is
+grouped by framework instead, because an adapter changes when its framework does, and
+the adapters over one framework share what it opens (Persistence's one container).
 
 ## MVVM with `@MainActor @Observable` view models in Core
 
