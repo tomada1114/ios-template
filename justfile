@@ -117,9 +117,17 @@ reset-permissions:
     scripts/reset-permissions.sh
 
 # Run the XCUITest launch test on an iOS Simulator (scripts/simulator-destination.sh
-# picks the device; SIMULATOR_DEVICE overrides it): uitest-build, then uitest-run
+# picks the device — an iPhone, or an iPad under SIMULATOR_FAMILY=ipad;
+# SIMULATOR_DEVICE overrides it): uitest-build, then uitest-run
 [doc("Run the XCUITest launch test on an iOS Simulator")]
 uitest: uitest-build uitest-run
+
+# Run the launch UI test on an available iPad (uitest-build and uitest-run under
+# SIMULATOR_FAMILY=ipad), then shut that iPad down; skipped with a one-line notice when
+# project.yml targets iPhone only (TARGETED_DEVICE_FAMILY "1"). scripts/uitest-ipad.sh
+[doc("Run the launch UI test on an iPad simulator, then shut it down (skipped for an iPhone-only app)")]
+uitest-ipad:
+    scripts/uitest-ipad.sh
 
 # Compile the app (Debug) and the launch UI test for the simulator uitest runs on,
 # without running it. It is the one Debug compile in CI's app job and in `just check` (#58).
@@ -173,13 +181,15 @@ check: verify-hooks fmt lint test-scripts check-harness test
     @if [ "$(scripts/simulator-relevant.sh --check test-ios)" != false ]; then just test-ios; else echo "Skipped test-ios (CHECK_ALL=1 runs it)"; fi
 
 # Run everything, on the commit a release is cut from: `just check` with every simulator
-# check forced, then the checks no pull request runs — the Release launch, the Release
-# device-SDK build, and the analyzer rules. Long by design (several clean builds); what
-# it finds was merged earlier, so run it on main before tagging a release, and after a
-# batch of merges.
-[doc("Run every check, the release-only ones included: check (all simulator checks), smoke, build-device, analyze")]
+# check forced (the launch UI test on an iPhone), then the checks no pull request runs —
+# the launch UI test on an iPad (skipped for an iPhone-only app), the Release launch,
+# the Release device-SDK build, and the analyzer rules. Long by design (several clean
+# builds); what it finds was merged earlier, so run it on main before tagging a
+# release, and after a batch of merges.
+[doc("Run every check, the release-only ones included: check (all simulator checks), uitest-ipad, smoke, build-device, analyze")]
 check-release:
     CHECK_ALL=1 just check
+    just uitest-ipad
     just smoke
     just build-device
     just analyze
