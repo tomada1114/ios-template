@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
         # The allow-list mirrors .claude/rules/project.md's permissive-only dependency
         # policy (ISC, 0BSD, and Zlib are MIT-equivalent permissive licenses). It covers
         # every ecosystem in the dependency graph: SwiftPM packages from Package.resolved
